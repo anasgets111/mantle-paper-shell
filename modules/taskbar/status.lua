@@ -101,7 +101,7 @@ local function button(o)
             swipe(hovered, 30, o.seed),
             row {
                 height = "fill",
-                spacing = o.spacing or 12,
+                spacing = o.spacing or 14,
                 padding = { left = 10, right = 10 },
                 translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
                 scale = press.scale(o.name),
@@ -132,8 +132,8 @@ function M.icons(output)
         end,
         tip = status_text,
         children = {
-            icons.doodle(mantle.network:map(M.wifi_name, "wifi-off"), icons.STATUS),
-            icons.doodle(mantle.bluetooth:map(M.bluetooth_name, "bluetooth-off"), icons.STATUS),
+            icons.status_glyph(mantle.network:map(M.wifi_name, "wifi-off")),
+            icons.status_glyph(mantle.bluetooth:map(M.bluetooth_name, "bluetooth-off")),
             -- Wheel over the speaker: the default sink, 5 % a notch.
             rect {
                 align_v = "center",
@@ -142,13 +142,13 @@ function M.icons(output)
                     if not s then return end
                     mantle.audio:set_volume(s.id, math.max(0, math.min(100, (s.volume or 0) + 5 * steps)))
                 end,
-                children = { icons.doodle(mantle.audio:map(M.volume_name, "volume-muted"), icons.STATUS) },
+                children = { icons.status_glyph(mantle.audio:map(M.volume_name, "volume-muted")) },
             },
             row {
                 spacing = 4,
                 visible = battery:map(function(b) return b ~= false end),
                 children = {
-                    icons.doodle(battery:map(M.battery_name), icons.STATUS),
+                    icons.status_glyph(battery:map(M.battery_name)),
                     k.body(battery:map(function(b) return b and (b.percent .. "%") or "" end), 19,
                         { align_v = "center" }),
                 },

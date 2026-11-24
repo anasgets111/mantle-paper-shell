@@ -58,7 +58,8 @@ local function sticker(output, s)
     loop.stroke_width = 1.6
     local hovered = hover(slot)
     return tips.wrap(rect {
-        width = 40,
+        -- The loop's ink sits 10 px in from each side, as the updater's and the status group's do.
+        width = 56,
         height = "fill",
         hover = hovered,
         accessible_name = s.label .. " in use",
@@ -103,6 +104,7 @@ function M.indicators(output)
     return list {
         direction = "horizontal",
         height = "fill",
+        spacing = 10,
         -- Held past the last sensor going quiet so its exit can play; hidden it takes no gap.
         visible = util.linger(any, 200),
         items = active,

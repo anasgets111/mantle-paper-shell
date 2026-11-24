@@ -1,6 +1,7 @@
 -- Every icon the taskbar draws goes through here: die-cut app stickers, hand-drawn doodles, tray
 -- icons. Swapping a set means editing this file only.
 local k = require("lib.paper")
+local util = require("lib.util")
 local stickers = require("components.icons")
 
 local M = {}
@@ -45,6 +46,41 @@ function M.doodle(name, size, color)
 end
 
 M.has = stickers.has
+
+-- Horizontal ink extents of the status doodles on their 24-unit grid: the strokes in
+-- components/icons.lua plus half a stroke. Glyph widths run from 11 (bluetooth) to 22 (wifi), so
+-- spacing equal boxes leaves unequal gaps between the marks. Unlisted names keep the full box.
+local INK = {
+    wifi = { 0.8, 23.2 },
+    ethernet = { 2.7, 21.3 },
+    bluetooth = { 6.2, 17.3 },
+    ["bluetooth-off"] = { 3.2, 20.8 },
+    ["volume-muted"] = { 2.7, 21.3 },
+    ["volume-low"] = { 2.7, 16.4 },
+    ["volume-medium"] = { 2.7, 19.4 },
+    ["volume-high"] = { 2.7, 22.3 },
+    battery = { 2.2, 21.8 },
+}
+
+local function ink(name)
+    return INK[name] or INK[(name:gsub("%-%w+$", ""))] or { 0, 24 }
+end
+
+-- A status doodle at `M.STATUS` in a box cut to its ink, so a row of them spaces mark to mark.
+function M.status_glyph(name, color)
+    local s = M.STATUS / 24
+    return rect {
+        width = util.lift(name, function(n) local e = ink(n) return (e[2] - e[1]) * s end),
+        height = M.STATUS,
+        align_v = "center",
+        children = {
+            rect {
+                translate = util.lift(name, function(n) return { x = -ink(n)[1] * s } end),
+                children = { M.doodle(name, M.STATUS, color) },
+            },
+        },
+    }
+end
 
 -- A tray item's theme icon, tinted with ink when it is symbolic.
 function M.tray(name, size)

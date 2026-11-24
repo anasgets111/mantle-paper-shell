@@ -90,7 +90,6 @@ function M.widget(output)
                 animate = { opacity = { duration = 120 } },
             },
             rect {
-                padding = { left = 10, right = 14 },
                 align_v = "center",
                 translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
                 animate = { translate = { duration = 140, easing = "out_cubic" } },
