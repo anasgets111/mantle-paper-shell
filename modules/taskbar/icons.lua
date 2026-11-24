@@ -5,6 +5,10 @@ local stickers = require("components.icons")
 
 local M = {}
 
+-- The one size for every glyph on the bar's right side: status doodles, tray icons, privacy
+-- stickers, the updater. 24 matches the updater's package, which draws about 17 px of ink.
+M.STATUS = 24
+
 -- components/icons.lua's resting sticker shadow, and the same light lifted as a hovered control is.
 local REST = {
     { blur = 1.5, offset = { x = 0.5, y = 1 }, color = "#00000038" },

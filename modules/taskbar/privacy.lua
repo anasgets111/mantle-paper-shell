@@ -53,12 +53,12 @@ end
 
 local function sticker(output, s)
     local slot = "taskbar.privacy." .. output .. "." .. s.key
-    local loop = controls.pencil_loop(32, 30, #s.key * 7)
+    local loop = controls.pencil_loop(38, 36, #s.key * 7)
     loop.stroke = k.RED
     loop.stroke_width = 1.6
     local hovered = hover(slot)
     return tips.wrap(rect {
-        width = 34,
+        width = 40,
         height = "fill",
         hover = hovered,
         accessible_name = s.label .. " in use",
@@ -83,13 +83,13 @@ local function sticker(output, s)
                 children = {
                     loop,
                     rect {
-                        width = 32,
-                        height = 30,
+                        width = 38,
+                        height = 36,
                         children = {
                             rect {
                                 align_h = "center",
                                 align_v = "center",
-                                children = { icons.doodle(s.glyph, 18, k.RED) },
+                                children = { icons.doodle(s.glyph, icons.STATUS, k.RED) },
                             },
                         },
                     },

@@ -132,8 +132,8 @@ function M.icons(output)
         end,
         tip = status_text,
         children = {
-            icons.doodle(mantle.network:map(M.wifi_name, "wifi-off"), 20),
-            icons.doodle(mantle.bluetooth:map(M.bluetooth_name, "bluetooth-off"), 20),
+            icons.doodle(mantle.network:map(M.wifi_name, "wifi-off"), icons.STATUS),
+            icons.doodle(mantle.bluetooth:map(M.bluetooth_name, "bluetooth-off"), icons.STATUS),
             -- Wheel over the speaker: the default sink, 5 % a notch.
             rect {
                 align_v = "center",
@@ -142,13 +142,13 @@ function M.icons(output)
                     if not s then return end
                     mantle.audio:set_volume(s.id, math.max(0, math.min(100, (s.volume or 0) + 5 * steps)))
                 end,
-                children = { icons.doodle(mantle.audio:map(M.volume_name, "volume-muted"), 20) },
+                children = { icons.doodle(mantle.audio:map(M.volume_name, "volume-muted"), icons.STATUS) },
             },
             row {
                 spacing = 4,
                 visible = battery:map(function(b) return b ~= false end),
                 children = {
-                    icons.doodle(battery:map(M.battery_name), 20),
+                    icons.doodle(battery:map(M.battery_name), icons.STATUS),
                     k.body(battery:map(function(b) return b and (b.percent .. "%") or "" end), 19,
                         { align_v = "center" }),
                 },
@@ -172,7 +172,7 @@ function M.clock(output)
             k.body(now:map(function(t) return (os.date("%I:%M %p", t):gsub("^0", "")) end), 19,
                 { font_weight = 700, align_v = "center" }),
             -- Unread notifications: a red marker bell.
-            rect { visible = unread, align_v = "center", children = { icons.doodle("bell", 18, k.RED) } },
+            rect { visible = unread, align_v = "center", children = { icons.doodle("bell", icons.STATUS, k.RED) } },
         },
     }
 end

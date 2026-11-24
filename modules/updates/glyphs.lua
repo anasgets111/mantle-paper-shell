@@ -1,4 +1,4 @@
--- The updater's marks: a pencil "package" doodle in the style of components/icons.lua, a red marker
+-- The updater's marks: a pencil "package" doodle in the style of components/icons.lua, a pink stock
 -- count badge, a red exclamation, a pencil arrow for version changes and a progress ring.
 local k = require("lib.paper")
 local util = require("lib.util")
@@ -68,18 +68,20 @@ function M.exclamation(size)
     }
 end
 
--- The count on a blob of red marker; it widens with the digits.
+-- The count on a disc of pink stock in deep red, as the taskbar's unread badges; it widens with the
+-- digits.
 function M.badge(count)
     return rect {
         min_width = 18,
         height = 18,
         radius = 9,
-        padding = { left = 5, right = 5 },
-        background = k.RED,
-        shadows = { { blur = 2, offset = { x = 0.5, y = 1 }, color = "#00000040" } },
+        padding = { left = 4, right = 4 },
+        background = k.STOCK.danger[1],
+        shadows = { { blur = 3, offset = { x = 1, y = 1 }, color = "#00000050" } },
+        effect = k.paper_fx { rim = 0 },
         children = {
-            k.body(util.lift(count, function(n) return n > 99 and "99+" or tostring(n) end), 12, {
-                font_weight = 700, foreground = "#FBF6EA", align_h = "center", align_v = "center",
+            k.body(util.lift(count, function(n) return n > 99 and "99+" or tostring(n) end), 13, {
+                font_weight = 700, foreground = k.DEEP_RED, align_h = "center", align_v = "center",
             }),
         },
     }

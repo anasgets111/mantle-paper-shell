@@ -13,6 +13,7 @@ local tooltip = require("components.tooltip")
 local ui_state = require("lib.ui_state")
 local S = require("modules.updates.service")
 local G = require("modules.updates.glyphs")
+local bar_icons = require("modules.taskbar.icons")
 local popup = require("modules.updates.popup")
 local page = require("modules.updates.page")
 
@@ -32,18 +33,21 @@ local function corner(node, x)
     return rect { align_h = "end", align_v = "start", translate = { x = x, y = -4 }, children = { node } }
 end
 
+-- The taskbar's status glyph size, so the package sits level with Wi-Fi and volume.
+local SIZE = bar_icons.STATUS
+
 local function face(name)
     if name == "installing" then
         return {
-            G.ring(36, fraction, spinning),
-            rect { align_h = "center", align_v = "center", children = { G.package(18) } },
+            G.ring(SIZE + 12, fraction, spinning),
+            rect { align_h = "center", align_v = "center", children = { G.package(SIZE * 0.75) } },
         }
     elseif name == "restart" then
-        return { rect { align_h = "center", align_v = "center", children = { icons.doodle("restart", 24, k.RED) } } }
+        return { rect { align_h = "center", align_v = "center", children = { icons.doodle("restart", SIZE, k.RED) } } }
     end
     local failed = name == "failed" or name == "warning"
     return {
-        rect { align_h = "center", align_v = "center", children = { G.package(24) } },
+        rect { align_h = "center", align_v = "center", children = { G.package(SIZE) } },
         failed and corner(G.exclamation(16), 0) or corner(G.badge(S.count), 8),
     }
 end
@@ -90,7 +94,7 @@ function M.widget(output)
                 align_v = "center",
                 translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
                 animate = { translate = { duration = 140, easing = "out_cubic" } },
-                children = { rect { width = 36, height = 36, children = glyph:map(face) } },
+                children = { rect { width = SIZE + 12, height = SIZE + 12, children = glyph:map(face) } },
             },
         },
     }, slot, tip_text)

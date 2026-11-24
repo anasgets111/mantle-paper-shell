@@ -29,6 +29,19 @@ local function capsule_shape(w, h)
 end
 M.capsule_shape = capsule_shape
 
+-- Keyboard focus: a blue pencil loop drawn just outside a w x h box, in place of the engine's
+-- square outline. Returns the focus signal (for the control's `focus_visible`) and the loop node.
+local function focus_mark(name, w, h, seed)
+    local f = focus_visible(name .. ".focus")
+    return f, rect {
+        width = w,
+        height = h,
+        opacity = f:map(function(v) return v and 1 or 0 end),
+        animate = { opacity = { duration = 120 } },
+        children = { M.pencil_loop(w, h, seed, 5) },
+    }
+end
+
 -- A section heading in blue Caveat over its rows.
 function M.section(title, children, spacing)
     return column {
@@ -51,8 +64,11 @@ function M.button(o)
     local label = hand(o.label, o.size or 25, {
         font_weight = 700, foreground = stock[2], align_v = "center",
     })
+    local focus, mark = focus_mark("paper.btn." .. id, w, h, #o.label)
     return rect {
         hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = o.label,
         on_click = o.on_click or function() end,
         cursor = "pointer",
@@ -78,6 +94,7 @@ function M.button(o)
                     children = o.icon and { k.glyph(o.icon, 20, stock[2]), label } or { label },
                 },
             },
+            mark,
         },
     }
 end
@@ -120,10 +137,13 @@ end
 function M.disc_button(o)
     local size = o.size or 44
     local hovered = hover_of("disc", o.id or o.icon)
+    local focus, mark = focus_mark("paper.disc." .. (o.id or o.icon), size, size, size)
     return rect {
         width = size,
         height = size,
         hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = o.tooltip or o.icon,
         cursor = "pointer",
         on_click = o.on_click or function() end,
@@ -140,6 +160,7 @@ function M.disc_button(o)
                 fx = { rim = 1.4 },
             },
             util.with(icons.doodle(o.icon, math.floor(size * 0.46), o.ink or INK), "align_h", "center"),
+            mark,
         },
     }
 end
@@ -190,12 +211,15 @@ function M.toggle(o)
             },
         }
     end
+    local focus, mark = focus_mark("paper.toggle." .. o.id, W, H, 7)
     local children = {
-        rect { width = W, height = H, align_v = "center", children = util.lift(on, track) },
+        rect { width = W, height = H, align_v = "center", children = { rect { children = util.lift(on, track) }, mark } },
     }
     if o.label then children[2] = body(o.label, 21, { align_v = "center" }) end
     return row {
         spacing = 14,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = o.label or o.id,
         cursor = "pointer",
         on_click = function()
@@ -231,8 +255,11 @@ function M.radio_group(o)
     for i, opt in ipairs(o.options) do
         local v, label = opt, opt
         if type(opt) == "table" then v, label = opt[1], opt[2] end
+        local focus, mark = focus_mark("paper.radio." .. (o.id or "") .. "." .. i, 24, 24, 40 + i)
         rows[i] = row {
             spacing = 10,
+            focus_visible = focus,
+            focus_ring = false,
             accessible_name = label,
             cursor = "pointer",
             on_click = function() if o.on_select then o.on_select(v) end end,
@@ -252,6 +279,7 @@ function M.radio_group(o)
                         return c
                     end),
                 },
+                rect { width = 0, height = 24, align_v = "center", translate = { x = -34 }, children = { mark } },
                 body(label, 21, { align_v = "center" }),
             },
         }
@@ -262,8 +290,11 @@ end
 
 -- Checkbox with a label. o = { id?, label, value, on_toggle = fn(new) }
 function M.checkbox_row(o)
+    local focus, mark = focus_mark("paper.check." .. (o.id or o.label), 22, 22, #o.label)
     return row {
         spacing = 10,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = o.label,
         cursor = "pointer",
         on_click = function()
@@ -271,7 +302,7 @@ function M.checkbox_row(o)
             if o.on_toggle then o.on_toggle(not now) end
         end,
         children = util.lift(o.value, function(d)
-            return { k.checkbox(22, d == true), body(o.label, 21, { align_v = "center" }) }
+            return { rect { children = { k.checkbox(22, d == true), mark } }, body(o.label, 21, { align_v = "center" }) }
         end),
     }
 end
@@ -286,11 +317,14 @@ function M.slider(o)
         local v = math.max(0, math.min(1, p.x / r.width))
         if o.on_change then o.on_change(v, phase) end
     end
+    local focus, mark = focus_mark("paper.slider." .. (o.id or ""), W, 32, W)
     local children = {}
     if o.icon then children[#children + 1] = k.glyph(o.icon, 22) end
     children[#children + 1] = rect {
         width = W,
         height = 32,
+        focus_visible = focus,
+        focus_ring = false,
         align_v = "center",
         cursor = "pointer",
         on_drag = function(r, p, phase) set(r, p, phase) end,
@@ -324,6 +358,7 @@ function M.slider(o)
                     M.pencil_circle(22, 14, "#7A2522", 1.3),
                 },
             },
+            mark,
         },
     }
     if o.show_value ~= false then
@@ -492,7 +527,11 @@ function M.tab_shape(w, h, seed)
 end
 
 -- Focus: a blue pencil loop drawn round a control in place of a solid ring.
-function M.pencil_loop(w, h, seed)
+-- `pad` draws the loop that many px outside the w x h box (the path keeps the box's size).
+function M.pencil_loop(w, h, seed, pad)
+    local p = pad or 0
+    local ow, oh = w, h
+    w, h = w + 2 * p, h + 2 * p
     local r = k.rng(seed or 99)
     local c = {}
     for pass = 0, 1 do
@@ -503,7 +542,10 @@ function M.pencil_loop(w, h, seed)
         c[#c + 1] = { op = "C", points = { w + 1, h - 1 + j(), w * 0.12, h + 1, 3, h * 0.7 } }
         c[#c + 1] = { op = "C", points = { -1, h * 0.4, 0, 4, w * 0.25 + pass * 8, 1 + j() } }
     end
-    return k.stroke_path(w, h, c, BLUE, 1.8)
+    for _, cmd in ipairs(c) do
+        for i = 1, #cmd.points do cmd.points[i] = cmd.points[i] - p end
+    end
+    return k.stroke_path(ow, oh, c, BLUE, 1.8)
 end
 
 -- A ruled-paper page: blue rules every `pitch` px from `top`, a red margin at `margin`.

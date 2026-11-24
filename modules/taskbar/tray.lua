@@ -8,7 +8,7 @@ local press = require("modules.taskbar.press")
 
 local M = {}
 
-local SIZE = 22
+local SIZE = icons.STATUS
 
 local items = mantle.tray:map(function(tray)
     local out = {}

@@ -34,7 +34,8 @@ void main() {
     vec3 rgb = c.a > 0.001 ? c.rgb / c.a : vec3(0.0);
     // Flatten shading in brightness only, so hues stay the app's own.
     float y = dot(rgb, vec3(0.299, 0.587, 0.114));
-    float yq = floor(y * levels + 0.5) / levels;
+    // Centred bands keep pale paper pale; the blend keeps two close tones (Zed's grey on grey) apart.
+    float yq = mix(y, (floor(y * levels) + 0.5) / levels, 0.75);
     rgb = clamp(rgb * (yq / max(y, 0.02)), 0.0, 1.0);
     vec3 g = texture(grain, fract(p / grain_size)).rgb;
     rgb *= 1.0 + (g.r - 0.5) * 0.22 + (g.b - 0.5) * 0.12;
