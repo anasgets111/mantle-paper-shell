@@ -4,6 +4,7 @@
 -- Every page is built once; switching pages only flips `visible`.
 -- o = { pages = { { key, title, build, on_open?, on_close? } ... }, page = state of the open key }
 local k = require("lib.paper")
+local util = require("lib.util")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
 local icons = require("modules.settings.icons")
@@ -301,11 +302,17 @@ return function(o)
         height = TOP + PAGE_H + 8,
         children = {
             column { padding = { top = TABS_Y }, spacing = TAB_GAP, children = tabs },
-            rect { padding = { left = PAGE_X, top = TOP }, children = { page_sheet } },
-            header,
-            chosen_tab(o.pages, o.page),
-            rect { padding = { left = PAGE_X + CARD_X, top = TOP + CARD_Y }, children = cards },
-            binding(),
+            -- The layers below are placed by left padding, so their boxes start at x = 0 and cover the
+            -- tab column; they pass the pointer through, and only the cards take it back.
+            rect { hittable = false, padding = { left = PAGE_X, top = TOP }, children = { page_sheet } },
+            util.with(header, "hittable", false),
+            util.with(chosen_tab(o.pages, o.page), "hittable", false),
+            rect {
+                hittable = false,
+                padding = { left = PAGE_X + CARD_X, top = TOP + CARD_Y },
+                children = { rect { hittable = true, children = cards } },
+            },
+            util.with(binding(), "hittable", false),
         },
     }
 end
