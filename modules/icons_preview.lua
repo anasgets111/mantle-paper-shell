@@ -62,7 +62,7 @@ local probes = row {
         icons.doodle_for("system-shutdown-symbolic", 24),
         icons.doodle_for("battery-level-50-symbolic", 24),
         icons.doodle_for("starred-symbolic", 24),
-        icons.sticker("kitty", 48, { grain = false }),
+        icons.sticker("kitty", 48, { comic = false }),
         icons.sticker("kitty", 48),
         icons.sticker("zen-browser", 48, { rotate = 0 }),
     },

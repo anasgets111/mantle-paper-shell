@@ -18,10 +18,16 @@ local lock = require("modules.lock")
 local quick = require("modules.quick")
 -- Also a modal_host entry; listed here for its right-click popups.
 local startmenu = require("modules.startmenu")
+-- Also a modal_host entry; listed here for its tooltip popup.
+local settings = require("modules.settings")
 
 local surfaces = { desktop.wallpaper, desktop.cards, modal_host }
-for _, group in ipairs({ taskbar, notifications, osd, quick, lock, startmenu }) do
+for _, group in ipairs({ taskbar, notifications, osd, quick, lock, startmenu, settings }) do
     table.move(group.surfaces, 1, #group.surfaces, #surfaces + 1, surfaces)
 end
+
+-- The updater's popups (its widget lives in the taskbar). Coordinator: fold into the list above.
+local updates = require("modules.updates")
+table.move(updates.surfaces, 1, #updates.surfaces, #surfaces + 1, surfaces)
 
 return surfaces

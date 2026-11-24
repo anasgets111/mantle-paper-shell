@@ -44,7 +44,7 @@ local function arrangement(screens)
                             height = h,
                             seed = 300 + i,
                             depth = 3,
-                            color = i % 2 == 1 and "#C5D7EE" or "#F4ECDA",
+                            color = i % 2 == 1 and "#C5D7EE" or k.CARD,
                             shadows = k.SHADOW.rest,
                             child = column {
                                 align_h = "center",

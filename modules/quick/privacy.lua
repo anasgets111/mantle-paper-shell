@@ -29,15 +29,14 @@ end
 local M = {}
 
 --- The sensors in use, in a fixed order: `{ { kind, icon, apps }, ... }`.
-local FAKE = state("quick.privacy_fake", false) -- TEMP-TEST
-M.in_use = computed({ mantle.privacy, FAKE }, function(p, f) p = f or p or {} -- TEMP-TEST
+M.in_use = mantle.privacy:map(function(p)
     local list = {}
     for _, sensor in ipairs(SENSORS) do
         local apps = names(p[sensor.key])
         if apps ~= "" then list[#list + 1] = { kind = sensor.kind, icon = sensor.icon, apps = apps } end
     end
     return list
-end) -- TEMP-TEST
+end, {})
 
 --- Strip height for `n` rows, so the sheet around it can be cut to fit.
 function M.height(n)

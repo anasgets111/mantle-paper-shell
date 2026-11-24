@@ -15,10 +15,12 @@ local tooltip = require("components.tooltip")
 
 local M = {}
 
-local W = 480
+local W = 500
 local MAX_VOLUME = 150
 
 local open = state("quick.open", false)
+-- True while the popup is shown, so the notification toasts can stay clear of it.
+M.is_open = open
 local anchor = state("quick.anchor", { x = 0, y = 0, width = 1, height = 1 })
 -- The section the opener asked for; "" for none.
 local section = state("quick.section", "")
@@ -33,6 +35,8 @@ function M.open(r, wanted)
         return
     end
     section:set(wanted or "")
+    -- One surface at a time: a modal left open would sit under the sheet holding the keyboard.
+    ui_state.active_modal:set("")
     anchor:set({ x = r.x or 0, y = r.y or 0, width = math.max(1, r.width or 1), height = math.max(1, r.height or 1) })
     open:set(true)
 end
@@ -45,6 +49,17 @@ local function sink_of(audio)
     for _, sink in ipairs(audio and audio.sinks or {}) do
         if sink.active then return sink end
     end
+end
+
+-- One wheel notch is 5%, as on the taskbar's volume icon.
+local function nudge_volume(_, steps)
+    local s = sink_of(mantle.audio:get())
+    if s then mantle.audio:set_volume(s.id, math.max(0, math.min(MAX_VOLUME, (s.volume or 0) + steps * 5))) end
+end
+
+local function nudge_brightness(_, steps)
+    local b = mantle.brightness:get()
+    if b then mantle.brightness:set(math.max(1, math.min(100, b.percent + steps * 5))) end
 end
 
 -- Header ----------------------------------------------------------------------------------------
@@ -99,7 +114,7 @@ local volume = row {
     spacing = 12,
     visible = mantle.audio:map(function(a) return sink_of(a) ~= nil end, false),
     children = {
-        tips.wrap(controls.disc_button {
+        util.with(tips.wrap(controls.disc_button {
             id = "quick.mute",
             seed = 61,
             size = 38,
@@ -116,11 +131,11 @@ local volume = row {
         }, "paper.disc.quick.mute", function()
             local s = sink_of(mantle.audio:get())
             return s and s.muted and "Unmute" or "Mute"
-        end),
+        end), "on_wheel", nudge_volume),
         -- The bar spans the sink's whole range, 0 to 150%, so a boosted volume still has a place on it.
         controls.slider {
             id = "quick.volume",
-            width = 300,
+            width = 320,
             show_value = false,
             value = mantle.audio:map(function(a)
                 local s = sink_of(a)
@@ -130,6 +145,7 @@ local volume = row {
                 local s = sink_of(mantle.audio:get())
                 if s then mantle.audio:set_volume(s.id, math.floor(v * MAX_VOLUME + 0.5)) end
             end,
+            on_wheel = nudge_volume,
         },
         percent_label(mantle.audio:map(function(a)
             local s = sink_of(a)
@@ -146,11 +162,12 @@ local brightness = row {
         rect { width = 38, height = 38, children = { icons.doodle(G.brightness, 20) } },
         controls.slider {
             id = "quick.brightness",
-            width = 300,
+            width = 320,
             show_value = false,
             value = mantle.brightness:map(function(b) return b.percent / 100 end, 0),
             -- Never fully dark from a slider: 1% keeps the screen readable enough to drag back.
             on_change = function(v) mantle.brightness:set(math.max(1, math.floor(v * 100 + 0.5))) end,
+            on_wheel = nudge_brightness,
         },
         percent_label(mantle.brightness:map(function(b) return b.percent .. "%" end, "")),
     },
@@ -166,8 +183,8 @@ local flagged = section:map(function(s) return s == "privacy" end)
 local sheet = computed({ tiles.count, has_brightness, privacy.in_use }, function(count, lit, in_use)
     local rows = (count + 1) // 2
     local strip = privacy.height(#in_use)
-    local height = 24 + 46 + 16 + (strip > 0 and strip + 16 or 0) + 6 + 16 + 38 + (lit and 54 or 0) + 16
-        + rows * tiles.HEIGHT + (rows - 1) * 10 + 22
+    local height = 28 + 46 + 18 + (strip > 0 and strip + 18 or 0) + 6 + 18 + 38 + (lit and 56 or 0) + 18
+        + rows * tiles.HEIGHT + (rows - 1) * 10 + 28
     return k.card {
         width = W,
         height = height,
@@ -178,12 +195,12 @@ local sheet = computed({ tiles.count, has_brightness, privacy.in_use }, function
         child = column {
             width = "fill",
             height = "fill",
-            spacing = 16,
-            padding = { left = 22, right = 22, top = 24, bottom = 22 },
+            spacing = 18,
+            padding = { left = 28, right = 28, top = 28, bottom = 28 },
             children = util.concat(
                 { header },
-                util.concat(#in_use > 0 and { privacy.build(in_use, W - 44, tips, flagged) } or {}, {
-                    controls.divider(W - 44, false, 7),
+                util.concat(#in_use > 0 and { privacy.build(in_use, W - 56, tips, flagged) } or {}, {
+                    controls.divider(W - 56, false, 7),
                     volume,
                     brightness,
                     row { width = "fill", wrap = true, spacing = 8, line_spacing = 10, children = tiles.build(tips) },
@@ -197,13 +214,13 @@ M.surfaces = {
     popup {
         id = "paper-quick",
         parent = "paper-taskbar",
-        grab = false, -- TEMP-TEST
         visible = open,
         anchor_rect = anchor,
         anchor = "top_right",
         gravity = "top_left",
         offset = { y = -6 },
         constraint_adjustment = { "slide_x", "flip_y" },
+        grab = true,
         on_escape = close,
         reset_on_close = { section },
         on_dismiss = function()

@@ -74,6 +74,7 @@ return function(opts)
         size = 32,
         placeholder = placeholder,
         accessible_name = "Password",
+        placeholder_color = k.INK_SOFT,
         mask_character = "\u{2022}",
         on_cancel = opts.on_cancel,
         secure_submit = not opts.preview and { capability = opts.capability, action = "authenticate" } or nil,
@@ -90,6 +91,8 @@ return function(opts)
     submit.submits_secure = busy:map(function(b) return not b and not opts.preview end, not opts.preview)
     submit.opacity = util.choose(busy, 0.5, 1)
     submit.align_v = "center"
+    -- A chevron's weight sits left of its box; nudge it to the disc's optical centre.
+    submit.children[2].translate = { x = 1.5 }
 
     local caps = rect {
         visible = mantle.keyboard:map(function(kb) return kb.caps_lock end, false),
@@ -111,13 +114,13 @@ return function(opts)
             width = W,
             spacing = 10,
             children = {
-                -- Red marker is only for words 24 px and up, so an error is written in Caveat.
+                -- Deep red: bright red is kept for marks, not words.
                 k.hand(feedback, 26, {
                     font_weight = 700,
                     width = "fill",
                     wrap = "word",
                     max_lines = 2,
-                    foreground = util.choose(failed, k.RED, k.INK_SOFT),
+                    foreground = util.choose(failed, k.DEEP_RED, k.INK_SOFT),
                 }),
                 caps,
             },

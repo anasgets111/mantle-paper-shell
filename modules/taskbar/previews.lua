@@ -7,11 +7,18 @@ local controls = require("components.controls")
 local tasks = require("modules.taskbar.tasks")
 local menus = require("modules.taskbar.menus")
 local icons = require("modules.taskbar.icons")
+local tooltip = require("components.tooltip")
 
 local M = {}
 
 local SHOT_W, SHOT_H, FRAME = 248, 140, 10
 local CARD_W, CARD_H = SHOT_W + 2 * FRAME, SHOT_H + FRAME + 40
+-- ponytail: at most 8 photos (about 2300 px); more windows of one app show as "+N". Upgrade: rows.
+local MAX_CARDS = 8
+
+-- Tips for the note's own controls: they hang off the note, so they need it as their parent.
+local note_tips = tooltip.new { id = "paper-taskbar-preview-tip", parent = "paper-taskbar-previews", side = "top" }
+M.tip_surface = note_tips.surface
 
 local hovered = state("taskbar.preview.hovered", "") -- the hovered slot's hover name
 local settled = delay(hovered, 400)
@@ -59,35 +66,30 @@ visible:on_change(function(v)
     if not v then shown:set("") end
 end)
 
+-- The shared paper-disc close control, nudged onto the photo's top-right corner.
 local function close_disc(win)
-    local h = hover("taskbar.preview.close." .. win.id)
+    local id = "taskbar.preview.close." .. win.id
+    local disc = controls.disc_button {
+        id = id,
+        icon = "window-close-symbolic",
+        size = 26,
+        seed = #win.id + 3,
+        tooltip = "Close window",
+        on_click = function() mantle.windows:close(win.id) end,
+    }
     return rect {
-        width = 24,
-        height = 24,
         align_h = "end",
         align_v = "start",
-        translate = { x = 8, y = -8 },
-        hover = h,
-        accessible_name = "Close " .. win.title,
-        cursor = "pointer",
-        on_click = function() mantle.windows:close(win.id) end,
-        children = {
-            k.sheet {
-                width = 24,
-                height = 24,
-                shape = k.torn_circle(24, #win.id + 3),
-                color = h:map(function(v) return v and "#F2CFC8" or "#F4ECDA" end),
-                shadows = k.lift(h),
-                fx = { rim = 0 },
-            },
-            icons.glyph("window-close-symbolic", 12, h:map(function(v) return v and k.DEEP_RED or k.INK end)),
-        },
+        translate = { x = 9, y = -9 },
+        children = { note_tips.wrap(disc, "paper.disc." .. id, "Close window") },
     }
 end
 
 local function polaroid(win, item, i)
-    local h = hover("taskbar.preview.card." .. win.id)
-    return rect {
+    local slot = "taskbar.preview.card." .. win.id
+    local h = hover(slot)
+    -- The full title, since the caption elides.
+    return note_tips.wrap(rect {
         hover = h,
         accessible_name = win.title,
         cursor = "pointer",
@@ -107,7 +109,7 @@ local function polaroid(win, item, i)
                 height = CARD_H,
                 seed = i * 17 + #win.id,
                 depth = 2,
-                color = "#FBF7EE",
+                color = k.CARD_LIGHT,
                 shadows = k.lift(h),
                 animate = { shadows = { duration = 160, easing = "out_cubic" } },
                 fx = { rim = 0, grain = 0.08 },
@@ -139,7 +141,7 @@ local function polaroid(win, item, i)
                             width = SHOT_W,
                             spacing = 6,
                             children = {
-                                icons.app(item.icon, 18),
+                                icons.app(item.icon, 16),
                                 k.body(win.title ~= "" and win.title or item.name, 18, {
                                     width = "fill", elide = "end", align_v = "center",
                                     foreground = win.focused and k.DEEP_BLUE or k.INK,
@@ -151,16 +153,21 @@ local function polaroid(win, item, i)
             },
             close_disc(win),
         },
-    }
+    }, slot, win.title ~= "" and win.title or item.name)
 end
 
 local function note(name, windows)
     local item = items[name]
     if not item then return rect { width = 1, height = 1 } end
     local cards = {}
-    for i, win in ipairs(tasks.windows_of(item.wins, windows)) do cards[i] = polaroid(win, item, i) end
+    local wins = tasks.windows_of(item.wins, windows)
+    for i = 1, math.min(#wins, MAX_CARDS) do cards[i] = polaroid(wins[i], item, i) end
     if #cards == 0 then return rect { width = 1, height = 1 } end
     local w = #cards * (CARD_W + 14) + 26
+    if #wins > MAX_CARDS then
+        cards[#cards + 1] = k.hand("+" .. (#wins - MAX_CARDS), 32, { font_weight = 700, align_v = "center" })
+        w = w + 60
+    end
     return rect {
         -- The sticky's shadow needs 21 px below it; its tilt swings a wide note's ends a few px more.
         padding = { left = 16, right = 22, top = 8, bottom = 26 },
@@ -170,9 +177,6 @@ local function note(name, windows)
             translate = { duration = 160, easing = "out_cubic", from = { y = 8 } },
         },
         children = {
-            -- Hyprland's `blur_popups` frosts a popup's whole rectangle unless the popup sends a blur
-            -- region; this one pixel, hidden under the opaque note, is that region.
-            rect { width = 1, height = 1, align_h = "center", align_v = "center", compositor_blur = true },
             controls.sticky {
                 width = w,
                 height = CARD_H + 44,

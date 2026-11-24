@@ -1,7 +1,8 @@
--- Right-click menus on the taskbar: an app's windows and pin actions, and a tray item's DBusMenu.
--- One sticky-note menu serves both, so only one is ever open.
+-- Right-click menus on the taskbar: an app's windows and pin actions, a tray item's DBusMenu, and
+-- the status icons' settings pages. One sticky-note menu serves all, so only one is ever open.
 local apps = require("lib.apps")
 local menu_component = require("components.menu")
+local settings = require("modules.settings")
 local tasks = require("modules.taskbar.tasks")
 
 local M = {}
@@ -9,6 +10,23 @@ local M = {}
 local menu = menu_component.new { id = "paper-taskbar-menu", parent = "paper-taskbar" }
 M.surfaces = menu.surfaces
 M.is_open = menu.is_open
+
+-- A second click on the opener closes the menu. The grab dismisses it on that press, and the same
+-- click then reaches the opener, so a menu closed that way under 300 ms ago stays closed.
+local opened_for, closed_for, closed_at = nil, nil, -1
+menu.is_open:on_change(function(open)
+    if not open then closed_for, closed_at = opened_for, mantle.clock:now() end
+end)
+
+local function toggle(key, rect_, list, opts)
+    if menu.is_open:get() and opened_for == key then
+        menu.close()
+        return
+    end
+    if closed_for == key and mantle.clock:now() - closed_at < 0.3 then return end
+    opened_for = key
+    menu.open(rect_, list, opts)
+end
 
 function M.app_items(item)
     local list = {}
@@ -48,7 +66,7 @@ function M.app_items(item)
 end
 
 function M.open_app(item, rect_)
-    menu.open(rect_, M.app_items(item), { title = item.name })
+    toggle("app:" .. item.key, rect_, M.app_items(item), { title = item.name })
 end
 
 -- DBusMenu marks a mnemonic with `_` and escapes a real one as `__`; the note takes no keyboard.
@@ -96,7 +114,22 @@ end
 -- reads `mantle.tray` live and nests popups per level.
 function M.open_tray(item, rect_)
     mantle.tray:menu_will_show(item.id, 0)
-    menu.open(rect_, tray_items(item.id, item.menu), { title = M.tray_label(item) })
+    toggle("tray:" .. item.id, rect_, tray_items(item.id, item.menu), { title = M.tray_label(item) })
+end
+
+-- The status icons' settings pages, opened in the settings notebook.
+function M.open_settings(rect_)
+    local function page(label, icon_name, key)
+        return { label = label, icon = icon_name, on_click = function() settings.open(key) end }
+    end
+    local list = {
+        page("Wi-Fi settings", "network-wireless-symbolic", "wifi"),
+        page("Bluetooth settings", "bluetooth-active-symbolic", "bluetooth"),
+        page("Sound settings", "audio-volume-high-symbolic", "sound"),
+    }
+    local bat = mantle.battery:get()
+    if bat and bat.present then list[#list + 1] = page("Power settings", "battery-good-symbolic", "power") end
+    toggle("status", rect_, list, { title = "Settings" })
 end
 
 return M

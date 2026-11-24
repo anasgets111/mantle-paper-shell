@@ -79,3 +79,25 @@ You are one of five builders working **at the same time** on one Mantle shell co
 - Light/dark for apps: `gsettings set org.gnome.desktop.interface color-scheme prefer-dark|prefer-light`.
 - Keyboard layout names: `hyprctl -j devices`. Display changes: write a Hyprland monitor fragment
   (settings builder only proposes this; never edit Hyprland config).
+
+## Interaction checklist (every surface, every iteration)
+
+The user judges polish by behaviour as much as looks. Walk this list for everything you own, with
+`mantle input`, before each report, and fix what fails:
+
+- **Dismiss:** every popup, menu and modal closes on an outside click (popups opened by a click use
+  `grab = true` + `on_dismiss`), on Escape (`on_escape`), and when its opener is clicked again
+  (toggle, no reopen flicker). Opening one closes any other open one. No `grab = false` left in
+  except on hover popups (tooltips, previews).
+- **Wheel:** wheel over a value changes it: the volume icon (default sink ±5 %, `set_volume`),
+  brightness, every slider, the mic icon. Wheel over the taskbar task icons cycles that app's windows;
+  over the workspace numbers it switches workspace. Lists scroll.
+- **Middle / right click:** middle click on the volume icon toggles mute; on a task opens a new
+  window. Right click opens a context menu wherever one makes sense (tasks, start-menu apps, tray,
+  status icons → the matching settings page).
+- **Keyboard:** modals and the start menu work by keyboard alone: typing goes to search, arrows move,
+  Enter activates, Tab cycles, Escape closes. The focused control shows `pencil_loop`.
+- **Feedback:** every clickable shows `cursor = "pointer"` and a hover change; a press shows a
+  pressed state; toggles and sliders follow changes made elsewhere (`pactl`, `nmcli`, keyboard keys).
+- **Edges:** empty states (no notifications, no Wi-Fi, no battery, no tray items, no results),
+  long text (elide plus a tooltip with the full text), many items (scroll, never overflow the screen).

@@ -18,10 +18,13 @@ M.query = state("startmenu.query", "")
 M.selected = state("startmenu.selected", 0)
 -- The pinned tile under the pointer's drag and how far it has moved.
 M.drag = state("startmenu.drag", { id = "", x = 0, y = 0 })
+-- The target held under the left button, "" when none: `on_drag` brackets a press, "start" on
+-- press and "end" on release or when the pointer leaves, before the click.
+M.pressed = state("startmenu.pressed", "")
 M.search_focus = focus_target("startmenu.search")
 M.scroll = scroll("startmenu.list")
 
-M.reset = { M.view, M.query, M.selected, M.drag, M.scroll }
+M.reset = { M.view, M.query, M.selected, M.drag, M.pressed, M.scroll }
 
 local index = mantle.applications:map(search.index, {})
 
@@ -47,7 +50,7 @@ M.page = computed({ index, M.query, store.app_usage, M.view, apps.menu_pinned, r
                 local app = apps.by_id(applications, id)
                 if app then items[#items + 1] = { kind = "app", app = app, pin_index = n } end
             end
-            -- Under the pins, as ArcMenu's sibling layouts recommend: the four newest files.
+            -- Under the pins, so the page is not bare: the four newest files.
             for i = 1, math.min(4, #files) do
                 items[#items + 1] = { kind = "file", file = files[i], group = "Recent files" }
             end
@@ -126,6 +129,20 @@ ui_state.on_modal_close(M.KIND, function()
     M.selected:set(0)
     M.drag:set { id = "", x = 0, y = 0 }
 end)
+
+-- The `on_drag` handler that marks `slot` held, and its reader.
+function M.track(slot)
+    return function(_, _, phase) M.pressed:set(phase == "end" and "" or slot) end
+end
+
+function M.held(slot)
+    return M.pressed:map(function(p) return p == slot end)
+end
+
+-- Scale for a target that sinks while held.
+function M.sink(slot, by)
+    return M.held(slot):map(function(h) return h and by or 1 end)
+end
 
 -- The recent-files list is read fresh on every open.
 ui_state.active_modal:on_change(function(kind)

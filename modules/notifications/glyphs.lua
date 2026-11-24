@@ -8,7 +8,8 @@ local controls = require("components.controls")
 -- theme's symbolic icon.
 local M = {
     close = "close",
-    send = "mail-send-symbolic",
+    -- The same arrow the lock's submit disc carries.
+    send = "chevron-right",
     prev_month = "chevron-left",
     next_month = "chevron-right",
     previous = "media-skip-backward-symbolic",
@@ -46,7 +47,7 @@ function M.underline(color, seed)
     local n, top, bottom = 24, {}, {}
     for i = 0, n do
         local x = string.format("%.2f%%", i * 100 / n)
-        local y = 4.5 + 2.6 * math.sin(i * math.pi / 2.2) + (r() - 0.5) * 0.6
+        local y = 5 + 2 * math.sin(i * math.pi / 5) + (r() - 0.5) * 0.4
         top[#top + 1] = { op = i == 0 and "M" or "L", points = { x, y - 1.1 } }
         bottom[#bottom + 1] = { op = "L", points = { x, y + 1.1 } }
     end

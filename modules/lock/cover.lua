@@ -22,20 +22,22 @@ local function lock_status(s)
 end
 
 local function ribbon()
-    local w, h = 26, 140
-    return path {
+    local w, h = 28, 150
+    -- Cloth: the paper grain reads as weave at this size. The tail is cut in a deep V.
+    return rect {
         width = w,
         height = h,
         align_h = "end",
         align_v = "end",
-        translate = { x = -96, y = 96 },
+        translate = { x = -96, y = 104 },
         rotate = 4,
-        fill = "#C8463F",
+        background = "#C8463F",
         shadows = { { blur = 4, offset = { x = 1, y = 2 }, color = "#00000055" } },
-        commands = {
+        effect = k.paper_fx { grain = 0.3, mottle = 0.18, rim = 0 },
+        shape = { commands = {
             { op = "M", points = { 0, 0 } }, { op = "L", points = { w, 0 } }, { op = "L", points = { w, h } },
-            { op = "L", points = { w / 2, h - 12 } }, { op = "L", points = { 0, h } }, { op = "Z", points = {} },
-        },
+            { op = "L", points = { w / 2, h - 24 } }, { op = "L", points = { 0, h } }, { op = "Z", points = {} },
+        } },
     }
 end
 
@@ -82,7 +84,7 @@ local function label(output, opts)
         seed = 917,
         rotate = -1,
         align_h = "center",
-        color = "#F6EFDF",
+        color = k.CARD_LIGHT,
         fx = { rim = 1.6 },
         tapes = { { width = 120, height = 24, rotate = 2.5, seed = 31, color = "#E9D9A6" } },
         child = rect {

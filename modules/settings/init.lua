@@ -17,8 +17,9 @@ local appearance = require("modules.settings.pages.appearance")
 local keyboard = require("modules.settings.pages.keyboard")
 local notifications = require("modules.settings.pages.notifications")
 local about = require("modules.settings.pages.about")
+local updates = require("modules.settings.pages.updates")
 
-local PAGES = { wifi, bluetooth, sound, displays, power, appearance, keyboard, notifications, about }
+local PAGES = { wifi, bluetooth, sound, displays, power, appearance, keyboard, notifications, updates, about }
 
 local page = state("settings.page", "wifi")
 local showing = ui_state.modal_showing("settings")

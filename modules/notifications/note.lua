@@ -50,6 +50,7 @@ return function(o)
                         shape = outline(o.width, o.seed),
                         background = o.color or k.STICKY,
                         shadows = o.shadows or { { blur = 10, offset = { x = 2, y = 6 }, color = "#00000055" } },
+                        animate = { shadows = { duration = 160, easing = "out_cubic" } },
                         effect = k.paper_fx { rim = 0, grain = 0.18 },
                     },
                     o.child,

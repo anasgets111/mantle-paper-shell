@@ -1,5 +1,5 @@
--- Sound page: the default output and input (radio lists), their volume and mute, and every app's
--- stream with its own level.
+-- Sound page: the default output and input (radio lists), their volume and mute, every app's
+-- stream with its own level, and each sound card's profile and ports.
 local k = require("lib.paper")
 local c = require("components.controls")
 local util = require("lib.util")
@@ -19,13 +19,18 @@ local function active(a, kind)
     return util.find(a and a[kind], function(d) return d.active end)
 end
 
+-- One wheel notch is 5%, as on the taskbar's volume icon; the slider tops out at 100%.
+local function nudge(volume, steps)
+    return math.max(0, math.min(100, math.floor((volume or 0) + steps * 5 + 0.5)))
+end
+
 -- Volume and mute of whichever device is the default: one row that follows the radio choice.
 local function level_row(kind, icon)
     local function current() return active(audio:get(), kind) end
     return rows.line({
         tips.wrap(c.disc_button {
             id = "settings.sound.mute." .. kind,
-            icon = icons.name(icon),
+            icon = icon,
             size = 32,
             ink = k.INK,
             tooltip = "Mute",
@@ -47,6 +52,10 @@ local function level_row(kind, icon)
             on_change = function(v)
                 local d = current()
                 if d then audio:set_volume(d.id, math.floor(v * 100 + 0.5)) end
+            end,
+            on_wheel = function(_, steps)
+                local d = current()
+                if d then audio:set_volume(d.id, nudge(d.volume, steps)) end
             end,
         },
     }, {
@@ -80,9 +89,82 @@ local function device_list(kind, set_default, empty)
                             return d and d.id
                         end),
                         on_select = function(id) set_default(id) end,
-                    }
+                    }, #options
                 ),
             }
+        end),
+    }
+end
+
+-- One card: its profile (available ones only, plus the active one) and, under that profile, the
+-- ports it can route to. A card with a single choice of each has nothing to pick and is left out.
+local function card_rows(card)
+    local list = {
+        rows.line({ icons.glyph("sound", 20), rows.label(card.name, { tip = "sound.card." .. card.device }) }),
+    }
+    local profiles = {}
+    for _, p in ipairs(card.profiles) do
+        if p.available or p.index == card.active then
+            profiles[#profiles + 1] = { p.index, rows.clip(p.description, 56) }
+        end
+    end
+    if #profiles > 1 then
+        list[#list + 1] = rows.list(c.radio_group {
+            id = "settings.sound.profile." .. card.device,
+            vertical = true,
+            options = profiles,
+            value = audio:map(function(a)
+                local now = util.find(a.cards, function(x) return x.device == card.device end)
+                return now and now.active
+            end),
+            on_select = function(index) audio:set_card_profile(card.device, index) end,
+        }, #profiles)
+    end
+    local ports = {}
+    for _, p in ipairs(card.ports) do
+        if p.available and util.index_of(p.profiles, card.active) then
+            ports[#ports + 1] = { p.index, rows.clip(p.description, 40), p.direction }
+        end
+    end
+    for _, dir in ipairs({ "output", "input" }) do
+        local options = util.filter(ports, function(p) return p[3] == dir end)
+        if #options > 1 then
+            list[#list + 1] = rows.line({
+                rows.label(dir == "output" and "Plays through" or "Listens on", { width = 150 }),
+                c.radio_group {
+                    id = "settings.sound.port." .. card.device .. "." .. dir,
+                    options = options,
+                    value = audio:map(function(a)
+                        local now = util.find(a.cards, function(x) return x.device == card.device end)
+                        local on = now and util.find(now.ports, function(p) return p.active and p.direction == dir end)
+                        return on and on.index
+                    end),
+                    on_select = function(index) audio:set_port(card.device, index) end,
+                },
+            })
+        end
+    end
+    return list
+end
+
+local function card_list()
+    local shape = audio:map(function(a)
+        local parts = {}
+        for _, card in ipairs(a.cards or {}) do
+            parts[#parts + 1] = card.device .. ":" .. tostring(card.active) .. ":"
+                .. rows.key(card.profiles, { "index", "available" }) .. rows.key(card.ports, { "index", "available" })
+        end
+        return table.concat(parts, ";")
+    end, "")
+    return column {
+        width = "fill",
+        children = shape:map(function()
+            local list = {}
+            for _, card in ipairs(audio:get() and audio:get().cards or {}) do
+                for _, node in ipairs(card_rows(card)) do list[#list + 1] = node end
+            end
+            if #list == 0 then list[1] = rows.note("No sound cards reported.") end
+            return list
         end),
     }
 end
@@ -107,13 +189,17 @@ local function app_rows()
                 if not app.recording then
                     local live = device("apps", app.id)
                     list[#list + 1] = rows.line({
-                        icons.app(app.icon or "audio-x-generic"),
+                        app.icon and icons.app(app.icon) or icons.glyph("sound", 22),
                         rows.label(app_name(app), { width = 230, tip = "sound.app." .. app.id }),
                         c.slider {
                             id = "settings.sound.app." .. app.id,
-                            width = 260,
+                            width = 200,
                             value = live:map(function(s) return s and (s.volume or 0) / 100 or 0 end),
                             on_change = function(v) audio:set_app_volume(app.id, math.floor(v * 100 + 0.5)) end,
+                            on_wheel = function(_, steps)
+                                local now = live:get()
+                                if now then audio:set_app_volume(app.id, nudge(now.volume, steps)) end
+                            end,
                         },
                     }, {
                         c.checkbox_row {
@@ -137,13 +223,15 @@ return {
     build = function()
         return {
             rows.heading("Output"),
-            level_row("sinks", "speaker"),
+            level_row("sinks", "volume-high"),
             device_list("sinks", function(id) audio:set_default_sink(id) end, "No output devices."),
             rows.heading("Input"),
-            level_row("sources", "microphone"),
+            level_row("sources", "mic"),
             device_list("sources", function(id) audio:set_default_source(id) end, "No microphones."),
             rows.heading("Applications"),
             app_rows(),
+            rows.heading("Devices"),
+            card_list(),
         }
     end,
 }

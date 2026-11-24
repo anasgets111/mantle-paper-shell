@@ -85,11 +85,16 @@ end
 -- Link: deep-blue Caveat with a squiggle, a yellow highlighter swipe on hover.
 function M.link(o)
     local hovered = hover_of("link", o.id or o.label)
+    -- Keyboard focus lights the highlighter as hover does, in place of the engine's square outline.
+    local focus = focus_visible("paper.link." .. (o.id or o.label) .. ".focus")
+    local lit = computed({ hovered, focus }, function(h, f) return h or f end)
     local size = o.size or 24
     local w = math.floor(#o.label * size * 0.4) + 4
     return rect {
         align_v = "center",
         hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = o.label,
         cursor = "pointer",
         on_click = o.on_click or function() end,
@@ -102,7 +107,7 @@ function M.link(o)
                 background = k.HIGHLIGHT,
                 blend = "multiply",
                 shape = k.tape_shape(w, math.floor(size * 0.6), #o.label),
-                opacity = hovered:map(function(v) return v and 1 or 0 end),
+                opacity = lit:map(function(v) return v and 1 or 0 end),
                 animate = { opacity = { duration = 140 } },
             },
             hand(o.label, size, { foreground = k.DEEP_BLUE }),

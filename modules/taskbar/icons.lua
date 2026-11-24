@@ -20,9 +20,13 @@ function M.app_box(size)
     return size + 2 * stickers.sticker_pad(size)
 end
 
+-- Theme icons that don't read as what the app is on the desk: Files is a blue folder.
+local APP_ICON = { ["org.gnome.Nautilus"] = "folder-blue" }
+
 -- An app's icon (desktop entry `Icon=`) as a die-cut sticker. `hovered`, when given, lifts its shadow.
 function M.app(name, size, hovered)
-    local node = stickers.sticker(name or "application-x-executable", size)
+    name = name or "application-x-executable"
+    local node = stickers.sticker(APP_ICON[name] or name, size)
     if hovered then
         node.shadows = hovered:map(function(v) return v and LIFT or REST end)
         node.animate = { shadows = { duration = 160, easing = "out_cubic" } }
@@ -36,7 +40,6 @@ function M.doodle(name, size, color)
 end
 
 M.has = stickers.has
-M.glyph = k.glyph -- TEMP while callers move to doodles
 
 -- A tray item's theme icon, tinted with ink when it is symbolic.
 function M.tray(name, size)

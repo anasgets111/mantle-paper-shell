@@ -22,6 +22,11 @@ local function is_selected(i)
     return model.selected:map(function(s) return s == i end)
 end
 
+-- Tab focus lights a target the way the arrow-key selection does; the engine's square outline is off.
+local function lit_by(hovered, i, focus)
+    return computed({ hovered, is_selected(i), focus }, function(h, s, f) return h or s or f end)
+end
+
 -- A 1 px rect at the pointer, so the note hangs from where the click landed.
 local function at_pointer(r, p)
     return { x = r.x + p.x, y = r.y + p.y, width = 1, height = 1 }
@@ -62,8 +67,9 @@ function M.tile(item, i, items)
     local app = item.app
     local slot = "startmenu.tile." .. app.id
     local hovered, cut = hover(slot), cut_of(slot)
-    local selected = is_selected(i)
-    local lit = computed({ hovered, selected }, function(h, s) return h or s end)
+    local focus = focus_visible(slot .. ".focus")
+    local looped = computed({ is_selected(i), focus }, function(s, f) return s or f end)
+    local lit = lit_by(hovered, i, focus)
     local moving = model.drag:map(function(d) return d.id == app.id end)
     local press, dragged = { x = 0, y = 0 }, false
     local click = app_click(app)
@@ -71,6 +77,8 @@ function M.tile(item, i, items)
         width = M.CELL_W,
         height = M.CELL_H,
         hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = app.name,
         cursor = moving:map(function(m) return m and "grabbing" or "pointer" end),
         z = moving:map(function(m) return m and 5 or 0 end),
@@ -83,6 +91,7 @@ function M.tile(item, i, items)
             click(r, button, p, mods)
         end,
         on_drag = function(_, p, phase)
+            model.track(slot)(nil, nil, phase)
             if phase == "start" then
                 press, dragged = p, false
                 return
@@ -114,7 +123,7 @@ function M.tile(item, i, items)
                 children = {
                     rect {
                         align_h = "center",
-                        children = selected:map(function(s)
+                        children = looped:map(function(s)
                             return s and { controls.pencil_loop(M.CELL_W - 8, M.CELL_H - 6, 40 + i) } or {}
                         end),
                     },
@@ -127,7 +136,11 @@ function M.tile(item, i, items)
                             rect {
                                 align_h = "center",
                                 translate = lit:map(function(v) return { y = v and -3 or 0 } end),
-                                animate = { translate = { duration = 140, easing = "out_cubic" } },
+                                scale = model.sink(slot, 0.9),
+                                animate = {
+                                    translate = { duration = 140, easing = "out_cubic" },
+                                    scale = { duration = 90, easing = "out_cubic" },
+                                },
                                 children = { icons.app(app, 44) },
                             },
                             -- Sized by the name, so the swipe covers the ink and no more.
@@ -138,9 +151,9 @@ function M.tile(item, i, items)
                                     k.body(app.name, 18, {
                                         align_h = "center",
                                         elide = "end",
-                                        max_width = M.CELL_W - 8,
+                                        max_width = M.CELL_W,
                                         elided = cut,
-                                        padding = { left = 6, right = 6 },
+                                        padding = { left = 5, right = 5 },
                                     }),
                                 },
                             },
@@ -157,7 +170,8 @@ function M.app_row(item, i)
     local app = item.app
     local slot = "startmenu.row." .. app.id
     local hovered, cut = hover(slot), cut_of(slot)
-    local lit = computed({ hovered, is_selected(i) }, function(h, s) return h or s end)
+    local focus = focus_visible(slot .. ".focus")
+    local lit = lit_by(hovered, i, focus)
     local children = {
         icons.app(app, 24),
         k.body(app.name, 20, { align_v = "center", elide = "end", max_width = 300, elided = cut }),
@@ -171,9 +185,14 @@ function M.app_row(item, i)
         width = "fill",
         height = M.ROW_H,
         hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = app.name,
         cursor = "pointer",
         on_click = app_click(app),
+        on_drag = model.track(slot),
+        scale = model.sink(slot, 0.98),
+        animate = { scale = { duration = 90, easing = "out_cubic" } },
         children = {
             swipe(M.ROW_H - 10, i + 7, lit),
             row {
@@ -186,14 +205,20 @@ end
 -- The calculator's answer in blue marker; Enter or a click copies it.
 function M.calc_row(item, i)
     local hovered = hover("startmenu.calc")
-    local lit = computed({ hovered, is_selected(i) }, function(h, s) return h or s end)
+    local focus = focus_visible("startmenu.calc.focus")
+    local lit = lit_by(hovered, i, focus)
     return rect {
         width = "fill",
         height = 52,
         hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = "Copy " .. item.value,
         cursor = "pointer",
         on_click = function() model.activate(item) end,
+        on_drag = model.track("startmenu.calc"),
+        scale = model.sink("startmenu.calc", 0.98),
+        animate = { scale = { duration = 90, easing = "out_cubic" } },
         children = {
             swipe(38, 5, lit),
             row {
@@ -220,26 +245,32 @@ function M.file_card(item, i)
     local f = item.file
     local slot = "startmenu.file." .. i
     local hovered, cut = hover(slot), cut_of(slot)
-    local lit = computed({ hovered, is_selected(i) }, function(h, s) return h or s end)
+    local focus = focus_visible(slot .. ".focus")
+    local lit = lit_by(hovered, i, focus)
     local w, h = M.CARD_W, M.CARD_H
     return tips.wrap(rect {
         width = w + 8,
         height = h + 8,
         hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = f.name,
         cursor = "pointer",
         on_click = function() model.open_uri(f.uri) end,
+        on_drag = model.track(slot),
         children = {
             rect {
                 width = w,
                 height = h,
                 rotate = ((i % 3) - 1) * 0.6,
                 translate = lit:map(function(v) return { y = v and -3 or 0 } end),
+                scale = model.sink(slot, 0.96),
                 animate = {
                     translate = { duration = 140, easing = "out_cubic" },
+                    scale = { duration = 90, easing = "out_cubic" },
                     shadows = { duration = 160, easing = "out_cubic" },
                 },
-                background = "#FBF7EC",
+                background = k.CARD_LIGHT,
                 shape = k.torn(w, h, 70 + i, 2),
                 shadows = k.lift(lit),
                 children = {

@@ -76,7 +76,7 @@ local function layout_rows()
                         options = options,
                         value = kbd:map(function(s) return s.active_layout_index end),
                         on_select = function(index) kbd:switch_layout(index) end,
-                    }
+                    }, #options
                 ),
             }
         end),
@@ -106,6 +106,11 @@ local function backlight_rows()
                     width = 380,
                     value = kbd:map(function(s) return (s.backlight_percent or 0) / 100 end, 0),
                     on_change = function(v) kbd:set_backlight(v * 100) end,
+                    on_wheel = function(_, steps)
+                        local now = kbd:get()
+                        local pct = now and now.backlight_percent
+                        if pct then kbd:set_backlight(math.max(0, math.min(100, pct + steps * 5))) end
+                    end,
                 },
             }),
         },

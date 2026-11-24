@@ -12,6 +12,12 @@ local menus = require("modules.taskbar.menus")
 local tray = require("modules.taskbar.tray")
 local status = require("modules.taskbar.status")
 local start = require("modules.taskbar.start")
+local privacy = require("modules.taskbar.privacy")
+local tips = require("modules.taskbar.tips")
+
+-- The updater widget lives in another module that may not exist yet; without it, nothing shows.
+local has_updates, updates = pcall(require, "modules.updates")
+if not has_updates or type(updates) ~= "table" or not updates.widget then updates = nil end
 
 local BAR_H = 56
 -- Room above the strip for the torn edge's shadow and for an icon peeling up.
@@ -77,7 +83,11 @@ local function task_list(output)
             previews.register(name, item)
             return previews.on_hover(name)
         end,
-        hide_preview = previews.hide,
+        tip = tips.wrap,
+        hide_preview = function()
+            previews.hide()
+            tips.hide()
+        end,
         open_menu = menus.open_app,
         commit = function(item, move) commit(d, item, move) end,
     }
@@ -102,11 +112,38 @@ local function task_list(output)
     }
 end
 
+local function pencil_divider(seed)
+    return rect {
+        height = "fill",
+        children = { rect { align_v = "center", children = { controls.divider(34, true, seed) } } },
+    }
+end
+
+-- True while the focused window on `output` is fullscreen: the strip slides off the screen.
+local function fullscreen_on(output)
+    return mantle.windows:map(function(w)
+        for _, win in ipairs(w and w.windows or {}) do
+            if win.focused and win.fullscreen and (win.output == nil or win.output == output) then return true end
+        end
+        return false
+    end, false)
+end
+
 local function bar(output)
+    local hidden = fullscreen_on(output)
+    local right = {}
+    if updates then right[#right + 1] = updates.widget(output) end
+    right[#right + 1] = privacy.indicators(output)
+    right[#right + 1] = status.icons(output)
+    right[#right + 1] = status.clock(output)
+    right[#right + 1] = status.desktop_strip(output)
     return column {
         width = "fill",
         height = "fill",
         align_v = "end",
+        hittable = hidden:map(function(h) return not h end),
+        translate = hidden:map(function(h) return { y = h and BAR_H + HEADROOM or 0 } end),
+        animate = { translate = { duration = 180, easing = "out_cubic" } },
         children = {
             k.sheet {
                 width = "fill",
@@ -121,14 +158,12 @@ local function bar(output)
                     children = {
                         start.button(output),
                         start.workspaces(output),
-                        rect { width = 6, height = "fill", children = { rect { align_v = "center", children = { controls.divider(34, true, 3) } } } },
+                        pencil_divider(3),
                         task_list(output),
                         rect { width = "fill" },
                         tray.new(output),
-                        rect { width = 6, height = "fill", children = { rect { align_v = "center", children = { controls.divider(34, true, 5) } } } },
-                        status.icons(output),
-                        status.clock(output),
-                        status.desktop_strip(output),
+                        pencil_divider(5),
+                        row { height = "fill", spacing = 10, children = right },
                     },
                 },
             },
@@ -138,6 +173,8 @@ end
 
 local panel_surface = panel {
     id = "paper-taskbar",
+    -- Not `mantle-*`: the desktop's Hyprland rules frost that namespace's popups, and paper is opaque.
+    namespace = "paper-taskbar",
     layer = "top",
     anchor = { bottom = true, left = true, right = true },
     width = "fill",
@@ -146,7 +183,7 @@ local panel_surface = panel {
     child = bar,
 }
 
-local surfaces = { panel_surface, previews.surface }
+local surfaces = { panel_surface, previews.surface, previews.tip_surface, tips.surface, privacy.live_surface }
 for _, s in ipairs(menus.surfaces) do surfaces[#surfaces + 1] = s end
 
 return { surfaces = surfaces }

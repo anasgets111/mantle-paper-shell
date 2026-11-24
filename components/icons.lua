@@ -39,8 +39,44 @@ local function turn(name)
     return (hash(name) % 81 - 40) / 10
 end
 
---- An app icon cut out as a sticker. `name`: a theme name or an image path, plain or a signal.
---- opts: `size`, `rotate` (degrees, default derived from the name), `grain` (default true).
+-- App art comes from Papirus whatever the system icon theme is: its flat, outlined shapes take the
+-- comic ink well. The theme is read from GTK settings, so the shell resolves Papirus files itself
+-- from one listing of the apps directory; a name Papirus lacks goes to the theme as before.
+local PAPIRUS = "/usr/share/icons/Papirus/64x64/apps/"
+local papirus = {}
+local papirus_listed = state("icons.papirus_listed", 0)
+process.capture("ls", { PAPIRUS }, function(out)
+    for line in (out or ""):gmatch("[^\n]+") do
+        local base = line:match("^(.+)%.svg$")
+        if base then papirus[base] = true end
+    end
+    papirus_listed:set(papirus_listed:get() + 1)
+end)
+
+local function art(name)
+    if name == nil or name == "" or name:find("/", 1, true) or not papirus[name] then return name end
+    return PAPIRUS .. name .. ".svg"
+end
+
+local COMIC = k.DIR .. "/components/comic.frag"
+
+-- Line and wobble shrink with the icon: 1.5 px and 0.6 px at 40 px and up.
+local function comic(name, size)
+    local line = math.max(0.8, math.min(1.5, size / 27))
+    local wobble = math.max(0.3, math.min(0.6, size / 66))
+    return {
+        shader = {
+            source = COMIC,
+            images = { grain = k.DIR .. "/img/grain.png" },
+            params = { seed = hash(name or "") % 1000 / 10, levels = 5, line = line, wobble = wobble },
+            padding = math.ceil(line + wobble + 1),
+        },
+    }
+end
+
+--- An app icon cut out as a sticker. `name`: a theme name or an image path, plain or a signal;
+--- a name Papirus draws uses Papirus's art. opts: `size`, `rotate` (degrees, default derived from
+--- the name), `comic` (default true: the ink finish of components/comic.frag).
 --- The box is `size + 2 * pad` square, pad = `M.sticker_pad(size)`; the drop shadow reaches
 --- about 8 px further right and down, so give a clipping parent that much room.
 function M.sticker(name, size, opts)
@@ -57,9 +93,17 @@ function M.sticker(name, size, opts)
             rect {
                 padding = M.sticker_pad(size),
                 rotate = opts.rotate or util.lift(name, turn),
-                -- Grain multiplies the colour by 1 +- a few percent, so the icon keeps its hue.
-                effect = opts.grain ~= false and k.paper_fx { grain = 0.35, mottle = 0.2 } or nil,
-                children = { icon { name = name, size = size, shadows = cut_layers(r) } },
+                children = {
+                    icon {
+                        name = type(name) == "userdata"
+                            and computed({ papirus_listed, name }, function(_, n) return art(n) end)
+                            or papirus_listed:map(function() return art(name) end),
+                        size = size,
+                        -- The shader runs before the node's shadows, so the cut is cast from the inked art.
+                        effect = opts.comic ~= false and util.lift(name, function(n) return comic(n, size) end) or nil,
+                        shadows = cut_layers(r),
+                    },
+                },
             },
         },
     }

@@ -20,14 +20,15 @@ local W, H = 450, 560
 local LIST_H = 400
 local MARGIN = 46
 
+-- A bare pencil cross with a finger-sized hit area, for one note.
 local function cross(slot, label, on_click, size)
     return tips.wrap(rect {
-        padding = 4,
+        padding = 8,
         align_v = "center",
         cursor = "pointer",
         accessible_name = label,
         on_click = on_click,
-        children = { glyphs.glyph(glyphs.close, size, k.INK_SOFT) },
+        children = { glyphs.doodle(glyphs.close, size, k.INK_SOFT) },
     }, slot, label)
 end
 
@@ -54,7 +55,7 @@ local function item(record, now, slot)
                 }), name .. ".summary", summary),
                 tips.wrap(k.body(feed.age(now, record.timestamp), 15, { foreground = k.INK_SOFT, align_v = "center" }),
                     name .. ".age", tips_mod.exact(record.timestamp)),
-                cross(name .. ".dismiss", "Dismiss", function() history.dismiss({ record }) end, 14),
+                cross(name .. ".dismiss", "Dismiss", function() history.dismiss({ record }) end, 15),
             },
         },
     }
@@ -63,12 +64,30 @@ local function item(record, now, slot)
             foreground = k.INK_SOFT, width = "fill", wrap = "word", max_lines = 2, elide = "end",
         })
     end
-    return column {
+    -- Hover swipes yellow highlighter across the note, as a link does.
+    local hovered = hover(name)
+    return rect {
         width = "fill",
         cursor = "pointer",
+        hover = hovered,
         accessible_name = record.summary,
         on_click = function() open(record) end,
-        children = lines,
+        children = {
+            rect {
+                width = "fill",
+                height = "fill",
+                padding = { left = 24 },
+                opacity = hovered:map(function(v) return v and 1 or 0 end),
+                animate = { opacity = { duration = 140 } },
+                children = {
+                    rect {
+                        width = "fill", height = "fill", background = k.HIGHLIGHT, blend = "multiply",
+                        shape = k.tape_shape(nil, nil, slot),
+                    },
+                },
+            },
+            column { width = "fill", padding = { left = 30, right = 2 }, children = lines },
+        },
     }
 end
 
@@ -87,18 +106,29 @@ local function group_row(group, now)
                     foreground = k.INK_SOFT, align_v = "center",
                 }),
                 rect { width = "fill" },
-                cross(name .. ".dismiss", "Dismiss all from " .. group.app_name, function()
-                    history.dismiss(group.items)
-                end, 18),
+                -- The whole app's dismiss is a paper disc on the header, apart from each note's cross.
+                tips.wrap(glyphs.disc {
+                    id = name .. ".dismiss",
+                    icon = glyphs.close,
+                    size = 30,
+                    seed = group.slot + 20,
+                    tooltip = "Dismiss all from " .. group.app_name,
+                    on_click = function() history.dismiss(group.items) end,
+                }, "paper.disc." .. name .. ".dismiss", "Dismiss all from " .. group.app_name),
             },
         },
     }
     for i, record in ipairs(group.items) do children[#children + 1] = item(record, now, group.first + i - 1) end
-    return column { width = "fill", spacing = 4, padding = { bottom = 10 }, children = children }
+    children[#children + 1] = rect {
+        padding = { top = 6 },
+        children = { controls.divider(W - MARGIN - 40, false, group.slot) },
+    }
+    return column { width = "fill", spacing = 2, padding = { bottom = 6 }, children = children }
 end
 
 local function header_row(label)
-    local ink = label == "urgent" and k.RED or k.BLUE
+    local urgent = label == "urgent"
+    local ink, mark = urgent and k.DEEP_RED or k.BLUE, urgent and k.RED or k.BLUE
     return rect {
         padding = { top = 4, bottom = 4 },
         children = {
@@ -108,7 +138,7 @@ local function header_row(label)
                 align_v = "end",
                 padding = { right = 4 },
                 translate = { y = 2 },
-                children = { glyphs.underline(ink, #label) },
+                children = { glyphs.underline(mark, #label) },
             },
         },
     }
@@ -128,22 +158,56 @@ local function empty()
     }
 end
 
+-- The wheel moves history a whole row at a time, so the top edge always starts a row and no fade
+-- ever lands on a heading. Each row takes the wheel before the list does (the innermost wins).
+local view = geometry("notifications.history.view")
+local row_geo = {}
+local function geo(i)
+    row_geo[i] = row_geo[i] or geometry("notifications.history.row." .. i)
+    return row_geo[i]
+end
+local rows, notches = nil, 0
+local function snap(_, steps)
+    notches = notches + steps
+    if math.abs(notches) < 1 then return end
+    local down = notches < 0
+    notches = 0
+    local top, offset = view:get().y, M.scroll:get()
+    local target
+    for i = 1, #(rows and rows:get() or {}) do
+        local at = geo(i):get().y - top
+        if down and at > 1 then
+            target = at
+            break
+        end
+        if not down and at < -1 then target = at end
+    end
+    if target then M.scroll:scroll_to(offset + target) end
+end
+
 -- `now` is a signal of Unix time, stamped when the menu opens.
 function M.page(now)
-    local rows = computed({ history.records, mantle.applications, now }, function(records, applications, t)
+    rows = computed({ history.records, mantle.applications, now }, function(records, applications, t)
         -- Number groups and notes by position, for bounded hover names.
         local groups, count = 0, 0
-        return util.map(feed.sections(feed.groups(records, applications), t), function(r)
+        return util.map(feed.sections(feed.groups(records, applications), t), function(r, index)
             if r.kind ~= "header" then
                 groups = groups + 1
                 r.slot, r.first = groups, count + 1
                 count = count + #r.items
             end
-            return { row = r, now = t }
+            return { row = r, now = t, index = index }
         end)
     end, {})
     local has_any = history.records:map(function(r) return #r > 0 end)
     local dnd = mantle.notifications:map(function(inbox) return inbox.dnd end, false)
+    -- Toggles sit at the right edge, as everywhere in the shell; the label is a sibling, so name it here.
+    local dnd_toggle = controls.toggle {
+        id = "notifications.dnd",
+        value = dnd,
+        on_toggle = function(on) mantle.notifications:set_dnd(on) end,
+    }
+    dnd_toggle.accessible_name = "Do not disturb"
 
     local content = column {
         width = "fill",
@@ -173,22 +237,28 @@ function M.page(now)
             rect {
                 width = "fill",
                 visible = has_any,
-                -- Rows scroll under a fade, not a hard cut through a line of ink.
-                mask = M.scroll:map(function(offset)
-                    local ink, clear = "#000000FF", "#00000000"
-                    local stops = { { 0, offset > 0 and clear or ink }, { 0.06, ink }, { 0.94, ink }, { 1, clear } }
-                    return { gradient = "linear", stops = stops }
-                end),
+                -- The row cut by the bottom edge fades out rather than being sliced through its ink.
+                mask = {
+                    gradient = "linear",
+                    stops = { { 0, "#000000FF" }, { 0.9, "#000000FF" }, { 1, "#00000000" } },
+                },
                 children = {
                     list {
                         width = "fill",
                         height = LIST_H,
                         scroll = M.scroll,
+                        geometry = view,
                         items = rows,
                         key = function(r) return r.row.key end,
                         each = function(r)
-                            if r.row.kind == "header" then return header_row(r.row.label) end
-                            return group_row(r.row, r.now)
+                            return rect {
+                                width = "fill",
+                                geometry = geo(r.index),
+                                on_wheel = snap,
+                                children = {
+                                    r.row.kind == "header" and header_row(r.row.label) or group_row(r.row, r.now),
+                                },
+                            }
                         end,
                     },
                 },
@@ -196,16 +266,14 @@ function M.page(now)
             rect { width = "fill", visible = has_any:map(function(v) return not v end), children = { empty() } },
             rect { height = "fill" },
             row {
-                spacing = 12,
+                width = "fill",
+                spacing = 10,
                 align_v = "center",
                 children = {
-                    controls.toggle {
-                        id = "notifications.dnd",
-                        label = "Do not disturb",
-                        value = dnd,
-                        on_toggle = function(on) mantle.notifications:set_dnd(on) end,
-                    },
                     glyphs.doodle(dnd:map(function(on) return on and glyphs.bell_off or glyphs.bell end), 22),
+                    k.body("Do not disturb", 20, { align_v = "center" }),
+                    rect { width = "fill" },
+                    dnd_toggle,
                 },
             },
         },

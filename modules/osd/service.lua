@@ -27,7 +27,8 @@ osd.entry = state("osd.entry", { kind = "", icon = "", text = "" })
 -- two seconds. Starts false: an entry up at reload hides rather than lingering with no timer.
 osd.visible = pulse(osd.entry, 2000)
 
--- `entry` = { icon, text, level? (0..100), off? }: `level` selects the bar layout, `off` dims it.
+-- `entry` = { icon, text, level? (0..100), mark? (0..1, a tick on the bar), off? }: `level`
+-- selects the bar layout, `off` dims the icon and the fill.
 function osd.show(kind, entry)
     local current = osd.entry:get()
     if osd.visible:get() and current.kind ~= kind and (PRIORITY[kind] or 9) > (PRIORITY[current.kind] or 9) then
@@ -67,6 +68,8 @@ mantle.audio:on_change(function(audio, previous)
                 icon = volume_icon(sink),
                 text = sink.muted and "Muted" or percent .. "%",
                 level = math.min(100, percent / MAX_VOLUME * 100),
+                -- Past 100% the sink is boosted: a pencil tick shows where 100% sits on the bar.
+                mark = percent > 100 and 100 / MAX_VOLUME or nil,
                 off = sink.muted,
             })
         end

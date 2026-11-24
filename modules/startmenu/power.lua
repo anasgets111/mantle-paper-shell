@@ -8,7 +8,9 @@
 -- stale `pending` left by a reload is harmless.
 local k = require("lib.paper")
 local icons = require("modules.startmenu.icons")
+local controls = require("components.controls")
 local tips = require("modules.startmenu.tips")
+local model = require("modules.startmenu.model")
 local compositor = require("lib.compositor")
 local ui_state = require("lib.ui_state")
 
@@ -74,20 +76,27 @@ end
 local function stub(a, i)
     local slot = "startmenu.power." .. a.key
     local hovered = hover(slot)
+    local focus = focus_visible(slot .. ".focus")
+    local lit = computed({ hovered, focus }, function(h, f) return h or f end)
     local stock = k.STOCK[a.stock]
     local face = left:map(function(l) return l.key == a.key and l.seconds or 0 end)
     return tips.wrap(rect {
         width = W,
         height = H,
         hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = a.label,
         cursor = "pointer",
         on_click = function() press(a) end,
-        rotate = hovered:map(function(v) return v and -2 or ((i % 3) - 1) * 0.6 end),
-        translate = hovered:map(function(v) return { y = v and -3 or 0 } end),
+        on_drag = model.track(slot),
+        scale = model.sink(slot, 0.92),
+        rotate = lit:map(function(v) return v and -2 or ((i % 3) - 1) * 0.6 end),
+        translate = lit:map(function(v) return { y = v and -3 or 0 } end),
         animate = {
             rotate = { spring = { stiffness = 300, damping = 16 } },
             translate = { duration = 140, easing = "out_cubic" },
+            scale = { duration = 90, easing = "out_cubic" },
         },
         children = {
             k.sheet {
@@ -96,7 +105,7 @@ local function stub(a, i)
                 seed = 200 + i * 13,
                 depth = 3,
                 color = stock[1],
-                shadows = k.lift(hovered),
+                shadows = k.lift(lit),
                 animate = { shadows = { duration = 160, easing = "out_cubic" } },
                 fx = { rim = 0 },
                 child = rect {
@@ -105,23 +114,29 @@ local function stub(a, i)
                     children = face:map(function(n)
                         if n > 0 then
                             return { k.hand(tostring(n), 34, {
-                                font_weight = 700, foreground = k.RED, align_h = "center", align_v = "center",
+                                font_weight = 700, foreground = k.DEEP_RED, align_h = "center", align_v = "center",
                             }) }
                         end
                         return { icons.glyph(a.icon, 24, stock[2]) }
                     end),
                 },
             },
+            rect {
+                translate = { x = -3, y = -3 },
+                children = focus:map(function(f)
+                    return f and { controls.pencil_loop(W + 6, H + 6, 30 + i) } or {}
+                end),
+            },
         },
     }, slot, a.label)
 end
 
--- The armed countdown in red marker under the row.
+-- The armed countdown under the row, in deep red: readable text, where RED is for marks.
 local function caption()
     return left:map(function(l)
         if l.key == "" then return {} end
         return { k.hand(string.format("%s in %d… click again", ACTIONS[l.key].label, l.seconds), 26, {
-            font_weight = 700, foreground = k.RED, align_h = "center",
+            font_weight = 700, foreground = k.DEEP_RED, align_h = "center",
         }) }
     end)
 end

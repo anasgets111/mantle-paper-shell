@@ -11,8 +11,8 @@ local R = {}
 R.PITCH = 34
 -- Centred text floats 11 px over its rule; handwriting sits about 4 px over it.
 R.SINK = 6
--- Page content width: an 800 px page less the red margin and the right gutter.
-R.WIDTH = 680
+-- Content width: the notebook's 700 px index card less its 14 px side margins.
+R.WIDTH = 672
 
 -- Callers write `cond and node or false`; a `false` entry is dropped.
 local function compact(list)
@@ -28,9 +28,14 @@ local function centred(nodes)
     return nodes
 end
 
--- Pads a vertical radio list (24 px circles, 10 px apart) so each option sits on a rule.
-function R.list(child)
-    return rect { padding = { left = 4, top = 5 + R.SINK }, children = { child } }
+-- Pads a vertical radio list (24 px circles, 10 px apart) so each option sits on a rule; `n`
+-- options fill exactly `n` pitches.
+function R.list(child, n)
+    return rect {
+        height = n and R.PITCH * n,
+        padding = { left = 4, top = 5 + R.SINK },
+        children = { child },
+    }
 end
 
 -- One ruled row: `left` fills, `right` hugs the right edge. `lines` rows of the pitch tall.

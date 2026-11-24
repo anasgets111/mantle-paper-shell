@@ -3,6 +3,8 @@
 local k = require("lib.paper")
 local menus = require("modules.taskbar.menus")
 local icons = require("modules.taskbar.icons")
+local tips = require("modules.taskbar.tips")
+local press = require("modules.taskbar.press")
 
 local M = {}
 
@@ -36,8 +38,9 @@ local function face(item)
 end
 
 local function tray_item(output, item)
-    local hovered = hover("taskbar.tray." .. output .. "." .. item.id)
-    return rect {
+    local slot = "taskbar.tray." .. output .. "." .. item.id
+    local hovered = hover(slot)
+    return tips.wrap(rect {
         width = SIZE + 12,
         height = "fill",
         hover = hovered,
@@ -55,6 +58,7 @@ local function tray_item(output, item)
                 mantle.tray:activate(item.id, cx, cy)
             end
         end,
+        on_drag = press.track(slot),
         on_wheel = function(_, steps) mantle.tray:scroll(item.id, math.floor(steps + 0.5), "vertical") end,
         children = {
             rect {
@@ -62,14 +66,20 @@ local function tray_item(output, item)
                 align_v = "center",
                 translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
                 rotate = hovered:map(function(v) return v and -4 or 0 end),
+                scale = press.scale(slot),
                 animate = {
+                    scale = { duration = 80, easing = "out_cubic" },
                     translate = { duration = 140, easing = "out_cubic" },
                     rotate = { spring = { stiffness = 300, damping = 16 } },
                 },
                 children = { face(item) },
             },
         },
-    }
+    }, slot, function()
+        -- The sender's own tooltip when it has one (first line: some send a paragraph), else its name.
+        local said = (item.tooltip or ""):match("^[^\n]*") or ""
+        return said ~= "" and said:sub(1, 80) or menus.tray_label(item)
+    end)
 end
 
 function M.new(output)

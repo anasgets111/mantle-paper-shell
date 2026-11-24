@@ -6,6 +6,7 @@ local feed = require("modules.notifications.feed")
 local st = require("modules.notifications.state")
 local card = require("modules.notifications.card")
 local tips = require("modules.notifications.tips")
+local quick = require("modules.quick")
 
 local MAX_NOTES = 4
 -- The engine never expires a critical note. After this long it retires to the date menu's urgent
@@ -15,15 +16,24 @@ local EXIT_MS = 260
 
 local HOVER = hover("notifications.stack")
 
+-- The quick-settings sheet opens in this corner; the stack steps aside and waits while it is up.
+local quick_open = quick.is_open or false
+
+-- Expiry waits while the stack is read or hidden behind quick settings.
+computed({ HOVER, quick_open }, function(hovered, covered) return hovered or covered end)
+    :on_change(function(hold) mantle.notifications:hold_expiry(hold and 300 or 0) end)
+
 -- The newest unseen notes, oldest first so the newest lands at the bottom.
-local notes = computed({ mantle.notifications, st.seen, st.center_open, st.locked, st.sharing },
-    function(inbox, seen, center_open, locked, sharing)
+local notes = computed({ mantle.notifications, st.seen, st.center_open, st.locked, st.sharing, quick_open, st.muted },
+    function(inbox, seen, center_open, locked, sharing, covered, muted)
         -- The date menu shows them all; over the lock screen they would be readable without a password.
-        if center_open or locked then return {} end
+        if center_open or locked or covered then return {} end
         local dnd = inbox.dnd or sharing
+        local silenced = {}
+        for _, app in ipairs(muted or {}) do silenced[app] = true end
         local shown = {}
         for _, n in ipairs(inbox.feed) do
-            local quiet = dnd and n.urgency ~= "critical"
+            local quiet = dnd and n.urgency ~= "critical" or silenced[feed.app_key(n)]
             if not n.expired and not quiet and not seen[feed.key(n)] then
                 shown[#shown + 1] = n
                 if #shown == MAX_NOTES then break end
@@ -71,7 +81,6 @@ return panel {
                 width = "fill",
                 padding = { left = 30, right = 30, top = 24, bottom = 40 },
                 hover = HOVER,
-                on_hover = function(hovered) mantle.notifications:hold_expiry(hovered and 300 or 0) end,
                 children = {
                     list {
                         width = "fill",

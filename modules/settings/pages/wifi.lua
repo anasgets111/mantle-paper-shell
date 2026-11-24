@@ -32,7 +32,7 @@ local function radio_rows()
     return {
         rows.heading("Wireless", {
             tips.wrap(c.disc_button {
-                id = "settings.wifi.scan", icon = icons.name("refresh"), size = 34, tooltip = "Scan for networks",
+                id = "settings.wifi.scan", icon = "restart", size = 34, tooltip = "Scan for networks",
                 on_click = function() net:scan() end,
             }, "paper.disc.settings.wifi.scan", "Scan for networks"),
         }),

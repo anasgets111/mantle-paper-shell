@@ -6,7 +6,7 @@ local rows = require("modules.settings.rows")
 local store = require("lib.store")
 
 local SCHEMES = {
-    { "light", "Light", "#F4ECDA", k.INK },
+    { "light", "Light", k.CARD, k.INK },
     { "dark", "Dark", "#3B3732", "#E9E1CF" },
 }
 

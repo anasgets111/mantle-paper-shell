@@ -10,15 +10,23 @@ local note = require("modules.notifications.note")
 local glyphs = require("modules.notifications.glyphs")
 local st = require("modules.notifications.state")
 local tips_mod = require("modules.notifications.tips")
+local menu_mod = require("components.menu")
 
 local tips = tips_mod.popups
 
 local WIDTH = 380
-local PINK, PINK_FOLD = "#F2CFC8", "#D9A9A0"
+local PINK, PINK_FOLD = k.STOCK.danger[1], "#D9A9A0"
 -- Cards alternate their turn; one holding a text field turns at most 1 degree.
 local TURN = { -1.4, 1.1, -0.7, 1.5 }
 
 local M = { WIDTH = WIDTH }
+
+-- Right click on a note: mute its app or dismiss it.
+local menu = menu_mod.new { id = "paper-notifications-menu", parent = tips_mod.POPUPS_ID }
+M.menu_surfaces = menu.surfaces
+
+local REST = { { blur = 10, offset = { x = 2, y = 6 }, color = "#00000055" } }
+local LIFT = { { blur = 16, offset = { x = 3, y = 10 }, color = "#00000055" } }
 
 -- The installed entry's name and icon when the sender names its desktop id.
 local function app_of(n)
@@ -36,7 +44,7 @@ local function photo(path, slot)
         children = {
             rect {
                 padding = 4,
-                background = "#FBF8F0",
+                background = k.CARD_LIGHT,
                 shadows = k.SHADOW.rest,
                 children = { image { source = path, fit = "cover", width = 72, height = 72 } },
             },
@@ -93,7 +101,7 @@ local function title_and_body(n, slot, ink)
     return column { width = "fill", spacing = 2, children = children }, images
 end
 
--- A card-stock scrap sized to its label, torn at both ends; it peels up on hover.
+-- The primary action: a card-stock scrap sized to its label, torn at both ends; it peels up on hover.
 -- `controls.button` takes a fixed width, and an action label can be anything.
 local function scrap(id, label, kind, on_click, seed)
     local stock = k.STOCK[kind]
@@ -126,16 +134,20 @@ local function scrap(id, label, kind, on_click, seed)
     }
 end
 
+-- The first action on stock, the rest as ink links (DESIGN 5: primary button, secondary links).
 local function actions(n, slot, critical)
-    local scraps = {}
+    local items = {}
     for i, action in ipairs(n.actions or {}) do
         if i > 3 then break end
-        scraps[i] = scrap("notifications.pop." .. slot .. ".act." .. i,
-            action.label ~= "" and action.label or action.key,
-            i == 1 and (critical and "danger" or "primary") or "plain",
-            function() mantle.notifications:invoke_action(n.id, action.key) end, slot * 7 + i)
+        local id = "notifications.pop." .. slot .. ".act." .. i
+        local label = action.label ~= "" and action.label or action.key
+        local function run() mantle.notifications:invoke_action(n.id, action.key) end
+        items[i] = i == 1 and scrap(id, label, critical and "danger" or "primary", run, slot * 7)
+            or controls.link { id = id, label = label, size = 24, on_click = run }
     end
-    return row { spacing = 10, wrap = true, line_spacing = 8, padding = { top = 2 }, children = scraps }
+    return row {
+        spacing = 18, wrap = true, line_spacing = 8, align_v = "center", padding = { top = 2 }, children = items,
+    }
 end
 
 local function reply(n, slot)
@@ -187,24 +199,19 @@ function M.build(n, slot)
     if n.has_reply then turn = math.max(-1, math.min(1, turn)) end
 
     local dx = st.swipe:map(function(s) return s.key == key and s.dx or 0 end)
+    local hovered = hover("notifications.pop." .. slot)
     local start_x = 0
+    -- Input sits on an outer box that never moves, so a drag reads the pointer against a fixed frame;
+    -- the note inside turns, lifts and slides.
     return rect {
         width = WIDTH,
         cursor = "pointer",
         accessible_name = n.summary,
-        rotate = dx:map(function(x) return turn + x / 40 end),
-        translate = dx:map(function(x) return { x = x } end),
-        opacity = dx:map(function(x) return math.max(0.25, 1 - math.abs(x) / 260) end),
+        hover = hovered,
         animate = {
-            rotate = { spring = { stiffness = 260, damping = 18 }, from = turn + 9 },
-            -- Peels in from just above and right, within the surface's padding so nothing is cut.
-            translate = { spring = { stiffness = 420, damping = 30 }, from = { x = 18, y = -16 } },
-            opacity = { duration = 160, easing = "out_cubic", from = 0 },
             move = { duration = 220, easing = "out_cubic" },
             -- Drops away: falls and turns while it fades, gone before the surface's bottom edge.
-            exit = {
-                duration = 240, easing = "in_cubic", translate = { x = 10, y = 34 }, rotate = turn + 10, opacity = 0,
-            },
+            exit = { duration = 240, easing = "in_cubic", translate = { x = 10, y = 34 }, rotate = 10, opacity = 0 },
         },
         on_drag = function(_, p, phase, _, velocity)
             if phase == "start" then
@@ -222,38 +229,67 @@ function M.build(n, slot)
                 mantle.notifications:dismiss(n.id)
             end
         end,
-        on_click = function()
+        on_click = function(r, button, p)
             if dragged == key then
                 dragged = nil
                 return
             end
-            if n.has_default_action then
-                mantle.notifications:invoke_action(n.id, "default")
-            else
+            if button == "right" then
+                local app = feed.app_key(n)
+                menu.open({ x = r.x + p.x, y = r.y + p.y, width = 1, height = 1 }, {
+                    {
+                        label = "Mute " .. (app_of(n)),
+                        icon = "notifications-disabled-symbolic",
+                        on_click = function() st.mute(app) end,
+                    },
+                    {
+                        label = "Dismiss",
+                        icon = "window-close-symbolic",
+                        on_click = function() mantle.notifications:dismiss(n.id) end,
+                    },
+                }, { anchor = "top_left", gravity = "bottom_left" })
+            elseif button == "middle" or not n.has_default_action then
                 mantle.notifications:dismiss(n.id)
+            else
+                mantle.notifications:invoke_action(n.id, "default")
             end
         end,
         children = {
-            note {
-                width = WIDTH,
-                seed = (n.id or 1) * 13 + slot,
-                color = critical and PINK or nil,
-                fold_color = critical and PINK_FOLD or nil,
-                tape_rotate = -turn * 2.5,
-                child = rect {
-                    width = "fill",
-                    children = {
-                        column {
+            rect {
+                rotate = dx:map(function(x) return turn + x / 40 end),
+                -- Hover peels the note up off the stack; a drag carries it sideways.
+                translate = computed({ dx, hovered }, function(x, up) return { x = x, y = up and -3 or 0 } end),
+                opacity = dx:map(function(x) return math.max(0.25, 1 - math.abs(x) / 260) end),
+                animate = {
+                    rotate = { spring = { stiffness = 260, damping = 18 }, from = turn + 9 },
+                    -- Peels in from just above and right, within the surface's padding so nothing is cut.
+                    translate = { spring = { stiffness = 420, damping = 30 }, from = { x = 18, y = -16 } },
+                    opacity = { duration = 160, easing = "out_cubic", from = 0 },
+                },
+                children = {
+                    note {
+                        width = WIDTH,
+                        seed = (n.id or 1) * 13 + slot,
+                        color = critical and PINK or nil,
+                        fold_color = critical and PINK_FOLD or nil,
+                        tape_rotate = -turn * 2.5,
+                        shadows = hovered:map(function(up) return up and LIFT or REST end),
+                        child = rect {
                             width = "fill",
-                            spacing = 8,
-                            padding = { top = 16, left = 18, right = 16, bottom = 18 },
-                            children = rows,
+                            children = {
+                                column {
+                                    width = "fill",
+                                    spacing = 8,
+                                    padding = { top = 16, left = 18, right = 16, bottom = 18 },
+                                    children = rows,
+                                },
+                                critical and rect {
+                                    height = "fill",
+                                    padding = { top = 18, bottom = 20, left = 7 },
+                                    children = { glyphs.margin_rule(k.RED, n.id) },
+                                } or nil,
+                            },
                         },
-                        critical and rect {
-                            height = "fill",
-                            padding = { top = 18, bottom = 20, left = 7 },
-                            children = { glyphs.margin_rule(k.RED, n.id) },
-                        } or nil,
                     },
                 },
             },

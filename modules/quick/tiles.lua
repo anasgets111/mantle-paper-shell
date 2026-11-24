@@ -1,14 +1,16 @@
 -- Quick-settings toggle tiles: card-stock scraps with a paper disc, a Caveat name and a status
 -- line. On, a tile turns to blue stock and is hatched in pencil, so state never rests on colour.
 local k = require("lib.paper")
+local util = require("lib.util")
+local controls = require("components.controls")
 local G = require("modules.quick.glyphs")
 local icons = require("components.icons")
-local util = require("lib.util")
 
-local TW, TH = 214, 78
+local TW, TH = 218, 78
 
 local function tile(o)
     local hovered = hover("quick.tile." .. o.id)
+    local keyed = focus_visible("quick.tile." .. o.id)
     local on = o.on
     local ink = on:map(function(v) return v and k.DEEP_BLUE or k.INK end)
     return rect {
@@ -16,6 +18,8 @@ local function tile(o)
         height = TH,
         visible = o.visible,
         hover = hovered,
+        focus_visible = keyed,
+        focus_ring = false,
         accessible_name = o.label,
         cursor = "pointer",
         on_click = o.on_click,
@@ -40,22 +44,11 @@ local function tile(o)
             row {
                 width = "fill",
                 height = "fill",
-                spacing = 12,
-                padding = { left = 12, right = 8 },
+                spacing = 14,
+                padding = { left = 18, right = 10 },
                 children = {
-                    rect {
-                        width = 44,
-                        height = 44,
-                        align_v = "center",
-                        children = {
-                            k.sheet {
-                                width = 44, height = 44, shape = k.torn_circle(44, o.seed + 1), color = "#F6EFDF",
-                                shadows = k.SHADOW.rest, fx = { rim = 1.4 },
-                            },
-                            util.with(icons.doodle(o.icon, 22, on:map(function(v) return v and k.BLUE or k.INK end)),
-                                "align_h", "center"),
-                        },
-                    },
+                    -- Drawn straight on the stock: raised discs are kept for standalone actions.
+                    icons.doodle(o.icon, 26, on:map(function(v) return v and k.DEEP_BLUE or k.INK end)),
                     column {
                         width = "fill",
                         align_v = "center",
@@ -66,6 +59,12 @@ local function tile(o)
                         },
                     },
                 },
+            },
+            -- Keyboard focus: a blue pencil loop instead of the engine's ring.
+            rect {
+                opacity = util.choose(keyed, 1, 0),
+                translate = { x = -4, y = -4 },
+                children = { controls.pencil_loop(TW + 8, TH + 8, o.seed) },
             },
         },
     }
@@ -119,7 +118,7 @@ return {
                 on = wifi_on,
                 status = network:map(function(n)
                     if not n.wifi_enabled then return "Off" end
-                    return n.ssid and n.ssid ~= "Ethernet" and n.ssid or "Not connected"
+                    return n.ssid and n.ssid ~= "Ethernet" and n.ssid or "On \u{00B7} No network"
                 end, ""),
                 visible = network:map(function(n) return n.wifi_present end, false),
                 on_click = function()

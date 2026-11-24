@@ -40,7 +40,7 @@ local function profile_rows()
                         options = options,
                         value = mantle.power:map(function(p) return p.active_profile end),
                         on_select = function(name) mantle.power:set_profile(name) end,
-                    }
+                    }, #options
                 ),
             }
         end),
@@ -61,6 +61,10 @@ local function brightness_rows()
                     width = 420,
                     value = mantle.brightness:map(function(b) return b.percent / 100 end, 0),
                     on_change = function(v) mantle.brightness:set(math.max(1, v * 100)) end,
+                    on_wheel = function(_, steps)
+                        local b = mantle.brightness:get()
+                        if b then mantle.brightness:set(math.max(1, math.min(100, b.percent + steps * 5))) end
+                    end,
                 },
             }),
         },

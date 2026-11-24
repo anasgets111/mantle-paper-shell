@@ -3,6 +3,7 @@
 local feed = require("modules.notifications.feed")
 local util = require("lib.util")
 local ui_state = require("lib.ui_state")
+local store = require("lib.store")
 
 local M = {}
 
@@ -29,6 +30,16 @@ computed({ M.locked, M.sharing }, function(locked, sharing) return locked or sha
     :on_change(function(quiet) mantle.notifications:set_quiet(quiet) end)
 
 M.center_open = ui_state.panel_showing("datemenu")
+
+-- Apps muted from a note's menu or the settings page: no popups (history still keeps them). The
+-- settings page owns `muted_apps` and applies it to sounds through `set_app_muted`.
+M.muted = store.muted_apps
+
+function M.mute(app)
+    local list = util.filter(store.muted_apps:get(), function(key) return key ~= app end)
+    list[#list + 1] = app
+    store:set("muted_apps", list)
+end
 
 -- One draft at a time; the key keeps a draft typed on one note from holding the keyboard for another.
 M.draft = state("notifications.reply_draft", { key = "", text = "" })

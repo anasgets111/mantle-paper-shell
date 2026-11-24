@@ -1,4 +1,5 @@
--- Notifications page: do not disturb, and a mute box per app that has sent something. Muted apps
+-- Notifications page: do not disturb, a sound per urgency, and a mute box per app that has sent
+-- something. Muted apps
 -- live in `lib/store.lua` (`muted_apps`, a list of desktop ids or app names) for the notification
 -- centre to read; the engine silences their sounds.
 local c = require("components.controls")
@@ -47,6 +48,40 @@ local senders = computed({ notes, store.muted_apps, mantle.applications }, funct
     return list
 end, {})
 
+-- A sound per urgency tier, from the freedesktop sound theme. The engine plays nothing for a tier
+-- until one is set and keeps no record of it, so the choice lives here and is reapplied at load.
+local SOUND_DIR = "/usr/share/sounds/freedesktop/stereo/"
+local SOUNDS = { { "message", "Message" }, { "bell", "Bell" }, { "complete", "Chime" }, { "dialog-warning", "Alert" } }
+local TIERS = { { "low", "Low" }, { "normal", "Normal" }, { "critical", "Critical" } }
+local sounds = persistent_table {
+    path = mantle.config_dir .. "/state-settings.json",
+    defaults = { notification_sounds = {} },
+}
+local function sound_path(name) return SOUND_DIR .. name .. ".oga" end
+for tier, name in pairs(sounds.notification_sounds:get()) do notes:set_sound(tier, sound_path(name)) end
+
+local function sound_rows()
+    local list = {}
+    for _, tier in ipairs(TIERS) do
+        list[#list + 1] = rows.line({
+            rows.label(tier[2], { width = 110 }),
+            c.radio_group {
+                id = "settings.notifications.sound." .. tier[1],
+                options = SOUNDS,
+                value = sounds.notification_sounds:map(function(t) return t[tier[1]] end),
+                on_select = function(name)
+                    sounds:set("notification_sounds", util.with(sounds.notification_sounds:get(), tier[1], name))
+                    notes:set_sound(tier[1], sound_path(name))
+                end,
+            },
+        })
+    end
+    -- ponytail: the engine has no call to clear a tier's sound, so there is no "None" choice; an
+    -- unset tier stays silent until one is picked. Upgrade: offer "None" once set_sound takes "".
+    list[#list + 1] = rows.note("Unset tiers stay silent. Do not disturb silences all but critical.")
+    return list
+end
+
 local function app_rows()
     local shape = senders:map(function(list) return rows.key(list, { "key", "name", "icon" }) end)
     return column {
@@ -55,12 +90,12 @@ local function app_rows()
             local list = {}
             for _, app in ipairs(senders:get()) do
                 list[#list + 1] = rows.line({
-                    icons.app(app.icon or "application-x-executable"),
+                    app.icon and icons.app(app.icon) or icons.glyph("notifications", 22),
                     rows.label(app.name, { tip = "notifications.app." .. app.key }),
                 }, {
                     c.checkbox_row {
                         id = "settings.notifications.mute." .. app.key,
-                        label = "mute",
+                        label = "mute sounds",
                         value = store.muted_apps:map(function(m) return util.index_of(m, app.key) ~= nil end),
                         on_toggle = function(on) set_muted(app.key, on) end,
                     },
@@ -76,7 +111,7 @@ return {
     key = "notifications",
     title = "Notifications",
     build = function()
-        return {
+        local list = {
             rows.heading("Interruptions"),
             rows.line({ rows.label("Do not disturb") }, {
                 rows.caption(notes:map(function(n) return n.dnd and "only critical ones make a sound" or "" end, "")),
@@ -86,8 +121,11 @@ return {
                     on_toggle = function(on) notes:set_dnd(on) end,
                 },
             }),
-            rows.heading("Apps"),
-            app_rows(),
+            rows.heading("Sounds"),
         }
+        for _, node in ipairs(sound_rows()) do list[#list + 1] = node end
+        list[#list + 1] = rows.heading("Apps")
+        list[#list + 1] = app_rows()
+        return list
     end,
 }

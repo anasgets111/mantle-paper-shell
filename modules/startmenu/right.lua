@@ -33,14 +33,22 @@ end
 
 -- A glyph and a label on one ruled line, underlined by highlighter on hover.
 local function entry(id, label, glyph, on_click, width)
-    local hovered = hover("startmenu.right." .. id)
+    local slot = "startmenu.right." .. id
+    local hovered = hover(slot)
+    local focus = focus_visible(slot .. ".focus")
+    local lit = computed({ hovered, focus }, function(h, f) return h or f end)
     return rect {
         width = width,
         height = 40,
         hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
         accessible_name = label,
         cursor = "pointer",
         on_click = on_click,
+        on_drag = model.track(slot),
+        scale = model.sink(slot, 0.97),
+        animate = { scale = { duration = 90, easing = "out_cubic" } },
         children = {
             rect {
                 width = "fill",
@@ -50,7 +58,7 @@ local function entry(id, label, glyph, on_click, width)
                 background = k.HIGHLIGHT,
                 blend = "multiply",
                 shape = k.tape_shape(nil, nil, #label),
-                opacity = hovered:map(function(v) return v and 1 or 0 end),
+                opacity = lit:map(function(v) return v and 1 or 0 end),
                 animate = { opacity = { duration = 110 } },
             },
             row {

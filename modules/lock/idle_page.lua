@@ -60,6 +60,7 @@ local function stepper(stage)
         align_v = "center",
         -- A press here is a click, never the start of a row drag.
         on_drag = function() end,
+        on_wheel = function(_, steps) step(steps > 0 and 1 or -1) end,
         children = {
             tips.wrap(controls.disc_button { id = "lock.idle.less." .. stage.key, icon = G.less, size = 34, seed = 3,
                 tooltip = "Shorter", on_click = function() step(-1) end }, "paper.disc.lock.idle.less." .. stage.key, "Shorter"),
@@ -120,7 +121,7 @@ local function stage_row(item)
                 height = ROW_H - 8,
                 align_v = "center",
                 shape = k.torn(720, ROW_H - 8, 70 + item.index, 2),
-                background = "#F4ECDA",
+                background = k.CARD,
                 opacity = util.choose(mine, 1, 0),
                 shadows = k.SHADOW.lift,
             },
@@ -161,13 +162,23 @@ local stages = list {
     each = stage_row,
 }
 
-local function setting_toggle(id, label, field)
-    return controls.toggle {
-        id = "lock.idle." .. id,
-        label = label,
-        value = settings:map(function(s) return s[field] end),
-        on_toggle = function(on) idle.write({ [field] = on }) end,
+-- A settings row: the words on the left, a caption under them, the switch at the right edge.
+local function switch_row(id, label, value, on_toggle, caption)
+    local words = { k.body(label, 21) }
+    if caption then words[2] = k.body(caption, 16, { foreground = k.INK_SOFT, width = "fill", elide = "end" }) end
+    return row {
+        width = "fill",
+        spacing = 16,
+        children = {
+            column { width = "fill", align_v = "center", children = words },
+            controls.toggle { id = "lock.idle." .. id, value = value, on_toggle = on_toggle },
+        },
     }
+end
+
+local function setting_toggle(id, label, field)
+    return switch_row(id, label, settings:map(function(s) return s[field] end),
+        function(on) idle.write({ [field] = on }) end)
 end
 
 local status = computed({ settings, idle.schedule, idle.reasons }, function(s, plan, reasons)
@@ -182,19 +193,8 @@ end)
 local function build()
     local children = {
         controls.section("When idle", {
-            row {
-                width = "fill",
-                spacing = 20,
-                children = {
-                    controls.toggle {
-                        id = "lock.idle.enabled",
-                        label = "Automatic actions",
-                        value = settings:map(function(s) return s.enabled end),
-                        on_toggle = function(on) idle.write({ enabled = on }) end,
-                    },
-                    k.body(status, 19, { foreground = k.INK_SOFT, align_v = "center", width = "fill", elide = "end" }),
-                },
-            },
+            switch_row("enabled", "Automatic actions", settings:map(function(s) return s.enabled end),
+                function(on) idle.write({ enabled = on }) end, status),
             rect {
                 visible = has_battery,
                 children = {
@@ -212,12 +212,7 @@ local function build()
             stages,
         }),
         controls.section("Keep awake", {
-            controls.toggle {
-                id = "lock.idle.manual",
-                label = "Keep awake now",
-                value = idle.manual,
-                on_toggle = idle.set_manual,
-            },
+            switch_row("manual", "Keep awake now", idle.manual, idle.set_manual),
             setting_toggle("capture", "While the camera, microphone or screen is being captured", "privacy_auto_inhibit"),
             setting_toggle("sleep", "While an app is blocking sleep", "sleep_holds_keep_awake"),
         }),

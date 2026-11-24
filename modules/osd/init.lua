@@ -12,8 +12,8 @@ local RISE_MS, FALL_MS = 160, 120
 
 local entry = osd.entry
 local has_level = entry:map(function(e) return e.level ~= nil end)
-local ink = entry:map(function(e) return e.off and k.INK_SOFT or k.INK end)
-
+-- Off dims the icon and the fill; the words stay in ink, they are the message.
+local icon_ink = entry:map(function(e) return e.off and k.INK_SOFT or k.INK end)
 
 local line = { { op = "M", points = { 4, 15 } }, { op = "Q", points = { BAR / 2, 12, BAR - 4, 16 } } }
 
@@ -24,17 +24,24 @@ local bar = rect {
     visible = has_level,
     children = {
         k.stroke_path(BAR, 30, line, "#3A363199", 1.5),
-        path {
-            width = BAR,
-            height = 30,
-            stroke = entry:map(function(e) return e.off and "#6B625840" or "#86AEEAC8" end),
-            stroke_width = 16,
-            stroke_cap = "butt",
+        -- A highlighter swipe with ragged ends, as wide as the level.
+        rect {
+            width = entry:map(function(e) return math.floor((e.level or 0) / 100 * (BAR - 8) + 0.5) end),
+            height = 17,
+            align_v = "center",
+            translate = { x = 4, y = -1 },
+            background = entry:map(function(e) return e.off and "#B9B0A2" or "#86AEEA" end),
             blend = "multiply",
-            trim_end = entry:map(function(e) return (e.level or 0) / 100 end),
+            shape = k.tape_shape(nil, nil, 29),
             -- A held key retargets every few frames; a spring keeps its velocity where a tween restarts.
-            animate = { trim_end = { spring = { stiffness = 260, damping = 26 } } },
-            commands = line,
+            animate = { width = { spring = { stiffness = 260, damping = 26 } } },
+        },
+        rect {
+            visible = entry:map(function(e) return e.mark ~= nil end),
+            translate = entry:map(function(e) return { x = 4 + (e.mark or 0) * (BAR - 8) - 3 } end),
+            children = {
+                k.stroke_path(6, 30, { { op = "M", points = { 3.5, 5 } }, { op = "L", points = { 2.5, 25 } } }, k.INK, 1.6),
+            },
         },
     },
 }
@@ -66,11 +73,11 @@ local strip = rect {
             spacing = 16,
             padding = { left = 26, right = 20 },
             children = {
-                icons.doodle(entry:map(function(e) return e.icon end), 26, ink),
+                icons.doodle(entry:map(function(e) return e.icon end), 26, icon_ink),
                 bar,
                 -- A fixed slot beside the bar, so "5%" and "150%" leave the same margin.
                 k.hand(entry:map(function(e) return e.text or "" end), 32, {
-                    font_weight = 700, foreground = ink, align_v = "center", width = util.choose(has_level, 84, nil),
+                    font_weight = 700, align_v = "center", width = util.choose(has_level, 84, nil),
                 }),
             },
         },

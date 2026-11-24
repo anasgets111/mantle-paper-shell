@@ -129,14 +129,24 @@ function M.card(now)
                 width = W + 28,
                 height = 190 + nweeks * (ROW + 4),
                 seed = 77,
-                color = "#F4ECDA",
+                color = k.CARD,
                 rotate = 0.9,
                 tapes = { { width = 72, height = 22, rotate = -3, seed = 8 } },
                 child = content,
             },
         }
     end)
-    return rect { children = month }
+    -- The wheel turns the pages: away for the month before, toward for the month after.
+    local notches = 0
+    return rect {
+        children = month,
+        on_wheel = function(_, steps)
+            notches = notches + steps
+            if math.abs(notches) < 1 then return end
+            M.offset:set(M.offset:get() + (notches > 0 and -1 or 1))
+            notches = 0
+        end,
+    }
 end
 
 return M

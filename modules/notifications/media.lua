@@ -17,13 +17,13 @@ local function cover(p)
     local art = p.album_art_path ~= "" and image { source = p.album_art_path, fit = "cover", width = 70, height = 70 }
         or rect {
             width = 70, height = 70, background = "#E9DDBB",
-            children = { glyphs.glyph(glyphs.music, 30, k.INK_SOFT) },
+            children = { glyphs.doodle(glyphs.music, 30, k.INK_SOFT) },
         }
     return rect {
         rotate = -3,
         align_v = "center",
         children = {
-            rect { padding = 4, background = "#FBF8F0", shadows = k.SHADOW.rest, children = { art } },
+            rect { padding = 4, background = k.CARD_LIGHT, shadows = k.SHADOW.rest, children = { art } },
             k.tape { width = 36, height = 14, translate = { x = 22, y = -6 }, rotate = 8, seed = 4 },
         },
     }
@@ -90,7 +90,7 @@ function M.card()
                 width = W,
                 height = H,
                 seed = 91,
-                color = "#C5D7EE",
+                color = k.STOCK.primary[1],
                 rotate = -0.8,
                 child = rect { width = "fill", height = "fill", children = body },
             },

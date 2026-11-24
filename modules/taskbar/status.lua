@@ -4,39 +4,73 @@ local k = require("lib.paper")
 local quick = require("modules.quick")
 local notifications = require("modules.notifications")
 local icons = require("modules.taskbar.icons")
+local tips = require("modules.taskbar.tips")
+local menus = require("modules.taskbar.menus")
+local press = require("modules.taskbar.press")
 
 local M = {}
 
 local now = mantle.clock:map(function(s) return s.time end, os.time())
 
-local wifi_icon = mantle.network:map(function(n)
-    if not n.connected then return "network-offline-symbolic" end
-    if n.ssid == "Ethernet" then return "network-wired-symbolic" end
-    return "network-wireless-symbolic"
-end, "network-wireless-symbolic")
-
-local bt_icon = mantle.bluetooth:map(function(b)
-    return b.enabled and "bluetooth-active-symbolic" or "bluetooth-disabled-symbolic"
-end, "bluetooth-disabled-symbolic")
-
-local volume_icon = mantle.audio:map(function(a)
-    for _, s in ipairs(a.sinks or {}) do
-        if s.active then
-            if s.muted then return "audio-volume-muted-symbolic" end
-            local v = s.volume or 0
-            return v > 66 and "audio-volume-high-symbolic" or v > 33 and "audio-volume-medium-symbolic"
-                or "audio-volume-low-symbolic"
-        end
+-- Doodle names for the live levels. Pure, so every name they can return is a known glyph.
+function M.wifi_name(n)
+    if not n or not n.connected then return "wifi-off" end
+    if n.ssid == "Ethernet" then return "ethernet" end
+    for _, d in ipairs(n.wifi_devices or {}) do
+        if d.connected then return "wifi-" .. math.max(0, math.min(4, math.floor((d.strength + 12) / 25))) end
     end
-    return "audio-volume-muted-symbolic"
-end, "audio-volume-high-symbolic")
+    return "wifi-0"
+end
+
+function M.bluetooth_name(b)
+    return (b and b.enabled) and "bluetooth" or "bluetooth-off"
+end
+
+local function default_sink(a)
+    for _, s in ipairs(a and a.sinks or {}) do
+        if s.active then return s end
+    end
+end
+
+function M.volume_name(a)
+    local s = default_sink(a)
+    if not s or s.muted or (s.volume or 0) == 0 then return "volume-muted" end
+    local v = s.volume or 0
+    return v > 66 and "volume-high" or v > 33 and "volume-medium" or "volume-low"
+end
+
+function M.battery_name(b)
+    if not b or not b.present then return "battery-0" end
+    if b.state == "charging" then return "battery-charging" end
+    return "battery-" .. math.max(0, math.min(4, math.floor((b.percent + 12) / 25)))
+end
 
 local battery = mantle.battery:map(function(b) return b.present and b or false end, false)
 
-local function battery_icon(b)
-    if not b then return "battery-missing-symbolic" end
-    local level = b.percent > 80 and "full" or b.percent > 40 and "good" or b.percent > 15 and "low" or "caution"
-    return "battery-" .. level .. (b.state == "charging" and "-charging" or "") .. "-symbolic"
+-- One line for the status tooltip: "Wi-Fi: home (72%) · Bluetooth on · Volume 40% · Battery 80%".
+local function status_text()
+    local parts = {}
+    local n = mantle.network:get()
+    if not n or not n.connected then
+        parts[1] = "Offline"
+    elseif n.ssid == "Ethernet" then
+        parts[1] = "Wired"
+    else
+        local strength
+        for _, d in ipairs(n.wifi_devices or {}) do
+            if d.connected then strength = d.strength end
+        end
+        parts[1] = "Wi-Fi: " .. (n.ssid or "?") .. (strength and (" (" .. strength .. "%)") or "")
+    end
+    local b = mantle.bluetooth:get()
+    parts[#parts + 1] = (b and b.enabled) and "Bluetooth on" or "Bluetooth off"
+    local s = default_sink(mantle.audio:get())
+    if s then parts[#parts + 1] = s.muted and "Muted" or ("Volume " .. math.floor((s.volume or 0) + 0.5) .. "%") end
+    local bat = mantle.battery:get()
+    if bat and bat.present then
+        parts[#parts + 1] = "Battery " .. bat.percent .. "%" .. (bat.state == "charging" and ", charging" or "")
+    end
+    return table.concat(parts, " \u{00B7} ")
 end
 
 -- A yellow highlighter swipe behind a hovered button, as on the menu rows.
@@ -56,12 +90,13 @@ end
 
 local function button(o)
     local hovered = hover(o.name)
-    return rect {
+    return tips.wrap(rect {
         height = "fill",
         hover = hovered,
         accessible_name = o.label,
         cursor = "pointer",
         on_click = o.on_click,
+        on_drag = press.track(o.name),
         children = {
             swipe(hovered, 30, o.seed),
             row {
@@ -69,11 +104,15 @@ local function button(o)
                 spacing = o.spacing or 12,
                 padding = { left = 10, right = 10 },
                 translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
-                animate = { translate = { duration = 140, easing = "out_cubic" } },
+                scale = press.scale(o.name),
+                animate = {
+                    translate = { duration = 140, easing = "out_cubic" },
+                    scale = { duration = 80, easing = "out_cubic" },
+                },
                 children = o.children,
             },
         },
-    }
+    }, o.name, o.tip)
 end
 
 function M.icons(output)
@@ -81,17 +120,37 @@ function M.icons(output)
         name = "taskbar.status." .. output,
         label = "Quick settings",
         seed = 21,
-        on_click = function(r) quick.open(r) end,
+        on_click = function(r, button)
+            if button == "middle" then
+                local s = default_sink(mantle.audio:get())
+                if s then mantle.audio:toggle_mute(s.id) end
+            elseif button == "right" then
+                menus.open_settings(r)
+            else
+                quick.open(r)
+            end
+        end,
+        tip = status_text,
         children = {
-            icons.glyph(wifi_icon, 20),
-            icons.glyph(bt_icon, 20),
-            icons.glyph(volume_icon, 20),
+            icons.doodle(mantle.network:map(M.wifi_name, "wifi-off"), 20),
+            icons.doodle(mantle.bluetooth:map(M.bluetooth_name, "bluetooth-off"), 20),
+            -- Wheel over the speaker: the default sink, 5 % a notch.
+            rect {
+                align_v = "center",
+                on_wheel = function(_, steps)
+                    local s = default_sink(mantle.audio:get())
+                    if not s then return end
+                    mantle.audio:set_volume(s.id, math.max(0, math.min(100, (s.volume or 0) + 5 * steps)))
+                end,
+                children = { icons.doodle(mantle.audio:map(M.volume_name, "volume-muted"), 20) },
+            },
             row {
                 spacing = 4,
                 visible = battery:map(function(b) return b ~= false end),
                 children = {
-                    icons.glyph(battery:map(battery_icon), 20),
-                    k.body(battery:map(function(b) return b and (b.percent .. "%") or "" end), 19, { align_v = "center" }),
+                    icons.doodle(battery:map(M.battery_name), 20),
+                    k.body(battery:map(function(b) return b and (b.percent .. "%") or "" end), 19,
+                        { align_v = "center" }),
                 },
             },
         },
@@ -106,19 +165,14 @@ function M.clock(output)
         seed = 34,
         spacing = 10,
         on_click = function(r) notifications.open_center(r) end,
+        tip = function() return (os.date("%A, %d %B %Y"):gsub(" 0(%d)", " %1")) end,
         children = {
             k.body(now:map(function(t) return os.date("%a, %d %b", t) end), 19,
                 { foreground = k.INK_SOFT, align_v = "center" }),
             k.body(now:map(function(t) return (os.date("%I:%M %p", t):gsub("^0", "")) end), 19,
                 { font_weight = 700, align_v = "center" }),
-            rect {
-                width = 9,
-                height = 9,
-                align_v = "center",
-                visible = unread,
-                background = k.RED,
-                shape = k.torn_circle(9, 5, 0.8),
-            },
+            -- Unread notifications: a red marker bell.
+            rect { visible = unread, align_v = "center", children = { icons.doodle("bell", 18, k.RED) } },
         },
     }
 end
@@ -155,7 +209,7 @@ end
 
 function M.desktop_strip(output)
     local hovered = hover("taskbar.desktop." .. output)
-    return rect {
+    return tips.wrap(rect {
         width = 14,
         height = "fill",
         hover = hovered,
@@ -174,7 +228,7 @@ function M.desktop_strip(output)
                 commands = { { op = "M", points = { 3, 2 } }, { op = "Q", points = { 4.5, 17, 3, 32 } } },
             },
         },
-    }
+    }, "taskbar.desktop." .. output, "Show desktop")
 end
 
 return M

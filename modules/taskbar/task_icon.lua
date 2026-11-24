@@ -1,17 +1,19 @@
--- One app on the task list: a card-stock sticker holding the app icon, ink ticks for its windows,
--- an urgent dot and an unread badge. The slot never moves, so hover and drag stay steady; an inner
--- node slides during a drag and a further one peels up on hover.
+-- One app on the task list: a die-cut sticker of the app icon (on a hatched blue patch while
+-- focused), ink ticks for its windows, an urgent dot and an unread badge. The slot never moves, so
+-- hover and drag stay steady; an inner node slides during a drag and a further one peels up on hover.
 local k = require("lib.paper")
 local apps = require("lib.apps")
 local tasks = require("modules.taskbar.tasks")
 local icons = require("modules.taskbar.icons")
+local press = require("modules.taskbar.press")
 
 local M = {}
 
 M.SLOT_W, M.SPACING = 50, 4
 M.PITCH = M.SLOT_W + M.SPACING
 M.DIV = 22 -- the pencil divider's width plus its spacing
-local STICKER, ICON = 38, 30
+local ICON = 30
+local BOX = icons.app_box(ICON)
 local THRESHOLD = 6
 
 -- Where a dragged item lands and how far every other item moves to make room.
@@ -87,11 +89,12 @@ local function badge(count)
         align_h = "end",
         align_v = "start",
         translate = { x = 5, y = -4 },
-        background = k.RED,
+        background = k.STOCK.danger[1],
         shape = k.torn_circle(18, count + 5, 1),
         shadows = { { blur = 3, offset = { x = 1, y = 1 }, color = "#00000050" } },
+        effect = k.paper_fx { rim = 0 },
         children = { k.body(label, count > 9 and 11 or 13, {
-            font_weight = 700, foreground = "#FBF6EA", align_h = "center", align_v = "center",
+            font_weight = 700, foreground = k.DEEP_RED, align_h = "center", align_v = "center",
         }) },
     }
 end
@@ -108,33 +111,39 @@ local function urgent_dot()
     }
 end
 
--- ctx = { output, drag, snap, preview_hover(name, item) -> on_hover, hide_preview(), open_menu(item, rect),
--- commit(item, d) }
+-- ctx = { output, drag, snap, preview_hover(name, item) -> on_hover, tip(node, name, text) -> node,
+-- hide_preview() (previews and tips), open_menu(item, rect), commit(item, d) }
 function M.new(item, ctx)
     local name = "taskbar.slot." .. ctx.output .. "." .. item.key
     local hovered = hover(name)
     local grab, suppress_click, wheel = nil, false, 0
-    local face = {
-        k.sheet {
-            width = STICKER,
-            height = STICKER,
-            seed = #item.key * 7 + 3,
-            depth = 2.5,
-            color = item.focused and "#C9D8EA" or "#F4ECDA",
-            shadows = k.lift(hovered),
-            animate = { shadows = { duration = 160, easing = "out_cubic" } },
-            fx = { rim = 0 },
-        },
-        icons.app(item.icon, ICON),
-    }
+    local held = press.track(name)
+    local face = {}
+    if item.focused then
+        -- The active workspace's sticker: blue card stock shaded in pencil.
+        face[1] = rect {
+            rotate = -3,
+            children = {
+                k.sheet {
+                    width = BOX,
+                    height = BOX,
+                    seed = #item.key * 7 + 3,
+                    depth = 2,
+                    color = "#C9D8EA",
+                    shadows = { { blur = 4, offset = { x = 1, y = 2 }, color = "#00000045" } },
+                    fx = { rim = 1.5, hatch = 0.35, hatch_spacing = 3.5 },
+                },
+            },
+        }
+    end
+    face[#face + 1] = icons.app(item.icon, ICON, hovered)
     if item.urgent then face[#face + 1] = urgent_dot() end
     if item.unread > 0 then face[#face + 1] = badge(item.unread) end
 
-    return rect {
+    local slot = rect {
         width = M.SLOT_W,
         height = "fill",
         hover = hovered,
-        on_hover = ctx.preview_hover(name, item),
         accessible_name = item.name,
         cursor = "pointer",
         on_click = function(rect_, button)
@@ -160,6 +169,7 @@ function M.new(item, ctx)
             if id then mantle.windows:focus(id) end
         end,
         on_drag = function(_, p, phase)
+            held(nil, nil, phase)
             if phase == "start" then
                 grab, suppress_click = { x = p.x, y = p.y, moved = false }, false
                 return
@@ -206,11 +216,13 @@ function M.new(item, ctx)
                         spacing = 3,
                         children = {
                             rect {
-                                width = STICKER,
-                                height = STICKER,
+                                width = BOX,
+                                height = BOX,
                                 translate = hovered:map(function(v) return { y = v and -3 or 0 } end),
-                                rotate = hovered:map(function(v) return v and -2 or ((item.slot % 3) - 1) * 0.8 end),
+                                rotate = hovered:map(function(v) return v and -2 or 0 end),
+                                scale = press.scale(name),
                                 animate = {
+                                    scale = { duration = 80, easing = "out_cubic" },
                                     translate = { duration = 140, easing = "out_cubic" },
                                     rotate = { spring = { stiffness = 300, damping = 16 } },
                                 },
@@ -223,6 +235,10 @@ function M.new(item, ctx)
             },
         },
     }
+    -- A running app's tooltip is its window preview; a closed pinned one gets its name.
+    if #item.wins == 0 then return ctx.tip(slot, name, item.name) end
+    slot.on_hover = ctx.preview_hover(name, item)
+    return slot
 end
 
 return M

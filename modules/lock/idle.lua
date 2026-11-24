@@ -98,7 +98,8 @@ function idle.read(stored)
         local profile = {}
         for key, default in pairs(fallback) do
             local value = held[key]
-            profile[key] = type(value) == type(default) and value or default
+            -- Not `and value or default`: a stored `false` must survive.
+            if type(value) == type(default) then profile[key] = value else profile[key] = default end
         end
         out[name] = profile
     end

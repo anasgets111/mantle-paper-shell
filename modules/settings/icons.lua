@@ -13,6 +13,7 @@ local DOODLES = {
     appearance = "image",
     keyboard = "keyboard",
     notifications = "bell",
+    updates = "download",
     about = "user",
     -- Rows.
     password = "lock",
@@ -24,11 +25,8 @@ local DOODLES = {
     generic = "bluetooth",
 }
 
--- Theme names: roles with no doodle, and the paper discs, which draw a theme icon.
+-- Theme names for roles with no doodle.
 local THEME = {
-    refresh = "view-refresh-symbolic",
-    speaker = "audio-volume-high-symbolic",
-    microphone = "audio-input-microphone-symbolic",
     warning = "dialog-warning-symbolic",
     vpn = "network-vpn-symbolic",
     mouse = "input-mouse-symbolic",
@@ -38,11 +36,6 @@ local THEME = {
 }
 
 local I = {}
-
--- The theme icon name for a role, for controls that take one (`disc_button`).
-function I.name(role)
-    return THEME[role] or role
-end
 
 function I.glyph(role, size, color)
     if DOODLES[role] then return kit.doodle(DOODLES[role], size, color) end
