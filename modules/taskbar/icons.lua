@@ -20,8 +20,9 @@ function M.app_box(size)
     return size + 2 * stickers.sticker_pad(size)
 end
 
--- Theme icons that don't read as what the app is on the desk: Files is a blue folder.
-local APP_ICON = { ["org.gnome.Nautilus"] = "folder-blue" }
+-- Icons that don't read as what the app is on the desk: Files is Papirus's blue folder. A path, since
+-- the sticker resolves only Papirus's app icons by name and the system theme draws a drawer.
+local APP_ICON = { ["org.gnome.Nautilus"] = "/usr/share/icons/Papirus/64x64/places/folder-blue.svg" }
 
 -- An app's icon (desktop entry `Icon=`) as a die-cut sticker. `hovered`, when given, lifts its shadow.
 function M.app(name, size, hovered)

@@ -63,8 +63,9 @@ return panel {
     output = "active",
     layer = "overlay",
     anchor = { top = true, bottom = true, right = true },
-    margin = { top = 12, bottom = 6, right = 10 },
-    width = card.WIDTH + 70,
+    -- No right margin: a note swiped right slides off the screen edge, not into a cut 10 px short of it.
+    margin = { top = 12, bottom = 6 },
+    width = card.WIDTH + 80,
     height = "fill",
     visible = util.linger(notes:map(function(shown) return #shown > 0 end), EXIT_MS),
     -- Bound, not constant: an `on_demand` surface can take the keyboard at map, which would steal it
@@ -79,7 +80,7 @@ return panel {
             rect { height = "fill" },
             column {
                 width = "fill",
-                padding = { left = 30, right = 30, top = 24, bottom = 40 },
+                padding = { left = 30, right = 40, top = 24, bottom = 40 },
                 hover = HOVER,
                 children = {
                     list {

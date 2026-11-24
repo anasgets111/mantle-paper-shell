@@ -78,7 +78,7 @@ local function sound_rows()
     end
     -- ponytail: the engine has no call to clear a tier's sound, so there is no "None" choice; an
     -- unset tier stays silent until one is picked. Upgrade: offer "None" once set_sound takes "".
-    list[#list + 1] = rows.note("Unset tiers stay silent. Do not disturb silences all but critical.")
+    list[#list + 1] = rows.note("Unset tiers stay silent; a picked sound stays until the shell restarts.", 1)
     return list
 end
 

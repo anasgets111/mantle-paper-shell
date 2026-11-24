@@ -22,7 +22,8 @@ M.LIST = {
             { "bash", "-c",
                 "fnm ls | awk '$2 ~ /^v/ { sub(/\\..*/, \"\", $2); print $2 }' | sort -u | xargs -r -n1 fnm install" },
             { "bash", "-c",
-                "fnm ls | awk '$2 ~ /^v/ { print $2 }' | sort -Vr | awk -F. 'seen[$1]++' | xargs -r -n1 fnm uninstall" },
+                "fnm ls | awk '$2 ~ /^v/ { print $2 }' | sort -Vr | awk -F. 'seen[$1]++'"
+                    .. " | xargs -r -n1 fnm uninstall" },
         },
     },
     -- fnm doesn't carry npm globals across versions: reinstall into the (possibly new) default Node.
@@ -68,7 +69,9 @@ function M.runnable(flags, present)
     return names
 end
 
--- The script's last line: a run whose log lacks it is still going, or was killed.
+-- The script's first line names its run, so a poll never reads the previous run's log; its last
+-- line ends the run, and a log without it is still being written, or was cut off by a kill.
+local RUN = "■ run "
 local END = "■ finished"
 
 local function quote(s)
@@ -77,8 +80,8 @@ end
 
 -- `▶ name` before each tool, then `[ OK ]` or `[FAIL] <exit code>`; the subshell stops at the first
 -- failing command. `$1` is the log path.
-local function script(names)
-    local lines = { 'exec >"$1" 2>&1' }
+local function script(names, token)
+    local lines = { 'exec >"$1" 2>&1', "echo " .. quote(RUN .. token) }
     for _, name in ipairs(names) do
         local commands = {}
         for i, argv in ipairs(by_name[name].run) do
@@ -94,16 +97,21 @@ local function script(names)
     return table.concat(lines, "\n")
 end
 
-function M.start(names)
-    runner:start("sh", { "-c", script(names), "sh", LOG })
+-- `token` names the run, its `started_at`.
+function M.start(names, token)
+    runner:start("sh", { "-c", script(names, token), "sh", LOG })
 end
 
--- The log as `{ lines, tool, failures, done }`: `tool` is the index of the last tool begun. The run
--- is done at the script's last line, or when the process is gone without it (`exited`): then a tool
--- begun with no result line was stopped, by a logout or `kill`.
-function M.parse(text, plan, exited)
+-- Run `token`'s log as `{ lines, tool, failures, done }`, or nil while the file is another run's.
+-- `tool` is the index of the last tool begun. The run is done at the script's last line, or when the
+-- process is gone without it (`exited`): then a tool begun with no result line was stopped.
+function M.parse(text, plan, exited, token)
+    text = text or ""
+    local first = text:match("^[^\n]*")
+    if first ~= RUN .. token then return nil end
+    text = text:sub(#first + 2)
     local lines, failures, own, tool, open, done = {}, {}, {}, 0, false, exited
-    for line in (text or ""):gmatch("[^\n]+") do
+    for line in text:gmatch("[^\n]+") do
         if line == END then
             done = true
             break

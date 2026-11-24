@@ -96,8 +96,8 @@ local function device_list(kind, set_default, empty)
     }
 end
 
--- One card: its profile (available ones only, plus the active one) and, under that profile, the
--- ports it can route to. A card with a single choice of each has nothing to pick and is left out.
+-- One card: its name, its profile (available ones only, plus the active one) and, under that
+-- profile, the ports it can route to. A list with a single choice has nothing to pick and is left out.
 local function card_rows(card)
     local list = {
         rows.line({ icons.glyph("sound", 20), rows.label(card.name, { tip = "sound.card." .. card.device }) }),

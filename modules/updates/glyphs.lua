@@ -57,7 +57,8 @@ function M.exclamation(size)
         align_v = "center",
         children = {
             k.stroke_path(size, size, {
-                { op = "M", points = { 12.6 * s, 3.5 * s } }, { op = "Q", points = { 11.6 * s, 9 * s, 12 * s, 15 * s } },
+                { op = "M", points = { 12.6 * s, 3.5 * s } },
+                { op = "Q", points = { 11.6 * s, 9 * s, 12 * s, 15 * s } },
             }, k.RED, 3.2 * s),
             path {
                 width = size, height = size, fill = k.RED,
@@ -120,7 +121,9 @@ function M.ring(size, fraction, spinning)
                 rotate = 0,
                 animate = spinning:map(function(spin)
                     if not spin then return { trim_end = { duration = 300, easing = "out_cubic" } } end
-                    return { rotate = { duration = 1400, easing = "linear", keyframes = { 0, 360 }, loops = "infinite" } }
+                    return {
+                        rotate = { duration = 1400, easing = "linear", keyframes = { 0, 360 }, loops = "infinite" },
+                    }
                 end),
             },
         },

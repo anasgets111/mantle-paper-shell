@@ -6,6 +6,7 @@ local c = require("components.controls")
 local icons = require("components.icons")
 local tooltip = require("components.tooltip")
 local util = require("lib.util")
+local ui_state = require("lib.ui_state")
 local S = require("modules.updates.service")
 local model = require("modules.updates.model")
 local G = require("modules.updates.glyphs")
@@ -42,12 +43,19 @@ local dismissed_at = -1
 
 local function close() S.open:set(false) end
 
+-- A modal opening (start menu, settings) takes the screen.
+ui_state.active_modal:on_change(function(kind)
+    if kind ~= "" and S.open:get() then close() end
+end)
+
 function M.open(r, with_grab)
     if S.open:get() or mantle.clock:now() - dismissed_at < 0.3 then
         close()
         return
     end
     r = r or {}
+    -- One surface at a time: a modal left open would sit under the page holding the keyboard.
+    ui_state.active_modal:set("")
     anchor:set({ x = r.x or 0, y = r.y or 0, width = math.max(1, r.width or 1), height = math.max(1, r.height or 1) })
     grab:set(with_grab ~= false)
     log_open:set(false)
@@ -151,7 +159,9 @@ local header = row {
             width = "fill",
             align_v = "center",
             children = {
-                hand(S.look:map(function(l) return l.title end), 34, { font_weight = 700, elide = "end", width = "fill" }),
+                hand(S.look:map(function(l) return l.title end), 34, {
+                    font_weight = 700, elide = "end", width = "fill",
+                }),
                 caption(S.look:map(function(l) return l.detail end), {
                     visible = S.look:map(function(l) return l.detail ~= "" end), elide = "end", width = "fill",
                 }),
@@ -301,7 +311,10 @@ local list_view = column {
 local BAR_H = 22
 local function progress_bar()
     local w = INNER - 34
-    local line = { { op = "M", points = { 6, BAR_H / 2 } }, { op = "Q", points = { w / 2, BAR_H / 2 - 1.5, w - 6, BAR_H / 2 + 1 } } }
+    local line = {
+        { op = "M", points = { 6, BAR_H / 2 } },
+        { op = "Q", points = { w / 2, BAR_H / 2 - 1.5, w - 6, BAR_H / 2 + 1 } },
+    }
     local indeterminate = S.progress:map(function(p) return p.count == "" end)
     return rect {
         width = w,
@@ -325,7 +338,8 @@ local function progress_bar()
                 animate = indeterminate:map(function(on)
                     if not on then return { trim_end = { duration = 400, easing = "out_cubic" } } end
                     return { translate = {
-                        duration = 1600, easing = "linear", keyframes = { { x = -0.25 * w }, { x = w } }, loops = "infinite",
+                        duration = 1600, easing = "linear", loops = "infinite",
+                        keyframes = { { x = -0.25 * w }, { x = w } },
                     } }
                 end),
             },
@@ -442,40 +456,47 @@ local left = computed({ mantle.clock, restart_deadline }, function(_, at)
     return math.max(0, math.ceil(at - mantle.clock:now()))
 end, 0)
 
+local function restart_button(n)
+    return button("restart", n > 0 and ("Yes, restart · " .. n) or "Restart now", "danger", function()
+        if left:get() > 0 then
+            restart_deadline:set(0)
+            S.restart()
+        else
+            restart_deadline:set(mantle.clock:now() + COUNTDOWN)
+        end
+    end)
+end
+
+-- The button sits under the text, so its armed label can grow without crowding the title.
 local restart_note = rect {
     width = "fill",
     visible = S.reboot,
     children = {
-        note(row {
-            spacing = 14,
+        note(column {
+            spacing = 8,
             width = INNER - 40,
             children = {
-                icons.doodle("restart", 26, k.RED),
-                column {
+                row {
                     width = "fill",
-                    align_v = "center",
+                    spacing = 14,
                     children = {
-                        hand("Restart to finish updating", 26, { font_weight = 700 }),
-                        body(left:map(function(n)
-                            return n > 0 and string.format("Click again within %d s to restart now.", n)
-                                or "The new kernel or system libraries load on the next boot."
-                        end), 16, { foreground = left:map(function(n) return n > 0 and k.DEEP_RED or INK_SOFT end),
-                            width = "fill", wrap = "word" }),
+                        icons.doodle("restart", 26, k.RED),
+                        column {
+                            width = "fill",
+                            children = {
+                                hand("Restart to finish updating", 26, { font_weight = 700 }),
+                                body(left:map(function(n)
+                                    return n > 0 and string.format("Click again within %d s to restart now.", n)
+                                        or "The new kernel or system libraries load on the next boot."
+                                end), 16, {
+                                    foreground = left:map(function(n) return n > 0 and k.DEEP_RED or INK_SOFT end),
+                                    width = "fill", wrap = "word",
+                                }),
+                            },
+                        },
                     },
                 },
-                rect {
-                    align_v = "center",
-                    children = left:map(function(n)
-                        return { button("restart", n > 0 and ("Yes, restart · " .. n) or "Restart now", "danger", function()
-                            if left:get() > 0 then
-                                restart_deadline:set(0)
-                                S.restart()
-                            else
-                                restart_deadline:set(mantle.clock:now() + COUNTDOWN)
-                            end
-                        end) }
-                    end),
-                },
+                rect { align_h = "end", children = left:map(function(n) return { restart_button(n) } end) },
             },
         }, 93),
     },
@@ -538,11 +559,11 @@ local result_view = column {
                             row {
                                 width = "fill",
                                 spacing = 10,
-                                height = 30,
+                                padding = { top = 4, bottom = 4 },
                                 children = {
                                     G.exclamation(16),
-                                    body(f.name, 18, { align_v = "center" }),
-                                    caption(f.reason, { width = "fill", elide = "end", align_v = "center" }),
+                                    body(f.name, 18),
+                                    caption(f.reason, { width = "fill", wrap = "word", padding = { top = 2 } }),
                                 },
                             },
                             rule(),

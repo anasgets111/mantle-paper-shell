@@ -126,7 +126,19 @@ local function poll_tools()
     file.read(tools.LOG, function(text)
         local current = run:get()
         if current.stage ~= "tools" then return end
-        local report = tools.parse(text, current.plan, tools.running:get() == false)
+        local exited = tools.running:get() == false
+        local report = tools.parse(text, current.plan, exited, tostring(current.started_at))
+        if report == nil then
+            -- Its script never wrote a line: it could not start.
+            if exited and os.time() - current.started_at > 5 then
+                advance(model.tools_progress(current, { done = true, tool = 1, failures = {
+                    { name = current.plan[1] or "?", reason = "The tools' script didn't start" },
+                } }, os.time()))
+            else
+                timer(1000, poll_tools)
+            end
+            return
+        end
         local lines = report.lines
         tool_log:set({ table.unpack(lines, math.max(1, #lines - LOG_LINES + 1)) })
         advance(model.tools_progress(current, report, os.time()))
@@ -144,7 +156,7 @@ function advance(new)
         finished(new)
     elseif new.stage == "tools" and old.stage ~= "tools" then
         tool_log:set({})
-        tools.start(new.plan)
+        tools.start(new.plan, tostring(new.started_at))
         -- Polled from a second on, by when `running` has reported the start.
         timer(1000, poll_tools)
     end

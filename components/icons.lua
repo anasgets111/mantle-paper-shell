@@ -83,6 +83,8 @@ function M.sticker(name, size, opts)
     opts = opts or {}
     size = opts.size or size or 32
     local r = M.sticker_cut(size)
+    -- Under 20 px the ink and flat tones blot out the art, so small stickers stay plain.
+    local ink = opts.comic ~= false and size >= 20 and util.lift(name, function(n) return comic(n, size) end) or nil
     return rect {
         width = size + 2 * M.sticker_pad(size),
         height = size + 2 * M.sticker_pad(size),
@@ -100,7 +102,7 @@ function M.sticker(name, size, opts)
                             or papirus_listed:map(function() return art(name) end),
                         size = size,
                         -- The shader runs before the node's shadows, so the cut is cast from the inked art.
-                        effect = opts.comic ~= false and util.lift(name, function(n) return comic(n, size) end) or nil,
+                        effect = ink,
                         shadows = cut_layers(r),
                     },
                 },

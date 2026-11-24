@@ -296,6 +296,15 @@ function M.slider(o)
         on_drag = function(r, p, phase) set(r, p, phase) end,
         on_click = function(r, _, p) set(r, p, "end") end,
         on_wheel = o.on_wheel,
+        -- Tab reaches it; arrows step 5%. Enter and Space would click its centre (50%), so they stop here.
+        accessible_name = o.accessible_name or o.id,
+        on_key = function(key)
+            local step = ({ Left = -0.05, Down = -0.05, Right = 0.05, Up = 0.05 })[key.name]
+            if step and o.on_change then
+                o.on_change(math.max(0, math.min(1, (util.get(value) or 0) + step)), "end")
+            end
+            return step ~= nil or key.name == "Return" or key.name == "KP_Enter" or key.name == "space"
+        end,
         children = {
             k.stroke_path(W, 32, line, "#3A363199", 1.5),
             path {
@@ -449,6 +458,8 @@ function M.sticky(o)
             children = {
                 o.child,
                 path {
+                    -- Spans the whole note above the child: without this it takes every hit.
+                    hittable = false,
                     width = w, height = h, fill = k.STICKY_FOLD,
                     shadows = { { blur = 3, offset = { x = -1, y = -1 }, color = "#00000040" } },
                     commands = {

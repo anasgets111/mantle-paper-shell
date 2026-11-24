@@ -16,8 +16,9 @@ local TABS_W, TAB_H, TAB_GAP, TABS_Y = 222, 50, 6, TOP + 74
 local CARD_X, CARD_Y = 76, 96
 local CARD_PAD = 14
 local CARD_MAX_H = PAGE_H - CARD_Y - 22
--- The last 24 px of a scrolling card fade out, and every page ends in that much blank card.
-local FADE = 24
+-- The last 24 px of a scrolling card fade out, and every page ends in that much blank card. The
+-- top 10 px fade too, inside the blank pitch above the first heading, so a scrolled row never cuts hard.
+local FADE, FADE_TOP = 24, 10
 
 -- Tab card stock: DESIGN.md's three tab tints.
 local TINTS = { "#E9DDBB", "#C9D8EA", "#EBCBC5" }
@@ -170,7 +171,10 @@ end
 local FADE_MASK = {
     gradient = "linear",
     angle = 180,
-    stops = { { 0, "#000000" }, { 1 - FADE / CARD_MAX_H, "#000000" }, { 1, "#00000000" } },
+    stops = {
+        { 0, "#00000000" }, { FADE_TOP / CARD_MAX_H, "#000000" },
+        { 1 - FADE / CARD_MAX_H, "#000000" }, { 1, "#00000000" },
+    },
 }
 
 local function card(p, page)

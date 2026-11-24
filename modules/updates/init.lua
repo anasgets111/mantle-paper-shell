@@ -34,7 +34,10 @@ end
 
 local function face(name)
     if name == "installing" then
-        return { G.ring(36, fraction, spinning), rect { align_h = "center", align_v = "center", children = { G.package(18) } } }
+        return {
+            G.ring(36, fraction, spinning),
+            rect { align_h = "center", align_v = "center", children = { G.package(18) } },
+        }
     elseif name == "restart" then
         return { rect { align_h = "center", align_v = "center", children = { icons.doodle("restart", 24, k.RED) } } }
     end
