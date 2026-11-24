@@ -6,7 +6,8 @@
 -- modules/    surfaces: desktop, taskbar, startmenu, settings, notifications, osd, quick, lock
 --
 -- Bind every `require` to a local: in a table constructor it expands its second return value.
-fonts { "Patrick Hand", "Noto Sans", "Noto Color Emoji" }
+-- Read once at startup: a change here needs a shell restart. `k.body` names Kalam itself.
+fonts { "Kalam", "Noto Sans", "Noto Color Emoji" }
 
 local desktop = require("modules.desktop")
 local taskbar = require("modules.taskbar")
@@ -15,9 +16,11 @@ local notifications = require("modules.notifications")
 local osd = require("modules.osd")
 local lock = require("modules.lock")
 local quick = require("modules.quick")
+-- Also a modal_host entry; listed here for its right-click popups.
+local startmenu = require("modules.startmenu")
 
 local surfaces = { desktop.wallpaper, desktop.cards, modal_host }
-for _, group in ipairs({ taskbar, notifications, osd, quick, lock }) do
+for _, group in ipairs({ taskbar, notifications, osd, quick, lock, startmenu }) do
     table.move(group.surfaces, 1, #group.surfaces, #surfaces + 1, surfaces)
 end
 

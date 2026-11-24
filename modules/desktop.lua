@@ -344,6 +344,7 @@ local M = {}
 
 M.wallpaper = panel {
     id = "paper-wallpaper",
+    namespace = "paper-wallpaper",
     layer = "background",
     anchor = { top = true, bottom = true, left = true, right = true },
     width = "fill",
@@ -354,6 +355,7 @@ M.wallpaper = panel {
 
 M.cards = panel {
     id = "paper-cards",
+    namespace = "paper-cards",
     layer = "bottom",
     -- The panel covers the output so a card can be dropped anywhere; only the cards take input.
     anchor = { top = true, bottom = true, left = true, right = true },

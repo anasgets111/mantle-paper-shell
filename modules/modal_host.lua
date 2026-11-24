@@ -1,4 +1,4 @@
--- One surface for the scrim, the outside-click catcher and every modal (start menu, settings,
+-- One surface for the outside-click catcher and every modal (start menu, settings,
 -- power confirm). One string `modal` state means one modal at a time, and
 -- `mantle toggle modal startmenu` / `mantle toggle modal settings` are single keybinds.
 local util = require("lib.util")
@@ -11,13 +11,6 @@ local settings = require("modules.settings")
 local modals = { startmenu, settings }
 
 local any_modal = ui_state.active_modal:map(function(kind) return kind ~= "" end)
-local wants_scrim = ui_state.active_modal:map(function(kind)
-    for _, m in ipairs(modals) do
-        if m.kind == kind then return m.scrim end
-    end
-    return false
-end)
-
 local lingering, reset = {}, {}
 for _, modal in ipairs(modals) do
     lingering[#lingering + 1] = util.linger(ui_state.modal_showing(modal.kind), modal.ms)
@@ -40,6 +33,8 @@ end)
 
 return panel {
     id = "paper-modal-host",
+    -- Not "mantle-*": the user's Hyprland frosts that namespace's popups, and paper is opaque.
+    namespace = "paper-modal-host",
     on_escape = close,
     output = "active",
     layer = "top",
@@ -55,13 +50,6 @@ return panel {
         width = "fill",
         height = "fill",
         children = {
-            rect {
-                width = "fill",
-                height = "fill",
-                background = "#2A201526",
-                opacity = wants_scrim:map(function(s) return s and 1 or 0 end),
-                animate = { opacity = { duration = 180, easing = "out_cubic" } },
-            },
             rect {
                 width = "fill",
                 height = "fill",

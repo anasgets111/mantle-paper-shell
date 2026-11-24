@@ -1,7 +1,7 @@
 -- One modal card and its motion, for `modules/modal_host.lua` to stack under one catcher.
 -- The card slides up 12 px and fades in, out_cubic in and in_cubic out, like a sheet laid down.
 --
--- opts = { kind, card, align_h?, align_v?, margin?, scrim? (default true) }
+-- opts = { kind, card, align_h?, align_v?, margin? }
 local ui_state = require("lib.ui_state")
 local util = require("lib.util")
 
@@ -33,7 +33,6 @@ return function(opts)
     end)
     return {
         kind = opts.kind,
-        scrim = opts.scrim ~= false,
         ms = MS,
         node = rect {
             id = opts.kind,

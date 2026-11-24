@@ -133,7 +133,7 @@ function M.disc_button(o)
                 animate = { shadows = { duration = 160 } },
                 fx = { rim = 1.4 },
             },
-            k.glyph(o.icon, math.floor(size * 0.46), o.ink or INK),
+            icon { name = o.icon, size = math.floor(size * 0.46), foreground = o.ink or INK, align_h = "center", align_v = "center" },
         },
     }
 end
@@ -193,7 +193,7 @@ function M.toggle(o)
         accessible_name = o.label or o.id,
         cursor = "pointer",
         on_click = function()
-            local now = type(on) == "userdata" and on:get() or on
+            local now = util.get(on)
             if o.on_toggle then o.on_toggle(not now) end
         end,
         children = children,
@@ -261,7 +261,7 @@ function M.checkbox_row(o)
         accessible_name = o.label,
         cursor = "pointer",
         on_click = function()
-            local now = type(o.value) == "userdata" and o.value:get() or o.value
+            local now = util.get(o.value)
             if o.on_toggle then o.on_toggle(not now) end
         end,
         children = util.lift(o.value, function(d)

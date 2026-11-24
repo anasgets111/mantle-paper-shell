@@ -9,6 +9,8 @@ local DEEP_BLUE = "#24477F"
 local RED = "#D9534F"
 local DEEP_RED = "#8E2B25"
 local HAND = "Caveat"
+-- Body text: Kalam (Light 300, Regular 400, Bold 700), legible at 16 to 20 px where Caveat is not.
+local BODY = "Kalam"
 
 -- Park-Miller LCG with a fixed seed per shape, so edges stay put across reloads.
 local function rng(seed)
@@ -309,7 +311,7 @@ local function hand(content, size, props)
 end
 
 local function body(content, size, props)
-    local t = { content = content, font_size = size, foreground = INK }
+    local t = { content = content, font = BODY, font_size = size, foreground = INK }
     for k, v in pairs(props or {}) do t[k] = v end
     return text(t)
 end
@@ -340,7 +342,7 @@ end
 
 return {
     DIR = DIR, PAPER = PAPER, INK = INK, INK_SOFT = INK_SOFT, BLUE = BLUE, DEEP_BLUE = DEEP_BLUE,
-    RED = RED, DEEP_RED = DEEP_RED, HAND = HAND,
+    RED = RED, DEEP_RED = DEEP_RED, HAND = HAND, BODY = BODY,
     STICKY = "#F3E3A0", STICKY_FOLD = "#DCC67A", GROOVE = "#E2D6BC", HIGHLIGHT = "#F2C94C80",
     STOCK = STOCK, SHADOW = SHADOW, lift = lift,
     rng = rng, bite = bite, torn = torn, torn_bottom = torn_bottom, torn_top = torn_top, torn_circle = torn_circle,

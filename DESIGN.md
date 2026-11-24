@@ -53,8 +53,8 @@ checked box gets a tick, a chosen radio gets a scribble, and the selected tab st
 | :--- | :--- | :--- |
 | Display (clock) | Caveat 400 | 96 to 110 |
 | Headings, card titles, button labels | Caveat 700 | 24 to 52 |
-| Body, list items, status bar | Patrick Hand | 18 to 25 |
-| Captions | Patrick Hand, `INK_SOFT` | 16 |
+| Body, list items, status bar | Kalam | 18 to 25 |
+| Captions | Kalam, `INK_SOFT` | 16 |
 
 Use Caveat only at 24 px or more, and never for body text. Caveat text takes right padding of 15%
 of its size (section 7). Both fonts are OFL, bundled in `fonts/` and loaded through `fonts.conf`.
@@ -100,7 +100,7 @@ of its size (section 7). Both fonts are OFL, bundled in `fonts/` and loaded thro
 
 - **Bar:** full width, 46 px, straight top, torn bottom. Caveat workspace numerals; the active one
   sits on a hatched blue sticker. The focused app's name, then status icons, date and time in
-  Patrick Hand.
+  Kalam.
 - **Cards:** 370 px wide, stacked on the right 4 px apart: clock, quote, todo, music, photo.
 - **Dock:** an 820 x 86 px scrap at the bottom centre. Symbolic icons in `INK`, at most two in
   colour, a pencil divider before the trash. Icons grow 12% on hover.

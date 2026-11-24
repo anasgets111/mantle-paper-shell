@@ -13,6 +13,8 @@ local controls = require("components.controls")
 local M = {}
 
 local ROW_H, WIDTH = 34, 250
+-- Room for the sticky note's shadow (blur 10, offset y 6) inside the popup.
+local PAD = { top = 14, left = 14, right = 14, bottom = 22 }
 
 local function item_row(id, i, item, on_pick)
     if item.separator then
@@ -136,7 +138,7 @@ function M.new(o)
             on_escape = menu.close,
             on_dismiss = menu.close,
             child = computed({ items, title }, function(_, t)
-                return rect { padding = 14, children = { note(o.id, live, pick, t or nil) } }
+                return rect { padding = PAD, children = { note(o.id, live, pick, t or nil) } }
             end),
         },
         popup {
@@ -149,7 +151,7 @@ function M.new(o)
             constraint_adjustment = { "flip_x", "slide_y" },
             on_dismiss = function() sub_open:set(false) end,
             child = sub_items:map(function()
-                return rect { padding = 14, children = { note(o.id .. "-sub", live_sub, pick) } }
+                return rect { padding = PAD, children = { note(o.id .. "-sub", live_sub, pick) } }
             end),
         },
     }

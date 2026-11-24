@@ -9,7 +9,7 @@ You are one of five builders working **at the same time** on one Mantle shell co
 - `~/mantle-paper-shell/plan.html`: the plan (open it as text). Your feature's row is the spec.
 - `~/mantle-paper-shell/DESIGN.md`: the paper design rules (materials, ink, type, motion). Follow them.
 - `lib/paper.lua` (the kit: `sheet`, `card`, `torn`, `torn_top`, `torn_circle`, `tape`,
-  `paper_fx`, `hand` (Caveat), `body` (Patrick Hand), `glyph`, `checkbox`, `squiggle`, `star`...),
+  `paper_fx`, `hand` (Caveat), `body` (Kalam, weights 300/400/700), `glyph`, `checkbox`, `squiggle`, `star`...),
   `components/controls.lua` (button, link, disc_button, toggle, radio_group, checkbox_row, slider,
   field, tabs, chip, sticky, pencil_loop, ruled, divider), `components/menu.lua` (sticky-note
   context menu on a popup, with submenus), `components/modal.lua` + `modules/modal_host.lua`,
