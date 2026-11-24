@@ -1,5 +1,5 @@
 -- One popup: a taped sticky note with the app, a Caveat title, the body, a pinned photo, action
--- scraps and an inline reply line. Critical notes are pink stock, underlined in red marker.
+-- scraps and an inline reply line. Critical notes are pink stock, ruled down the margin in red marker.
 -- Hover, focus and button names come from `slot` (stack position 1..4), never the notification id,
 -- so live notifications never grow the signal registry.
 local k = require("lib.paper")
@@ -9,6 +9,9 @@ local feed = require("modules.notifications.feed")
 local note = require("modules.notifications.note")
 local glyphs = require("modules.notifications.glyphs")
 local st = require("modules.notifications.state")
+local tips_mod = require("modules.notifications.tips")
+
+local tips = tips_mod.popups
 
 local WIDTH = 380
 local PINK, PINK_FOLD = "#F2CFC8", "#D9A9A0"
@@ -51,34 +54,32 @@ local function header(n, slot, ink_soft)
         spacing = 8,
         children = {
             glyphs.app(icon_name, 22),
-            k.body(name, 17, {
+            tips_mod.elided(tips, k.body(name, 17, {
                 foreground = ink_soft, width = "fill", elide = "end", align_v = "center",
-            }),
-            k.body(mantle.clock:map(function(clock) return feed.age(clock.time, n.timestamp) end), 16, {
+            }), "notifications.pop." .. slot .. ".app", name),
+            tips.wrap(k.body(mantle.clock:map(function(clock) return feed.age(clock.time, n.timestamp) end), 16, {
                 foreground = ink_soft, align_v = "center",
-            }),
-            controls.disc_button {
+            }), "notifications.pop." .. slot .. ".age", tips_mod.exact(n.timestamp)),
+            tips.wrap(glyphs.disc {
                 id = "notifications.pop." .. slot .. ".close",
                 icon = glyphs.close,
-                size = 28,
+                size = 30,
                 seed = slot + 40,
                 tooltip = "Dismiss",
                 on_click = function() mantle.notifications:dismiss(n.id) end,
-            },
+            }, "paper.disc.notifications.pop." .. slot .. ".close", "Dismiss"),
         },
     }
 end
 
-local function title_and_body(n, ink, critical)
+local function title_and_body(n, slot, ink)
     local runs, images = feed.body(n.body, k.DEEP_BLUE)
+    local title = n.summary ~= "" and n.summary or n.app_name
     local children = {
-        k.hand(n.summary ~= "" and n.summary or n.app_name, 28, {
+        tips_mod.elided(tips, k.hand(title, 28, {
             font_weight = 700, foreground = ink, width = "fill", wrap = "word", max_lines = 2, elide = "end",
-        }),
+        }), "notifications.pop." .. slot .. ".title", title),
     }
-    if critical then
-        children[#children + 1] = rect { translate = { y = -6 }, children = { k.squiggle(150, k.RED) } }
-    end
     if #runs > 0 then
         children[#children + 1] = k.body(runs, 19, {
             foreground = ink,
@@ -92,23 +93,49 @@ local function title_and_body(n, ink, critical)
     return column { width = "fill", spacing = 2, children = children }, images
 end
 
+-- A card-stock scrap sized to its label, torn at both ends; it peels up on hover.
+-- `controls.button` takes a fixed width, and an action label can be anything.
+local function scrap(id, label, kind, on_click, seed)
+    local stock = k.STOCK[kind]
+    local hovered = hover(id)
+    return rect {
+        hover = hovered,
+        accessible_name = label,
+        cursor = "pointer",
+        on_click = on_click,
+        rotate = hovered:map(function(v) return v and -2 or (seed % 3 - 1) * 0.6 end),
+        translate = hovered:map(function(v) return { y = v and -3 or 0 } end),
+        animate = {
+            rotate = { spring = { stiffness = 300, damping = 16 } },
+            translate = { duration = 140, easing = "out_cubic" },
+        },
+        children = {
+            rect {
+                width = "fill",
+                height = "fill",
+                background = stock[1],
+                shape = k.tape_shape(nil, nil, seed),
+                shadows = k.lift(hovered),
+                animate = { shadows = { duration = 160, easing = "out_cubic" } },
+                effect = k.paper_fx { rim = 0 },
+            },
+            k.hand(label, 24, {
+                font_weight = 700, foreground = stock[2], padding = { top = 2, bottom = 4, left = 16, right = 20 },
+            }),
+        },
+    }
+end
+
 local function actions(n, slot, critical)
-    local buttons = {}
+    local scraps = {}
     for i, action in ipairs(n.actions or {}) do
         if i > 3 then break end
-        local label = action.label ~= "" and action.label or action.key
-        buttons[i] = controls.button {
-            id = "notifications.pop." .. slot .. ".act." .. i,
-            label = label,
-            -- `controls.button` sizes for 25 px labels; these are 22 px.
-            width = math.max(80, utf8.len(label) * 10 + 38),
-            kind = i == 1 and (critical and "danger" or "primary") or "plain",
-            size = 22,
-            height = 36,
-            on_click = function() mantle.notifications:invoke_action(n.id, action.key) end,
-        }
+        scraps[i] = scrap("notifications.pop." .. slot .. ".act." .. i,
+            action.label ~= "" and action.label or action.key,
+            i == 1 and (critical and "danger" or "primary") or "plain",
+            function() mantle.notifications:invoke_action(n.id, action.key) end, slot * 7 + i)
     end
-    return row { spacing = 10, wrap = true, line_spacing = 8, children = buttons }
+    return row { spacing = 10, wrap = true, line_spacing = 8, padding = { top = 2 }, children = scraps }
 end
 
 local function reply(n, slot)
@@ -125,7 +152,7 @@ local function reply(n, slot)
                 on_change = function(t) st.draft:set({ key = key, text = t }) end,
                 on_submit = function(t) st.send_reply(n, t) end,
             },
-            controls.disc_button {
+            tips.wrap(glyphs.disc {
                 id = "notifications.pop." .. slot .. ".send",
                 icon = glyphs.send,
                 size = 32,
@@ -135,7 +162,7 @@ local function reply(n, slot)
                     local draft = st.draft:get()
                     if draft.key == key then st.send_reply(n, draft.text) end
                 end,
-            },
+            }, "paper.disc.notifications.pop." .. slot .. ".send", "Send reply"),
         },
     }
 end
@@ -149,7 +176,7 @@ function M.build(n, slot)
     local key = feed.key(n)
     local critical = n.urgency == "critical"
     local ink, ink_soft = critical and k.DEEP_RED or k.INK, critical and k.DEEP_RED or k.INK_SOFT
-    local content, images = title_and_body(n, ink, critical)
+    local content, images = title_and_body(n, slot, ink)
     local picture = n.image_path or images[1]
     local main = picture and row { width = "fill", spacing = 12, children = { photo(picture, slot), content } }
         or content
@@ -170,11 +197,13 @@ function M.build(n, slot)
         opacity = dx:map(function(x) return math.max(0.25, 1 - math.abs(x) / 260) end),
         animate = {
             rotate = { spring = { stiffness = 260, damping = 18 }, from = turn + 9 },
-            translate = { spring = { stiffness = 420, damping = 30 }, from = { x = 60, y = 24 } },
+            -- Peels in from just above and right, within the surface's padding so nothing is cut.
+            translate = { spring = { stiffness = 420, damping = 30 }, from = { x = 18, y = -16 } },
             opacity = { duration = 160, easing = "out_cubic", from = 0 },
             move = { duration = 220, easing = "out_cubic" },
+            -- Drops away: falls and turns while it fades, gone before the surface's bottom edge.
             exit = {
-                duration = 260, easing = "in_cubic", translate = { x = 24, y = 140 }, rotate = turn + 16, opacity = 0,
+                duration = 240, easing = "in_cubic", translate = { x = 10, y = 34 }, rotate = turn + 10, opacity = 0,
             },
         },
         on_drag = function(_, p, phase, _, velocity)
@@ -201,8 +230,7 @@ function M.build(n, slot)
             if n.has_default_action then
                 mantle.notifications:invoke_action(n.id, "default")
             else
-                -- Off the screen, still in the date menu's history.
-                st.hide(n)
+                mantle.notifications:dismiss(n.id)
             end
         end,
         children = {
@@ -212,11 +240,21 @@ function M.build(n, slot)
                 color = critical and PINK or nil,
                 fold_color = critical and PINK_FOLD or nil,
                 tape_rotate = -turn * 2.5,
-                child = column {
+                child = rect {
                     width = "fill",
-                    spacing = 8,
-                    padding = { top = 16, left = 18, right = 16, bottom = 18 },
-                    children = rows,
+                    children = {
+                        column {
+                            width = "fill",
+                            spacing = 8,
+                            padding = { top = 16, left = 18, right = 16, bottom = 18 },
+                            children = rows,
+                        },
+                        critical and rect {
+                            height = "fill",
+                            padding = { top = 18, bottom = 20, left = 7 },
+                            children = { glyphs.margin_rule(k.RED, n.id) },
+                        } or nil,
+                    },
                 },
             },
         },

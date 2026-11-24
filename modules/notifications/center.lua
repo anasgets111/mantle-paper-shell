@@ -7,6 +7,7 @@ local history = require("modules.notifications.history")
 local notepad = require("modules.notifications.notepad")
 local calendar = require("modules.notifications.calendar")
 local media = require("modules.notifications.media")
+local tips = require("modules.notifications.tips")
 
 local M = {}
 
@@ -16,6 +17,9 @@ local MS = 180
 local opened_at = state("notifications.opened_at", 0)
 -- A click opens it with a grab, so an outside click closes it; a keybind has no press to grab with.
 local grab = state("notifications.center_grab", true)
+-- The compositor closed it: hidden at once, since a popup still `visible` through the exit fade would
+-- reopen on the next press.
+local dismissed = state("notifications.center_dismissed", false)
 
 local function open(rect, with_grab)
     if ui_state.panel_is("datemenu") then
@@ -23,6 +27,7 @@ local function open(rect, with_grab)
         return
     end
     grab:set(with_grab)
+    dismissed:set(false)
     opened_at:set(os.time())
     calendar.offset:set(0)
     st.mark_all_seen()
@@ -71,7 +76,7 @@ local menu = column {
 }
 
 M.popup = popup {
-    id = "paper-datemenu",
+    id = tips.MENU_ID,
     parent = "paper-taskbar",
     anchor_rect = ui_state.popup_anchor,
     anchor = "top",
@@ -80,8 +85,9 @@ M.popup = popup {
     constraint_adjustment = { "slide_x", "flip_y" },
     grab = grab,
     reset_on_close = { notepad.scroll },
-    visible = util.linger(showing, MS),
+    visible = computed({ util.linger(showing, MS), dismissed }, function(v, gone) return v and not gone end),
     on_dismiss = function()
+        dismissed:set(true)
         if ui_state.panel_is("datemenu") then ui_state.close_panel() end
     end,
     on_escape = function() ui_state.close_panel() end,

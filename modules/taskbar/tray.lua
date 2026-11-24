@@ -27,7 +27,7 @@ end
 local function face(item)
     local name, file = artwork(item)
     if name and name ~= "" then
-        return icons.app(name, SIZE, { foreground = k.INK })
+        return icons.tray(name, SIZE)
     end
     if file and file ~= "" then
         return icons.pixmap(file, SIZE)

@@ -1,6 +1,9 @@
 -- Quick-settings toggle tiles: card-stock scraps with a paper disc, a Caveat name and a status
 -- line. On, a tile turns to blue stock and is hatched in pencil, so state never rests on colour.
 local k = require("lib.paper")
+local G = require("modules.quick.glyphs")
+local icons = require("components.icons")
+local util = require("lib.util")
 
 local TW, TH = 214, 78
 
@@ -49,10 +52,8 @@ local function tile(o)
                                 width = 44, height = 44, shape = k.torn_circle(44, o.seed + 1), color = "#F6EFDF",
                                 shadows = k.SHADOW.rest, fx = { rim = 1.4 },
                             },
-                            icon {
-                                name = o.icon, size = 22, align_h = "center", align_v = "center",
-                                foreground = on:map(function(v) return v and k.BLUE or k.INK end),
-                            },
+                            util.with(icons.doodle(o.icon, 22, on:map(function(v) return v and k.BLUE or k.INK end)),
+                                "align_h", "center"),
                         },
                     },
                     column {
@@ -84,11 +85,6 @@ end, false)
 local profile = mantle.power:map(function(p) return p.active_profile or "" end, "")
 
 local PROFILE_NAMES = { ["power-saver"] = "Power saver", balanced = "Balanced", performance = "Performance" }
-local PROFILE_ICONS = {
-    ["power-saver"] = "power-profile-power-saver-symbolic",
-    balanced = "power-profile-balanced-symbolic",
-    performance = "power-profile-performance-symbolic",
-}
 
 local function next_profile()
     local p = mantle.power:get()
@@ -115,11 +111,11 @@ return {
     HEIGHT = TH,
     -- How many tiles show, so the sheet can be cut to fit.
     count = count,
-    build = function()
-        return {
+    build = function(tips)
+        local tiles = {
             tile {
                 id = "wifi", label = "Wi-Fi", seed = 41, tilt = -0.6,
-                icon = wifi_on:map(function(v) return v and "network-wireless-symbolic" or "network-wireless-disabled-symbolic" end),
+                icon = wifi_on:map(function(v) return v and G.wifi or G.wifi_off end),
                 on = wifi_on,
                 status = network:map(function(n)
                     if not n.wifi_enabled then return "Off" end
@@ -133,7 +129,7 @@ return {
             },
             tile {
                 id = "bluetooth", label = "Bluetooth", seed = 43, tilt = 0.6,
-                icon = bt_on:map(function(v) return v and "bluetooth-active-symbolic" or "bluetooth-disabled-symbolic" end),
+                icon = bt_on:map(function(v) return v and G.bluetooth or G.bluetooth_off end),
                 on = bt_on,
                 status = mantle.bluetooth:map(function(b)
                     if not b.enabled then return "Off" end
@@ -149,14 +145,14 @@ return {
             },
             tile {
                 id = "dnd", label = "Do not disturb", seed = 47, tilt = 0,
-                icon = "notifications-disabled-symbolic",
+                icon = G.dnd,
                 on = dnd_on,
                 status = dnd_on:map(function(v) return v and "Sounds muted" or "Off" end),
                 on_click = function() mantle.notifications:set_dnd(not dnd_on:get()) end,
             },
             tile {
                 id = "profile", label = "Power mode", seed = 53, tilt = -0.6,
-                icon = profile:map(function(p) return PROFILE_ICONS[p] or "power-profile-balanced-symbolic" end),
+                icon = profile:map(function(p) return G.profile[p] or G.profile.balanced end),
                 -- "Balanced" is the resting mode; the other two are a choice someone made.
                 on = profile:map(function(p) return p ~= "" and p ~= "balanced" end),
                 status = profile:map(function(p) return PROFILE_NAMES[p] or p end),
@@ -165,12 +161,19 @@ return {
             },
             tile {
                 id = "airplane", label = "Airplane", seed = 59, tilt = 0.6,
-                icon = "airplane-mode-symbolic",
+                icon = G.airplane,
                 on = airplane_on,
                 status = airplane_on:map(function(v) return v and "Radios off" or "Off" end),
                 visible = mantle.radio:map(function(r) return #r.radios > 0 end, false),
                 on_click = function() mantle.radio:set_all_blocked(not airplane_on:get()) end,
             },
         }
+        -- The network name can be cut short on the tile.
+        tiles[1] = tips.wrap(tiles[1], "quick.tile.wifi", function()
+            local n = network:get()
+            if not (n and n.wifi_enabled) then return "Wi-Fi is off" end
+            return n.ssid and n.ssid ~= "Ethernet" and "Connected to " .. n.ssid or "Wi-Fi is on, no network joined"
+        end)
+        return tiles
     end,
 }

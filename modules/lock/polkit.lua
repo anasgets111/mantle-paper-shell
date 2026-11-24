@@ -5,6 +5,8 @@ local k = require("lib.paper")
 local util = require("lib.util")
 local controls = require("components.controls")
 local password = require("modules.lock.password")
+local G = require("modules.lock.glyphs")
+local icons = require("components.icons")
 
 local W, H = 560, 420
 local MS = 180
@@ -23,7 +25,9 @@ local who = column {
         local ids = p.identities or {}
         if #ids <= 1 then
             local name = ids[1] and ids[1].name ~= "" and ids[1].name or os.getenv("USER") or ""
-            return { k.body("as " .. name, 19, { foreground = k.INK_SOFT }) }
+            return { row { spacing = 6, children = {
+                icons.doodle(G.user, 18, k.INK_SOFT), k.body("as " .. name, 19, { foreground = k.INK_SOFT }),
+            } } }
         end
         local options = {}
         for i, id in ipairs(ids) do options[i] = { id.uid, id.name ~= "" and id.name or ("uid " .. id.uid) } end
@@ -55,10 +59,7 @@ local note = controls.sticky {
             row {
                 spacing = 12,
                 children = {
-                    icon {
-                        name = label(function(p) return p.icon_name ~= "" and p.icon_name or "dialog-password-symbolic" end),
-                        size = 30, foreground = k.INK, align_v = "center",
-                    },
+                    icons.doodle_for(label(function(p) return p.icon_name ~= "" and p.icon_name or G.lock end), 30),
                     k.hand("Password needed", 38, { font_weight = 700, align_v = "center" }),
                 },
             },
@@ -66,7 +67,9 @@ local note = controls.sticky {
             -- What is being granted, so a vague message can still be judged.
             k.body(label(function(p) return p.action_id end), 16, { foreground = k.INK_SOFT, width = "fill", elide = "end" }),
             who,
-            password { id = "lock.polkit.password", capability = "polkit", width = W - 70, on_cancel = cancel },
+            password {
+                id = "lock.polkit.password", capability = "polkit", width = W - 18, submit_disc = false, on_cancel = cancel,
+            },
             rect { height = "fill" },
             row {
                 align_h = "end",
@@ -83,7 +86,7 @@ local note = controls.sticky {
 return panel {
     id = "paper-polkit",
     output = "active",
-    namespace = "mantle-paper-polkit",
+    namespace = "paper-polkit",
     layer = "overlay",
     anchor = { top = true, bottom = true, left = true, right = true },
     exclusive_zone = false,
@@ -96,7 +99,6 @@ return panel {
     child = rect {
         width = "fill",
         height = "fill",
-        background = "#2A201540",
         children = {
             rect {
                 align_h = "center",

@@ -4,6 +4,7 @@
 local k = require("lib.paper")
 local controls = require("components.controls")
 local glyphs = require("modules.notifications.glyphs")
+local tips = require("modules.notifications.tips").menu
 
 local M = {}
 
@@ -100,11 +101,11 @@ function M.card(now)
                     width = "fill",
                     align_v = "center",
                     children = {
-                        controls.disc_button {
+                        tips.wrap(glyphs.disc {
                             id = "notifications.cal.prev", icon = glyphs.prev_month, size = 30, seed = 61,
                             tooltip = "Previous month",
                             on_click = function() M.offset:set(M.offset:get() - 1) end,
-                        },
+                        }, "paper.disc.notifications.cal.prev", "Previous month"),
                         rect {
                             width = "fill",
                             cursor = "pointer",
@@ -112,11 +113,11 @@ function M.card(now)
                             on_click = function() M.offset:set(0) end,
                             children = { k.hand(title, 26, { align_h = "center" }) },
                         },
-                        controls.disc_button {
+                        tips.wrap(glyphs.disc {
                             id = "notifications.cal.next", icon = glyphs.next_month, size = 30, seed = 62,
                             tooltip = "Next month",
                             on_click = function() M.offset:set(M.offset:get() + 1) end,
-                        },
+                        }, "paper.disc.notifications.cal.next", "Next month"),
                     },
                 },
                 days,

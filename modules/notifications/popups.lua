@@ -5,6 +5,7 @@ local util = require("lib.util")
 local feed = require("modules.notifications.feed")
 local st = require("modules.notifications.state")
 local card = require("modules.notifications.card")
+local tips = require("modules.notifications.tips")
 
 local MAX_NOTES = 4
 -- The engine never expires a critical note. After this long it retires to the date menu's urgent
@@ -46,7 +47,9 @@ mantle.clock:on_change(function(clock)
 end)
 
 return panel {
-    id = "paper-notifications",
+    id = tips.POPUPS_ID,
+    -- Not `mantle-*`: Hyprland frosts that namespace's popups, and paper is opaque.
+    namespace = "paper-notifications",
     output = "active",
     layer = "overlay",
     anchor = { top = true, bottom = true, right = true },
@@ -66,7 +69,7 @@ return panel {
             rect { height = "fill" },
             column {
                 width = "fill",
-                padding = { left = 30, right = 30, top = 20, bottom = 26 },
+                padding = { left = 30, right = 30, top = 24, bottom = 40 },
                 hover = HOVER,
                 on_hover = function(hovered) mantle.notifications:hold_expiry(hovered and 300 or 0) end,
                 children = {

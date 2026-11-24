@@ -81,6 +81,22 @@ local function tab(p, i, page)
     }
 end
 
+-- A marker squiggle as a filled band whose points are percents, so it spans whatever box holds it:
+-- one wave per letter keeps the pitch near the original 14 px squiggle at any title length.
+local function underline(waves)
+    local function x(f) return string.format("%d%%", math.floor(f * 100 + 0.5)) end
+    local c = { { op = "M", points = { 0, 4 } } }
+    for i = 1, waves do
+        c[#c + 1] = { op = "Q", points = { x((i - 0.5) / waves), i % 2 == 1 and 0 or 8, x(i / waves), 4 } }
+    end
+    c[#c + 1] = { op = "L", points = { "100%", 6.4 } }
+    for i = waves, 1, -1 do
+        c[#c + 1] = { op = "Q", points = { x((i - 0.5) / waves), i % 2 == 1 and 2.4 or 10.4, x((i - 1) / waves), 6.4 } }
+    end
+    c[#c + 1] = { op = "Z", points = {} }
+    return { commands = c }
+end
+
 -- The wire binding: a punched hole and a coil that loops over the top edge, every 32 px.
 local function binding()
     local holes, wire, shine = {}, {}, {}
@@ -100,12 +116,12 @@ local function binding()
     return rect {
         padding = { left = PAGE_X },
         children = {
-            layer(holes, { fill = "#2A2520D0" }),
+            layer(holes, { fill = "#2A2520" }),
             layer(wire, {
                 stroke = "#55524C", stroke_width = 3.4,
                 shadows = { { blur = 3, offset = { x = 1, y = 2 }, color = "#00000060" } },
             }),
-            layer(shine, { stroke = "#D8D4CCB0", stroke_width = 1.1 }),
+            layer(shine, { stroke = "#C9C5BD", stroke_width = 1.1 }),
         },
     }
 end
@@ -144,13 +160,20 @@ return function(o)
             children = c.ruled(PAGE_W, PAGE_H, { top = CONTENT_Y + rows.PITCH, pitch = rows.PITCH, margin = 70 }),
         },
     }
-    -- The marker underline runs about two thirds of the title.
+    -- The column is as wide as the title, and the underline fills it, less Caveat's ink padding.
     local header = column {
         padding = { left = PAGE_X + CONTENT_X, top = TOP + 24 },
         children = title:map(function(t)
             return {
                 k.hand(t, 46, { font_weight = 700 }),
-                rect { translate = { x = 2, y = -8 }, children = { k.squiggle(math.max(90, #t * 14), k.BLUE) } },
+                rect {
+                    width = "fill",
+                    height = 11,
+                    margin = { right = 8 },
+                    translate = { x = 2, y = -8 },
+                    background = k.BLUE,
+                    shape = underline(math.max(4, utf8.len(t) or #t)),
+                },
             }
         end),
     }

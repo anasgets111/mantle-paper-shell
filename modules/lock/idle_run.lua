@@ -75,6 +75,7 @@ end
 -- monitor too. It takes no input: the next keystroke or move resumes and lifts it.
 return panel {
     id = "paper-idle-dim",
+    namespace = "paper-idle-dim",
     layer = "overlay",
     anchor = { top = true, bottom = true, left = true, right = true },
     exclusive_zone = "ignore",

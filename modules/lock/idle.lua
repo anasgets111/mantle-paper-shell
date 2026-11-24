@@ -5,6 +5,7 @@
 -- Stages arm one after another: each stage's seconds count from the one before it, and a stage
 -- arms only once its predecessor reports `done`. Profiles: `ac` and `battery`.
 local util = require("lib.util")
+local G = require("modules.lock.glyphs")
 
 -- Off until the paper shell is finished: no threshold is registered, so nothing dims, locks,
 -- blanks or suspends, and no automatic (camera/mic) hold is taken. The settings page still edits
@@ -29,12 +30,12 @@ idle.blanked = state("lock.idle.blanked", false)
 local STAGES = {
     {
         key = "dim", title = "Dim the screen", detail = "Any input brings it back",
-        icon = "display-brightness-symbolic", options = { 30, 60, 90, 120, 180, 240, 300, 600 },
+        icon = G.dim, options = { 30, 60, 90, 120, 180, 240, 300, 600 },
         done = function() return idle.dimmed:get() end,
     },
     {
         key = "lock", title = "Lock the screen", detail = "Needs your password to come back",
-        icon = "system-lock-screen-symbolic", options = { 15, 30, 60, 120, 300, 600, 1800 },
+        icon = G.lock, options = { 15, 30, 60, 120, 300, 600, 1800 },
         done = function()
             local lock = mantle.lock:get()
             return lock ~= nil and lock.active
@@ -42,13 +43,13 @@ local STAGES = {
     },
     {
         key = "dpms", title = "Turn off displays", detail = "Until input comes back",
-        icon = "video-display-symbolic", options = { 15, 30, 60, 120, 300, 600, 900 },
+        icon = G.display, options = { 15, 30, 60, 120, 300, 600, 900 },
         done = function() return idle.blanked:get() end,
     },
     -- Terminal: no `done`, so nothing waits behind it.
     {
         key = "suspend", title = "Suspend", detail = "Sleeps the machine",
-        icon = "weather-clear-night-symbolic", options = { 300, 600, 900, 1800, 3600, 7200 },
+        icon = G.suspend, options = { 300, 600, 900, 1800, 3600, 7200 },
     },
 }
 

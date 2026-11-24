@@ -1,55 +1,60 @@
--- Every icon the start menu draws, by role, so another icon set (stickers, doodles) swaps in here.
+-- Every icon the start menu draws, by role: pencil doodles for glyphs and die-cut stickers for apps,
+-- both from components/icons.lua. `name` keeps theme names for components/menu.lua, which draws its own.
 local k = require("lib.paper")
+local paper_icons = require("components.icons")
 
 local M = {}
 
-local NAMES = {
-    search = "system-search-symbolic",
+-- Role → doodle name; a role without one draws its theme icon through `doodle_for`.
+local DOODLES = {
+    search = "search",
+    lock = "lock",
+    logout = "logout",
+    suspend = "suspend",
+    reboot = "restart",
+    poweroff = "power",
+    home = "home",
+    documents = "file",
+    downloads = "download",
+    pictures = "image",
+    music = "music",
+    videos = "video",
+    settings = "settings",
+    terminal = "terminal",
+    -- Recent files, by mime family.
+    folder = "folder",
+    image = "image",
+    audio = "music",
+    video = "video",
+    text = "file",
+    archive = "folder",
+    document = "file",
+}
+
+local THEME = {
     calc = "accessories-calculator-symbolic",
     open = "media-playback-start-symbolic",
     pin = "view-pin-symbolic",
     menu_pin = "non-starred-symbolic",
     menu_unpin = "starred-symbolic",
-    lock = "system-lock-screen-symbolic",
-    logout = "application-exit-symbolic",
-    suspend = "weather-clear-night-symbolic",
-    reboot = "system-reboot-symbolic",
-    poweroff = "system-shutdown-symbolic",
-    home = "user-home-symbolic",
-    documents = "folder-documents-symbolic",
-    downloads = "folder-download-symbolic",
-    pictures = "folder-pictures-symbolic",
-    music = "folder-music-symbolic",
-    videos = "folder-videos-symbolic",
-    settings = "emblem-system-symbolic",
-    terminal = "utilities-terminal-symbolic",
-    -- Recent files, by mime family.
-    folder = "folder-symbolic",
-    image = "image-x-generic-symbolic",
-    audio = "audio-x-generic-symbolic",
-    video = "video-x-generic-symbolic",
-    text = "text-x-generic-symbolic",
-    archive = "package-x-generic-symbolic",
-    document = "x-office-document-symbolic",
 }
 
 -- The theme name for a role, for components that take a name (the context menu).
 function M.name(role)
-    return NAMES[role]
+    return THEME[role]
 end
 
--- A symbolic glyph in ink. `props` adds node properties (alignment, padding).
-function M.glyph(role, size, color, props)
-    local t = { name = NAMES[role], size = size, foreground = color or k.INK, align_v = "center" }
-    for key, v in pairs(props or {}) do t[key] = v end
-    return icon(t)
+-- A pencil glyph in ink, centred in its slot.
+function M.glyph(role, size, color)
+    local doodle = DOODLES[role]
+    local node = doodle and paper_icons.doodle(doodle, size, color or k.INK)
+        or paper_icons.doodle_for(THEME[role], size, color or k.INK)
+    return rect { align_h = "center", align_v = "center", children = { node } }
 end
 
--- An app's own full-colour icon.
-function M.app(app, size, props)
-    local t = { name = app.icon or "application-x-executable", size = size, align_v = "center" }
-    for key, v in pairs(props or {}) do t[key] = v end
-    return icon(t)
+-- An app's own icon as a die-cut sticker. Its box is `size` plus the cut margin on each side.
+function M.app(app, size)
+    return paper_icons.sticker(app.icon or "application-x-executable", size)
 end
 
 return M

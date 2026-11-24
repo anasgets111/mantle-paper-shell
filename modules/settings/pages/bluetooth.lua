@@ -3,6 +3,7 @@
 local k = require("lib.paper")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
+local ui_state = require("lib.ui_state")
 local icons = require("modules.settings.icons")
 
 local bt = mantle.bluetooth
@@ -20,6 +21,13 @@ local PROMPTS = {
 
 local searching = state("settings.bluetooth.searching", false)
 
+-- The close hook is edge-triggered, and a reload can land between a search and the close: a search
+-- this page started must not outlive the notebook.
+if searching:get() and ui_state.active_modal:get() ~= "settings" then
+    searching:set(false)
+    bt:stop_discovery()
+end
+
 local function name_of(d)
     return d.name ~= "" and d.name or d.mac
 end
@@ -27,7 +35,7 @@ end
 local function device_row(d, actions, detail)
     local left = {
         icons.glyph(d.category or "generic", 20),
-        rows.label(name_of(d)),
+        rows.label(name_of(d), { tip = "bluetooth.name." .. d.mac }),
         detail and rows.caption(detail) or false,
     }
     if d.busy then return rows.line(left, { rows.caption(BUSY[d.busy] or d.busy) }) end
@@ -54,6 +62,40 @@ local function section(title, field, build)
 end
 
 -- The pairing question on a sticky note. Entry kinds take the secret through `secure_submit`.
+local function pairing_card(r)
+    local who = r.name ~= "" and (r.name .. " (" .. r.mac .. ")") or r.mac
+    local question = r.kind == "display" and string.format(PROMPTS.display, r.code or "", who)
+        or r.kind == "confirm" and string.format(PROMPTS.confirm, who, r.code or "")
+        or string.format(PROMPTS[r.kind] or "%s", who)
+    local controls = {}
+    if r.kind == "pin_entry" or r.kind == "passkey_entry" then
+        controls = {
+            c.field {
+                id = "settings.bluetooth.pin",
+                width = 260,
+                size = 24,
+                placeholder = r.kind == "pin_entry" and "PIN" or "Passkey",
+                autofocus = true,
+                secure_submit = { capability = "bluetooth", action = "pair", name = r.id .. "/" .. r.mac },
+                on_cancel = function() bt:answer_pairing(r.mac, false) end,
+            },
+        }
+    elseif r.kind ~= "display" then
+        controls = {
+            rows.button("bt.accept", r.kind == "confirm" and "It matches" or "Allow", "primary",
+                function() bt:answer_pairing(r.mac, true) end),
+            rows.button("bt.reject", "Refuse", "danger", function() bt:answer_pairing(r.mac, false) end),
+        }
+    end
+    return rows.sticky(column {
+        spacing = 10,
+        children = {
+            k.hand(question, 28, { font_weight = 700, max_width = 560, wrap = "word" }),
+            row { spacing = 12, children = controls },
+        },
+    }, 7)
+end
+
 local function pairing_note()
     local asked = bt:map(function(b)
         local r = b.pairing_request
@@ -63,53 +105,7 @@ local function pairing_note()
         width = "fill",
         children = asked:map(function(key)
             if key == "" then return {} end
-            local r = bt:get().pairing_request
-            local who = r.name ~= "" and (r.name .. " (" .. r.mac .. ")") or r.mac
-            local question = r.kind == "display" and string.format(PROMPTS.display, r.code or "", who)
-                or r.kind == "confirm" and string.format(PROMPTS.confirm, who, r.code or "")
-                or string.format(PROMPTS[r.kind] or "%s", who)
-            local controls
-            if r.kind == "pin_entry" or r.kind == "passkey_entry" then
-                controls = {
-                    c.field {
-                        id = "settings.bluetooth.pin",
-                        width = 260,
-                        size = 24,
-                        placeholder = r.kind == "pin_entry" and "PIN" or "Passkey",
-                        secure_submit = { capability = "bluetooth", action = "pair", name = r.id .. "/" .. r.mac },
-                        on_cancel = function() bt:answer_pairing(r.mac, false) end,
-                    },
-                }
-            elseif r.kind ~= "display" then
-                controls = {
-                    rows.button("bt.accept", r.kind == "confirm" and "It matches" or "Allow", "primary",
-                        function() bt:answer_pairing(r.mac, true) end),
-                    rows.button("bt.reject", "Refuse", "danger", function() bt:answer_pairing(r.mac, false) end),
-                }
-            else
-                controls = {}
-            end
-            return {
-                rect {
-                    padding = { top = 8, bottom = 8, left = 4 },
-                    children = {
-                        c.sticky {
-                            width = 520,
-                            height = 120,
-                            seed = 7,
-                            rotate = -1,
-                            child = column {
-                                padding = { left = 18, top = 14, right = 18 },
-                                spacing = 10,
-                                children = {
-                                    k.hand(question, 28, { font_weight = 700 }),
-                                    row { spacing = 12, children = controls },
-                                },
-                            },
-                        },
-                    },
-                },
-            }
+            return { pairing_card(bt:get().pairing_request) }
         end),
     }
 end

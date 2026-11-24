@@ -6,6 +6,7 @@ local util = require("lib.util")
 local rows = require("modules.settings.rows")
 local icons = require("modules.settings.icons")
 local store = require("lib.store")
+local apps = require("lib.apps")
 
 local notes = mantle.notifications
 
@@ -28,12 +29,14 @@ store.muted_apps:on_change(apply)
 apply(store.muted_apps:get(), {})
 
 -- Senders seen in the feed plus anything already muted, so a muted app that has gone quiet stays listed.
-local senders = computed({ notes, store.muted_apps }, function(n, muted)
+-- Icon: the sender's own, else its desktop entry's, so a muted list reads as app icons.
+local senders = computed({ notes, store.muted_apps, mantle.applications }, function(n, muted, applications)
     local seen, list = {}, {}
     local function add(key, name, icon)
         if key and key ~= "" and not seen[key] then
             seen[key] = true
-            list[#list + 1] = { key = key, name = name, icon = icon }
+            local entry = apps.entry(applications, key)
+            list[#list + 1] = { key = key, name = name, icon = icon or (entry and entry.icon) }
         end
     end
     for _, item in ipairs(n and n.feed or {}) do
@@ -52,8 +55,8 @@ local function app_rows()
             local list = {}
             for _, app in ipairs(senders:get()) do
                 list[#list + 1] = rows.line({
-                    icons.glyph(app.icon or "app", 20),
-                    rows.label(app.name),
+                    icons.app(app.icon or "application-x-executable"),
+                    rows.label(app.name, { tip = "notifications.app." .. app.key }),
                 }, {
                     c.checkbox_row {
                         id = "settings.notifications.mute." .. app.key,

@@ -12,6 +12,7 @@ local power = require("modules.startmenu.power")
 local M = {}
 
 local W, H = 560, 660
+local PAD_L, PAD_R = 74, 30
 local CONTENT_H = H - 150
 M.WIDTH, M.HEIGHT = W, H
 
@@ -101,6 +102,7 @@ local function move(key)
     if key ~= "Up" and key ~= "Down" and key ~= "Left" and key ~= "Right" then return false end
     local count = #model.page:get().items
     if count == 0 then return false end
+    power.disarm()
     local now = model.selected:get()
     local target = (now == 0 or not placed[now]) and 1 or step(now, key)
     model.selected:set(target)
@@ -116,7 +118,8 @@ local function search_line()
             controls.field {
                 id = "startmenu.search",
                 placeholder = "Type to search apps, or sums…",
-                width = 440,
+                -- The content width less the glyph and gap, so the line ends at the right margin.
+                width = W - PAD_L - PAD_R - 32,
                 size = 28,
                 autofocus = true,
                 focus_target = model.search_focus,
@@ -124,9 +127,10 @@ local function search_line()
                     power.disarm()
                     model.query:set(text)
                 end,
+                -- Only a highlighted item: a bare Enter on the pinned page must not launch the first pin.
                 on_submit = function()
-                    local page = model.page:get()
-                    model.activate(page.items[math.max(1, model.selected:get())])
+                    local chosen = model.selected:get()
+                    if chosen > 0 then model.activate(model.page:get().items[chosen]) end
                 end,
                 -- The engine clears the text and drops focus on Escape; a clear keeps the menu open.
                 on_cancel = function(cleared)
@@ -167,7 +171,10 @@ local function header()
                             id = all and "startmenu.back" or "startmenu.all",
                             label = all and "‹ Pinned" or "All apps ›",
                             size = 26,
-                            on_click = function() model.show(all and "favourites" or "all") end,
+                            on_click = function()
+                                power.disarm()
+                                model.show(all and "favourites" or "all")
+                            end,
                         },
                     }
                 end),
@@ -180,7 +187,7 @@ function M.page()
     return column {
         width = W,
         height = H,
-        padding = { left = 74, right = 30, top = 26 },
+        padding = { left = PAD_L, right = PAD_R, top = 26 },
         spacing = 10,
         children = {
             search_line(),

@@ -8,6 +8,7 @@
 -- stale `pending` left by a reload is harmless.
 local k = require("lib.paper")
 local icons = require("modules.startmenu.icons")
+local tips = require("modules.startmenu.tips")
 local compositor = require("lib.compositor")
 local ui_state = require("lib.ui_state")
 
@@ -41,9 +42,10 @@ local function armed_now()
     return ""
 end
 
--- Seconds left on the armed action, ticking with the clock's once-a-second push.
-local left = computed({ mantle.clock, pending, deadline }, function(clock, key, at)
-    local now = (clock and clock.monotonic) or 0
+-- Seconds left on the armed action, ticking with the clock's once-a-second push. Read live: the
+-- pushed value can be a second old, which would open the count at 11.
+local left = computed({ mantle.clock, pending, deadline }, function(_, key, at)
+    local now = mantle.clock:now()
     if key == "" or now >= at then return { key = "", seconds = 0 } end
     return { key = key, seconds = math.ceil(at - now) }
 end, { key = "", seconds = 0 })
@@ -68,11 +70,13 @@ local function press(a)
     a.run()
 end
 
+-- Icon-only, so each stub names itself in a tooltip.
 local function stub(a, i)
-    local hovered = hover("startmenu.power." .. a.key)
+    local slot = "startmenu.power." .. a.key
+    local hovered = hover(slot)
     local stock = k.STOCK[a.stock]
     local face = left:map(function(l) return l.key == a.key and l.seconds or 0 end)
-    return rect {
+    return tips.wrap(rect {
         width = W,
         height = H,
         hover = hovered,
@@ -104,34 +108,21 @@ local function stub(a, i)
                                 font_weight = 700, foreground = k.RED, align_h = "center", align_v = "center",
                             }) }
                         end
-                        return { icons.glyph(a.icon, 24, stock[2], { align_h = "center" }) }
+                        return { icons.glyph(a.icon, 24, stock[2]) }
                     end),
                 },
             },
         },
-    }
+    }, slot, a.label)
 end
 
--- The caption under the row: the hovered stub's name in pencil, or the armed countdown in red.
+-- The armed countdown in red marker under the row.
 local function caption()
-    local hovers = {}
-    for i, a in ipairs(ACTIONS) do hovers[i] = hover("startmenu.power." .. a.key) end
-    local deps = { left }
-    for _, h in ipairs(hovers) do deps[#deps + 1] = h end
-    return computed(deps, function(l, ...)
-        if l.key ~= "" then
-            return { k.hand(string.format("%s in %d… click again", ACTIONS[l.key].label, l.seconds), 26, {
-                font_weight = 700, foreground = k.RED, align_h = "center",
-            }) }
-        end
-        for i = 1, #ACTIONS do
-            if select(i, ...) then
-                return { k.body(ACTIONS[i].label, 18, {
-                    foreground = k.INK_SOFT, align_h = "center", padding = { top = 6 },
-                }) }
-            end
-        end
-        return {}
+    return left:map(function(l)
+        if l.key == "" then return {} end
+        return { k.hand(string.format("%s in %d… click again", ACTIONS[l.key].label, l.seconds), 26, {
+            font_weight = 700, foreground = k.RED, align_h = "center",
+        }) }
     end)
 end
 
@@ -142,7 +133,8 @@ function M.row()
         width = "fill",
         spacing = 6,
         children = {
-            row { spacing = 8, align_h = "center", children = stubs },
+            -- Five 52 px stubs and four 6 px gaps span the right page's 284 px content width.
+            row { spacing = 6, children = stubs },
             rect { width = "fill", height = 36, children = caption() },
         },
     }

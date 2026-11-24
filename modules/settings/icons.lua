@@ -1,48 +1,64 @@
--- Every icon the settings notebook draws, by role, so another icon set swaps in here alone.
-local k = require("lib.paper")
+-- Every icon the settings notebook draws, by role: pencil doodles for symbols, die-cut stickers for
+-- apps (`components/icons.lua`). A role without a doodle falls back to its theme icon.
+local kit = require("components.icons")
+local util = require("lib.util")
 
-local NAMES = {
+local DOODLES = {
     -- Tabs.
-    wifi = "network-wireless-symbolic",
-    bluetooth = "bluetooth-symbolic",
-    sound = "audio-speakers-symbolic",
-    displays = "video-display-symbolic",
-    power = "battery-full-symbolic",
-    appearance = "applications-graphics-symbolic",
-    keyboard = "input-keyboard-symbolic",
-    notifications = "preferences-system-notifications-symbolic",
-    about = "help-about-symbolic",
+    wifi = "wifi",
+    bluetooth = "bluetooth",
+    sound = "volume-high",
+    displays = "display",
+    power = "power",
+    appearance = "image",
+    keyboard = "keyboard",
+    notifications = "bell",
+    about = "user",
     -- Rows.
+    password = "lock",
+    secure = "lock",
+    brightness = "brightness",
+    battery = "battery",
+    peripheral = "battery",
+    computer = "display",
+    generic = "bluetooth",
+}
+
+-- Theme names: roles with no doodle, and the paper discs, which draw a theme icon.
+local THEME = {
     refresh = "view-refresh-symbolic",
-    password = "dialog-password-symbolic",
-    warning = "dialog-warning-symbolic",
-    secure = "system-lock-screen-symbolic",
-    vpn = "network-vpn-symbolic",
-    brightness = "display-brightness-symbolic",
-    battery = "battery-good-symbolic",
-    peripheral = "battery-symbolic",
     speaker = "audio-volume-high-symbolic",
     microphone = "audio-input-microphone-symbolic",
-    stream = "audio-x-generic-symbolic",
-    app = "application-x-executable-symbolic",
-    -- Bluetooth device categories.
+    warning = "dialog-warning-symbolic",
+    vpn = "network-vpn-symbolic",
     mouse = "input-mouse-symbolic",
     headphones = "audio-headphones-symbolic",
     headset = "audio-headset-symbolic",
     phone = "phone-symbolic",
-    computer = "computer-symbolic",
-    generic = "bluetooth-symbolic",
 }
 
 local I = {}
 
--- `role` names an entry above; anything else is an app's own theme icon, used as given.
+-- The theme icon name for a role, for controls that take one (`disc_button`).
 function I.name(role)
-    return NAMES[role] or role
+    return THEME[role] or role
 end
 
 function I.glyph(role, size, color)
-    return k.glyph(I.name(role), size, color)
+    if DOODLES[role] then return kit.doodle(DOODLES[role], size, color) end
+    return kit.doodle_for(THEME[role] or role, size, color)
+end
+
+-- An app's own icon as a sticker; a 22 px sticker fits a 34 px ruled row.
+function I.app(name, size)
+    return kit.sticker(name, size or 22)
+end
+
+-- Wi-Fi strength (0 to 100, plain or a signal) as the doodle with that many arcs.
+function I.signal(strength, size)
+    return kit.doodle(util.lift(strength, function(s)
+        return "wifi-" .. (s >= 80 and 4 or s >= 60 and 3 or s >= 40 and 2 or s >= 20 and 1 or 0)
+    end), size or 22)
 end
 
 return I

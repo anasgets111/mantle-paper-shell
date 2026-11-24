@@ -3,6 +3,8 @@
 local k = require("lib.paper")
 local c = require("components.controls")
 local util = require("lib.util")
+local tips = require("modules.settings.tips")
+local icons = require("modules.settings.icons")
 
 local R = {}
 
@@ -64,10 +66,20 @@ function R.heading(title, right)
     }
 end
 
+-- A row's label, cut with "…" when it runs out of room. With `tip`, a hover name unique to the
+-- row, a cut label shows its full text in a tooltip.
 function R.label(content, props)
     local t = { width = "fill", elide = "end" }
-    for key, v in pairs(props or {}) do t[key] = v end
-    return k.body(content, 21, t)
+    local tip
+    for key, v in pairs(props or {}) do
+        if key == "tip" then tip = v else t[key] = v end
+    end
+    if not tip then return k.body(content, 21, t) end
+    local cut = elided("settings.cut." .. tip)
+    t.elided = cut
+    return tips.wrap(k.body(content, 21, t), "settings.tip." .. tip, function()
+        return cut:get() and util.get(content) or ""
+    end)
 end
 
 function R.caption(content, props)
@@ -94,7 +106,6 @@ end
 function R.button(id, label, kind, on_click)
     return c.button {
         id = "settings." .. id, label = label, kind = kind, height = 32, size = 22, on_click = on_click,
-        width = math.max(84, #label * 11 + 34),
     }
 end
 
@@ -103,34 +114,50 @@ function R.action(id, label, on_click)
     return c.link { id = "settings." .. id, label = label, size = 24, on_click = on_click }
 end
 
--- Signal strength as four pencil bars; the filled ones are hatched blue marker.
-function R.bars(strength)
+-- Signal strength as a Wi-Fi doodle; `tip` names the hover slot of a tooltip giving the percentage.
+function R.bars(strength, tip)
+    return tips.wrap(rect { children = { icons.signal(strength) } }, "settings.tip." .. tip, function()
+        return "Signal " .. util.get(strength) .. "%"
+    end)
+end
+
+-- A sticky note that fits its content: deckled top, dog-eared corner, taped on. The shared
+-- `controls.sticky` takes a fixed size; this one's outline is percents and edge anchors.
+function R.sticky(child, seed)
+    local r = k.rng(seed)
+    local c = { { op = "M", points = { 0, 0 } } }
+    for i = 1, 20 do c[#c + 1] = { op = "L", points = { string.format("%d%%", i * 5), r() * 2.5 } } end
+    c[#c + 1] = { op = "L", points = { "100%", { from = "bottom", px = -12 } } }
+    c[#c + 1] = { op = "L", points = { { from = "right", px = -12 }, "100%" } }
+    c[#c + 1] = { op = "L", points = { 0, "100%" } }
+    c[#c + 1] = { op = "Z", points = {} }
     return rect {
-        width = 26,
-        height = 22,
-        children = util.lift(strength, function(s)
-            local lit = s >= 75 and 4 or s >= 50 and 3 or s >= 25 and 2 or s > 0 and 1 or 0
-            local bars = {}
-            for i = 1, 4 do
-                local h = 4 + i * 4.5
-                bars[i] = path {
-                    width = 26,
-                    height = 22,
-                    fill = i <= lit and "#3F74C7CC" or nil,
-                    stroke = i <= lit and k.DEEP_BLUE or "#3A363180",
-                    stroke_width = 1.3,
-                    stroke_join = "round",
-                    commands = {
-                        { op = "M", points = { (i - 1) * 6.5 + 1, 21 } },
-                        { op = "L", points = { (i - 1) * 6.5 + 1.4, 21 - h } },
-                        { op = "L", points = { (i - 1) * 6.5 + 5, 21 - h + 0.6 } },
-                        { op = "L", points = { (i - 1) * 6.5 + 5.2, 21 } },
-                        { op = "Z", points = {} },
+        rotate = -1,
+        padding = { top = 10, left = 4, bottom = 8 },
+        children = {
+            rect {
+                children = {
+                    rect {
+                        width = "fill",
+                        height = "fill",
+                        shape = { commands = c },
+                        background = k.STICKY,
+                        shadows = { { blur = 10, offset = { x = 2, y = 6 }, color = "#00000055" } },
+                        effect = k.paper_fx { rim = 0, grain = 0.18 },
                     },
-                }
-            end
-            return bars
-        end),
+                    rect { padding = { top = 16, left = 18, right = 26, bottom = 18 }, children = { child } },
+                    path {
+                        width = 12, height = 12, align_h = "end", align_v = "end", fill = k.STICKY_FOLD,
+                        shadows = { { blur = 3, offset = { x = -1, y = -1 }, color = "#00000040" } },
+                        commands = {
+                            { op = "M", points = { 0, 12 } }, { op = "L", points = { 12, 0 } },
+                            { op = "L", points = { 2, 2 } }, { op = "Z", points = {} },
+                        },
+                    },
+                },
+            },
+            k.tape { width = 64, height = 20, translate = { y = -8 }, rotate = 3, seed = seed },
+        },
     }
 end
 

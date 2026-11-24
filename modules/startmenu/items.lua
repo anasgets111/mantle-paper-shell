@@ -9,12 +9,14 @@ local model = require("modules.startmenu.model")
 local context = require("modules.startmenu.context")
 local grid = require("modules.startmenu.grid")
 local recent = require("modules.startmenu.recent")
+local tips = require("modules.startmenu.tips")
 
 local M = {}
 
 M.CELL_W, M.CELL_H = 112, 112
 M.ROW_H = 40
-M.CARD_W, M.CARD_H = 216, 66
+-- Two cards and their 8 px slots plus a 4 px gap span the left page's 456 px content width.
+M.CARD_W, M.CARD_H = 218, 66
 
 local function is_selected(i)
     return model.selected:map(function(s) return s == i end)
@@ -25,17 +27,24 @@ local function at_pointer(r, p)
     return { x = r.x + p.x, y = r.y + p.y, width = 1, height = 1 }
 end
 
-local function swipe(w, h, seed, visible)
+-- A highlighter swipe the width of whatever it sits behind.
+local function swipe(h, seed, visible)
     return rect {
-        width = w,
+        width = "fill",
         height = h,
         align_v = "center",
         background = k.HIGHLIGHT,
         blend = "multiply",
-        shape = k.tape_shape(w, h, seed),
+        shape = k.tape_shape(nil, nil, seed),
         opacity = visible:map(function(v) return v and 1 or 0 end),
         animate = { opacity = { duration = 110 } },
     }
+end
+
+-- A name cut by `elide` shows whole in the shared tooltip; uncut, the tooltip stays away. Each
+-- target wraps itself with `tips.wrap(node, slot, ...)` reading its own `elided` signal.
+local function cut_of(slot)
+    return elided(slot .. ".cut")
 end
 
 local function app_click(app)
@@ -51,13 +60,14 @@ end
 -- A pinned app: its icon standing on the page and its name in hand. Drag to reorder.
 function M.tile(item, i, items)
     local app = item.app
-    local hovered = hover("startmenu.tile." .. app.id)
+    local slot = "startmenu.tile." .. app.id
+    local hovered, cut = hover(slot), cut_of(slot)
     local selected = is_selected(i)
     local lit = computed({ hovered, selected }, function(h, s) return h or s end)
     local moving = model.drag:map(function(d) return d.id == app.id end)
     local press, dragged = { x = 0, y = 0 }, false
     local click = app_click(app)
-    return rect {
+    return tips.wrap(rect {
         width = M.CELL_W,
         height = M.CELL_H,
         hover = hovered,
@@ -113,18 +123,24 @@ function M.tile(item, i, items)
                         spacing = 6,
                         padding = { top = 12 },
                         children = {
-                            icons.app(app, 48, {
+                            -- The lift sits on a parent: the sticker's shadow layers redraw on each move.
+                            rect {
                                 align_h = "center",
                                 translate = lit:map(function(v) return { y = v and -3 or 0 } end),
                                 animate = { translate = { duration = 140, easing = "out_cubic" } },
-                            }),
+                                children = { icons.app(app, 44) },
+                            },
+                            -- Sized by the name, so the swipe covers the ink and no more.
                             rect {
-                                width = "fill",
-                                padding = { left = 8, right = 8 },
+                                align_h = "center",
                                 children = {
-                                    swipe(M.CELL_W - 16, 22, i, hovered),
+                                    swipe(24, i, hovered),
                                     k.body(app.name, 18, {
-                                        align_h = "center", elide = "end", max_width = M.CELL_W - 16,
+                                        align_h = "center",
+                                        elide = "end",
+                                        max_width = M.CELL_W - 8,
+                                        elided = cut,
+                                        padding = { left = 6, right = 6 },
                                     }),
                                 },
                             },
@@ -133,24 +149,25 @@ function M.tile(item, i, items)
                 },
             },
         },
-    }
+    }, slot, function() return cut:get() and app.name or "" end)
 end
 
 -- An app on one ruled line: icon, name, and its generic name in pencil.
 function M.app_row(item, i)
     local app = item.app
-    local hovered = hover("startmenu.row." .. app.id)
+    local slot = "startmenu.row." .. app.id
+    local hovered, cut = hover(slot), cut_of(slot)
     local lit = computed({ hovered, is_selected(i) }, function(h, s) return h or s end)
     local children = {
-        icons.app(app, 28),
-        k.body(app.name, 20, { align_v = "center", elide = "end", max_width = 300 }),
+        icons.app(app, 24),
+        k.body(app.name, 20, { align_v = "center", elide = "end", max_width = 300, elided = cut }),
     }
     if app.generic_name and app.generic_name ~= "" and app.generic_name ~= app.name then
         children[3] = k.body(app.generic_name, 16, {
             foreground = k.INK_SOFT, align_v = "center", elide = "end", width = "fill", text_align = "end",
         })
     end
-    return rect {
+    return tips.wrap(rect {
         width = "fill",
         height = M.ROW_H,
         hover = hovered,
@@ -158,12 +175,12 @@ function M.app_row(item, i)
         cursor = "pointer",
         on_click = app_click(app),
         children = {
-            swipe(420, M.ROW_H - 10, i + 7, lit),
+            swipe(M.ROW_H - 10, i + 7, lit),
             row {
                 width = "fill", height = "fill", spacing = 12, padding = { left = 8, right = 12 }, children = children,
             },
         },
-    }
+    }, slot, function() return cut:get() and app.name or "" end)
 end
 
 -- The calculator's answer in blue marker; Enter or a click copies it.
@@ -178,7 +195,7 @@ function M.calc_row(item, i)
         cursor = "pointer",
         on_click = function() model.activate(item) end,
         children = {
-            swipe(420, 38, 5, lit),
+            swipe(38, 5, lit),
             row {
                 width = "fill",
                 height = "fill",
@@ -201,10 +218,11 @@ end
 -- A recent file on a small index card: red header rule, mime glyph, name and date.
 function M.file_card(item, i)
     local f = item.file
-    local hovered = hover("startmenu.file." .. i)
+    local slot = "startmenu.file." .. i
+    local hovered, cut = hover(slot), cut_of(slot)
     local lit = computed({ hovered, is_selected(i) }, function(h, s) return h or s end)
     local w, h = M.CARD_W, M.CARD_H
-    return rect {
+    return tips.wrap(rect {
         width = w + 8,
         height = h + 8,
         hover = hovered,
@@ -244,7 +262,7 @@ function M.file_card(item, i)
                                 width = "fill",
                                 align_v = "center",
                                 children = {
-                                    k.body(f.name, 18, { elide = "middle", width = "fill" }),
+                                    k.body(f.name, 18, { elide = "middle", width = "fill", elided = cut }),
                                     k.body(recent.when(f.at, os.time()), 16, { foreground = k.INK_SOFT }),
                                 },
                             },
@@ -253,7 +271,7 @@ function M.file_card(item, i)
                 },
             },
         },
-    }
+    }, slot, function() return cut:get() and f.name or "" end)
 end
 
 -- A category heading in blue hand, with a pencil rule out to the margin.
@@ -265,11 +283,20 @@ function M.heading(name)
         padding = { left = 4 },
         children = {
             k.hand(name, 26, { font_weight = 700, foreground = k.BLUE, align_v = "end" }),
+            -- A pencil rule out to the margin, as long as the heading leaves room for.
             rect {
                 width = "fill",
+                height = 3,
                 align_v = "center",
-                padding = { top = 12, right = 12 },
-                children = { controls.divider(300, false, #name) },
+                margin = { top = 10, right = 12 },
+                background = "#3A363170",
+                shape = { commands = {
+                    { op = "M", points = { 0, "35%" } },
+                    { op = "Q", points = { "50%", "5%", "100%", "40%" } },
+                    { op = "L", points = { "100%", "85%" } },
+                    { op = "Q", points = { "50%", "55%", 0, "80%" } },
+                    { op = "Z", points = {} },
+                } },
             },
         },
     }

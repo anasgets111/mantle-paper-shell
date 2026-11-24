@@ -1,18 +1,46 @@
--- Every icon the taskbar draws goes through here, so a sticker or doodle icon set swaps in one place.
+-- Every icon the taskbar draws goes through here: die-cut app stickers, hand-drawn doodles, tray
+-- icons. Swapping a set means editing this file only.
 local k = require("lib.paper")
+local stickers = require("components.icons")
 
 local M = {}
 
--- An app's own icon (desktop entry `Icon=`, a theme name or a path), full colour.
-function M.app(name, size, props)
-    local t = { name = name or "application-x-executable", size = size, align_h = "center", align_v = "center" }
-    for key, v in pairs(props or {}) do t[key] = v end
-    return icon(t)
+-- components/icons.lua's resting sticker shadow, and the same light lifted as a hovered control is.
+local REST = {
+    { blur = 1.5, offset = { x = 0.5, y = 1 }, color = "#00000038" },
+    { blur = 6, offset = { x = 1.5, y = 3 }, color = "#00000042" },
+}
+local LIFT = {
+    { blur = 2.5, offset = { x = 1, y = 2 }, color = "#00000030" },
+    { blur = 14, offset = { x = 3, y = 8 }, color = "#00000050" },
+}
+
+-- The box an app sticker of icon size `size` takes.
+function M.app_box(size)
+    return size + 2 * stickers.sticker_pad(size)
 end
 
--- A symbolic glyph tinted with ink (status icons, tray icons drawn for a theme).
-function M.glyph(name, size, color)
-    return k.glyph(name, size, color)
+-- An app's icon (desktop entry `Icon=`) as a die-cut sticker. `hovered`, when given, lifts its shadow.
+function M.app(name, size, hovered)
+    local node = stickers.sticker(name or "application-x-executable", size)
+    if hovered then
+        node.shadows = hovered:map(function(v) return v and LIFT or REST end)
+        node.animate = { shadows = { duration = 160, easing = "out_cubic" } }
+    end
+    return node
+end
+
+-- A hand-drawn glyph by doodle name (`"wifi-3"`, `"bluetooth-off"`); name and colour may be signals.
+function M.doodle(name, size, color)
+    return stickers.doodle(name, size, color)
+end
+
+M.has = stickers.has
+M.glyph = k.glyph -- TEMP while callers move to doodles
+
+-- A tray item's theme icon, tinted with ink when it is symbolic.
+function M.tray(name, size)
+    return icon { name = name, size = size, foreground = k.INK, align_h = "center", align_v = "center" }
 end
 
 local INK_SHADER = mantle.config_dir .. "/modules/taskbar/ink.frag"

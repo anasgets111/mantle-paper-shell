@@ -3,10 +3,12 @@
 -- holding the owner's name and the password line. `preview` draws the same cover with a picture of
 -- the field, so it can be looked at without locking.
 local k = require("lib.paper")
+local icons = require("components.icons")
 local util = require("lib.util")
 local controls = require("components.controls")
 local identity = require("lib.identity")
 local password = require("modules.lock.password")
+local G = require("modules.lock.glyphs")
 
 local CW, CH = 600, 800
 local LABEL_W, LABEL_H = 460, 270
@@ -42,7 +44,7 @@ local function status_line(source)
         spacing = 6,
         visible = mantle.battery:map(function(b) return b.present end, false),
         children = {
-            k.glyph("battery-level-80-symbolic", 20, k.DEEP_BLUE),
+            icons.doodle(G.battery, 20, k.DEEP_BLUE),
             k.body(mantle.battery:map(function(b) return b.percent .. "%" end, ""), 20, {
                 foreground = k.DEEP_BLUE, align_v = "center",
             }),
@@ -52,7 +54,7 @@ local function status_line(source)
         spacing = 6,
         visible = mantle.keyboard:map(function(kb) return kb.active_layout ~= "" end, false),
         children = {
-            k.glyph("input-keyboard-symbolic", 20, k.DEEP_BLUE),
+            icons.doodle(G.keyboard, 20, k.DEEP_BLUE),
             k.body(mantle.keyboard:map(function(kb) return kb.active_layout end, ""), 20, {
                 foreground = k.DEEP_BLUE, align_v = "center",
             }),
@@ -82,29 +84,38 @@ local function label(output, opts)
         align_h = "center",
         color = "#F6EFDF",
         fx = { rim = 1.6 },
-        tapes = { { width = 120, height = 24, rotate = 2.5, seed = 31, color = "#E9D9A6C0" } },
+        tapes = { { width = 120, height = 24, rotate = 2.5, seed = 31, color = "#E9D9A6" } },
         child = rect {
             width = "fill",
             height = "fill",
             padding = { left = 34, right = 30, top = 30, bottom = 20 },
             children = {
                 column {
+                    width = "fill",
                     spacing = 4,
                     children = {
                         row {
+                            width = "fill",
                             spacing = 12,
                             children = {
                                 k.body("Name", 18, { foreground = k.INK_SOFT, align_v = "end", padding = { bottom = 10 } }),
                                 rect {
                                     width = "fill",
                                     children = {
-                                        k.hand(identity.full_name, 44, { font_weight = 700, elide = "end" }),
+                                        k.hand(identity.full_name, 44, { font_weight = 700, elide = "end", width = "fill" }),
                                         rect { align_v = "end", children = { controls.divider(LABEL_W - 130, false, 3) } },
                                     },
                                 },
                             },
                         },
-                        k.body(identity.account, 17, { foreground = k.INK_SOFT, padding = { left = 56, bottom = 18 } }),
+                        row {
+                            spacing = 6,
+                            padding = { left = 54, bottom = 18 },
+                            children = {
+                                icons.doodle(G.user, 16, k.INK_SOFT),
+                                k.body(identity.account, 17, { foreground = k.INK_SOFT, width = LABEL_W - 150, elide = "end" }),
+                            },
+                        },
                         field,
                     },
                 },
@@ -145,7 +156,7 @@ return function(output, opts)
                 width = 46,
                 height = CH + 8,
                 translate = { x = -6, y = -4 },
-                background = "#33528ACC",
+                background = "#33528A",
                 shape = k.tape_shape(46, CH + 8, 5),
                 shadows = k.SHADOW.tape,
                 effect = k.paper_fx { grain = 0.4, mottle = 0.25, rim = 0 },
@@ -154,9 +165,10 @@ return function(output, opts)
                 width = "fill",
                 height = "fill",
                 align_h = "center",
-                padding = { left = 46, top = 70, bottom = 40 },
+                padding = { left = 46, top = 48, bottom = 40 },
                 spacing = 10,
                 children = {
+                    util.with(icons.doodle(G.lock, 30, k.DEEP_BLUE), "align_h", "center"),
                     k.hand(now:map(function(t) return (os.date("%I:%M", t):gsub("^0", "")) end), 110, {
                         foreground = k.DEEP_BLUE, align_h = "center", line_height = 1.0,
                     }),
@@ -178,8 +190,6 @@ return function(output, opts)
         background = "#1C1A24",
         children = {
             image { source = k.DIR .. "/img/wallpaper.jpg", width = "fill", height = "fill", fit = "cover", async = true },
-            -- Lamp off: the desk at night.
-            rect { width = "fill", height = "fill", background = "#140F1C99" },
             cover,
         },
     }

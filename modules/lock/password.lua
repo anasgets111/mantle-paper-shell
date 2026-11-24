@@ -4,10 +4,12 @@
 --
 -- opts = { id, capability = "lock"|"polkit", source? (signal, default mantle[capability]),
 --          preview? (no secure field: a picture of one), width?, idle?, status? fn(state) -> text?,
---          on_cancel? }
+--          on_cancel?, submit_disc? (false: the caller has its own labelled submit) }
 local k = require("lib.paper")
+local icons = require("components.icons")
 local util = require("lib.util")
 local controls = require("components.controls")
+local G = require("modules.lock.glyphs")
 
 -- Damped left-right wobble, one keyframe per 60 ms.
 local SHAKE = {
@@ -80,7 +82,7 @@ return function(opts)
 
     local submit = controls.disc_button {
         id = opts.id .. ".go",
-        icon = "go-next-symbolic",
+        icon = G.submit,
         size = 40,
         seed = 77,
         tooltip = "Unlock",
@@ -92,7 +94,7 @@ return function(opts)
     local caps = rect {
         visible = mantle.keyboard:map(function(kb) return kb.caps_lock end, false),
         align_v = "center",
-        children = { controls.chip("Caps lock", "#F2CFC8D0", 2) },
+        children = { controls.chip("Caps lock", "#F2CFC8", 2) },
     }
 
     local lines = {
@@ -103,7 +105,7 @@ return function(opts)
             animate = fails:map(function(n)
                 return n > 0 and { translate = util.with(SHAKE, "run", n) } or {}
             end),
-            children = { field, submit },
+            children = opts.submit_disc == false and { field } or { field, submit },
         },
         row {
             width = W,
@@ -128,11 +130,11 @@ return function(opts)
             spacing = 8,
             visible = source:map(function(s) return s.fingerprint ~= nil end, false),
             children = {
-                k.glyph("auth-fingerprint-symbolic", 20, k.INK_SOFT),
+                icons.doodle(G.fingerprint, 20, k.INK_SOFT),
                 k.body(source:map(function(s)
                     local notes = s.fingerprint and s.fingerprint.messages or {}
                     return #notes > 0 and notes[#notes].text or "Or touch the fingerprint reader"
-                end, ""), 19, { foreground = k.INK_SOFT, align_v = "center" }),
+                end, ""), 19, { foreground = k.INK_SOFT, align_v = "center", width = W - 28, elide = "end" }),
             },
         }
     end

@@ -84,6 +84,7 @@ return {
     surfaces = {
         panel {
             id = "paper-icons-preview",
+            namespace = "paper-icons-preview",
             output = "active",
             layer = "overlay",
             exclusive_zone = "ignore",

@@ -14,14 +14,14 @@ end
 
 -- Stickers ---------------------------------------------------------------------------------------
 
-local CUT = "#FBF8F0"
+local CUT = k.CARD_LIGHT
 
--- The white margin of a die-cut sticker: sharp copies of the icon's silhouette pushed out in 12
+-- The white margin of a die-cut sticker: sharp copies of the icon's silhouette pushed out in 8
 -- directions. A `spread` would scale the silhouette about the centre, not grow it evenly.
 local function cut_layers(r)
     local layers = {}
-    for i = 0, 11 do
-        local a = i * math.pi / 6
+    for i = 0, 7 do
+        local a = i * math.pi / 4
         layers[#layers + 1] = { color = CUT, offset = { x = r * math.cos(a), y = r * math.sin(a) } }
     end
     return layers
@@ -58,7 +58,7 @@ function M.sticker(name, size, opts)
                 padding = M.sticker_pad(size),
                 rotate = opts.rotate or util.lift(name, turn),
                 -- Grain multiplies the colour by 1 +- a few percent, so the icon keeps its hue.
-                effect = opts.grain ~= false and k.paper_fx { grain = 0.16, mottle = 0.08 } or nil,
+                effect = opts.grain ~= false and k.paper_fx { grain = 0.35, mottle = 0.2 } or nil,
                 children = { icon { name = name, size = size, shadows = cut_layers(r) } },
             },
         },
@@ -335,10 +335,8 @@ local GLYPHS = {
         }
     end,
     keyboard = function()
-        local list = { closed(3, 6, 21, 6, 21, 18, 3, 18), line(8, 14.8, 16, 14.8) }
-        for _, y in ipairs({ 9.2, 11.8 }) do
-            for x = 7, 17, 5 do list[#list + 1] = dot(x, y, 0.8) end
-        end
+        local list = { closed(3, 6, 21, 6, 21, 18, 3, 18), line(8.5, 14.6, 15.5, 14.6) }
+        for x = 7, 17, 5 do list[#list + 1] = dot(x, 10, 0.4) end
         return list
     end,
     display = function()

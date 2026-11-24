@@ -5,6 +5,7 @@
 -- capability or the store can drive it.
 local k = require("lib.paper")
 local util = require("lib.util")
+local icons = require("components.icons")
 
 local INK, INK_SOFT, BLUE, RED, HAND = k.INK, k.INK_SOFT, k.BLUE, k.RED, k.HAND
 local hand, body = k.hand, k.body
@@ -128,12 +129,12 @@ function M.disc_button(o)
                 width = size,
                 height = size,
                 shape = k.torn_circle(size, o.seed or #o.icon),
-                color = o.color or "#F4ECDA",
+                color = o.color or k.CARD,
                 shadows = k.lift(hovered),
                 animate = { shadows = { duration = 160 } },
                 fx = { rim = 1.4 },
             },
-            icon { name = o.icon, size = math.floor(size * 0.46), foreground = o.ink or INK, align_h = "center", align_v = "center" },
+            util.with(icons.doodle(o.icon, math.floor(size * 0.46), o.ink or INK), "align_h", "center"),
         },
     }
 end
@@ -172,7 +173,7 @@ function M.toggle(o)
                         width = D,
                         height = D,
                         shape = k.torn_circle(D, 9),
-                        color = "#F6EFDF",
+                        color = k.CARD_LIGHT,
                         shadows = { { blur = 4, offset = { x = 1, y = 2 }, color = "#00000060" } },
                         fx = { rim = 1.4 },
                         child = rect {
@@ -414,7 +415,7 @@ function M.chip(label, color, seed)
         width = w,
         height = 30,
         rotate = ((seed or 1) % 3 - 1) * 2,
-        background = color or "#A9C3E3C8",
+        background = color or "#B5CBE6",
         shape = k.tape_shape(w, 30, seed or 1),
         shadows = k.SHADOW.tape,
         effect = k.paper_fx { grain = 0.35, mottle = 0.2, rim = 0 },
@@ -459,6 +460,21 @@ function M.sticky(o)
     return rect { rotate = o.rotate or -2, padding = { top = 10 }, children = children }
 end
 
+-- A notebook tab: card stock with rounded outer corners and a deckled top, end and bottom; the
+-- right end tucks under the page it belongs to.
+function M.tab_shape(w, h, seed)
+    local r = k.rng(seed)
+    local c = { { op = "M", points = { w, 0 } } }
+    for x = w - 8, 16, -8 do c[#c + 1] = { op = "L", points = { x, k.bite(r, 2) } } end
+    c[#c + 1] = { op = "corner", points = { 0, 0 }, radius = 9 }
+    for y = 14, h - 14, 8 do c[#c + 1] = { op = "L", points = { k.bite(r, 2), y } } end
+    c[#c + 1] = { op = "corner", points = { 0, h }, radius = 9 }
+    for x = 16, w - 8, 8 do c[#c + 1] = { op = "L", points = { x, h - k.bite(r, 2) } } end
+    c[#c + 1] = { op = "L", points = { w, h } }
+    c[#c + 1] = { op = "Z", points = {} }
+    return { commands = c }
+end
+
 -- Focus: a blue pencil loop drawn round a control in place of a solid ring.
 function M.pencil_loop(w, h, seed)
     local r = k.rng(seed or 99)
@@ -467,8 +483,9 @@ function M.pencil_loop(w, h, seed)
         local j = function() return (r() - 0.5) * 2 end
         c[#c + 1] = { op = "M", points = { w * 0.15 + j(), 3 + j() } }
         c[#c + 1] = { op = "C", points = { w * 0.6, -1 + j(), w + 2, 2 + j(), w - 2 + j(), h / 2 } }
-        c[#c + 1] = { op = "C", points = { w + 1, h - 1 + j(), w * 0.4, h + 2, 6 + j(), h - 6 + j() } }
-        c[#c + 1] = { op = "C", points = { -2, h / 2 + j(), 0, 4, w * 0.25 + pass * 8, 1 + j() } }
+        -- The bottom-left join keeps its control points in line so the pencil doesn't kink there.
+        c[#c + 1] = { op = "C", points = { w + 1, h - 1 + j(), w * 0.12, h + 1, 3, h * 0.7 } }
+        c[#c + 1] = { op = "C", points = { -1, h * 0.4, 0, 4, w * 0.25 + pass * 8, 1 + j() } }
     end
     return k.stroke_path(w, h, c, BLUE, 1.8)
 end

@@ -1,12 +1,18 @@
 -- The idle settings page body (timers, profiles, inhibit), shown by the settings builder on its
--- Power page. Returns a function building the page's node. Ported from
+-- Power page. Call it to build the page's node; `.surface` is its tooltip popup. Ported from
 -- ~/.config/mantle/modules/global/idle_settings.lua with paper controls.
 local k = require("lib.paper")
+local icons = require("components.icons")
 local util = require("lib.util")
 local controls = require("components.controls")
 local idle = require("modules.lock.idle")
+local G = require("modules.lock.glyphs")
+local tooltip = require("components.tooltip")
 
 local ROW_H = 72
+
+-- The page is drawn inside the settings modal, so its notes hang from that surface.
+local tips = tooltip.new { id = "paper-idle-tip", parent = "paper-modal-host", side = "top" }
 local PROFILES = { { "ac", "Plugged in" }, { "battery", "On battery" } }
 
 local settings = idle.settings
@@ -55,14 +61,14 @@ local function stepper(stage)
         -- A press here is a click, never the start of a row drag.
         on_drag = function() end,
         children = {
-            controls.disc_button { id = "lock.idle.less." .. stage.key, icon = "go-previous-symbolic", size = 34, seed = 3,
-                tooltip = "Shorter", on_click = function() step(-1) end },
+            tips.wrap(controls.disc_button { id = "lock.idle.less." .. stage.key, icon = G.less, size = 34, seed = 3,
+                tooltip = "Shorter", on_click = function() step(-1) end }, "paper.disc.lock.idle.less." .. stage.key, "Shorter"),
             k.hand(current:map(idle.format), 28, {
                 font_weight = 700, width = 78, text_align = "center", align_v = "center",
                 foreground = current:map(function(sec) return sec > 0 and k.DEEP_BLUE or k.INK_SOFT end),
             }),
-            controls.disc_button { id = "lock.idle.more." .. stage.key, icon = "go-next-symbolic", size = 34, seed = 5,
-                tooltip = "Longer", on_click = function() step(1) end },
+            tips.wrap(controls.disc_button { id = "lock.idle.more." .. stage.key, icon = G.more, size = 34, seed = 5,
+                tooltip = "Longer", on_click = function() step(1) end }, "paper.disc.lock.idle.more." .. stage.key, "Longer"),
         },
     }
 end
@@ -124,9 +130,9 @@ local function stage_row(item)
                 spacing = 14,
                 padding = { left = 6, right = 8 },
                 children = {
-                    k.glyph("list-drag-handle-symbolic", 18, k.INK_SOFT),
+                    icons.doodle(G.drag, 18, k.INK_SOFT),
                     k.hand(tostring(item.index), 30, { font_weight = 700, foreground = k.BLUE, width = 24, align_v = "center" }),
-                    k.glyph(stage.icon, 22, k.INK),
+                    icons.doodle(stage.icon, 22, k.INK),
                     column {
                         width = "fill",
                         align_v = "center",
@@ -172,7 +178,8 @@ local status = computed({ settings, idle.schedule, idle.reasons }, function(s, p
     return s.enabled and "First: " .. line or "Paused; would " .. line
 end)
 
-return function()
+-- Called like a function by the settings page; `surface` is the tooltip popup for the shell's list.
+local function build()
     local children = {
         controls.section("When idle", {
             row {
@@ -227,7 +234,7 @@ return function()
                 spacing = 10,
                 padding = { left = 16, top = 10 },
                 children = {
-                    k.glyph("dialog-information-symbolic", 20),
+                    icons.doodle(G.info, 20),
                     k.body("Idle actions are switched off in this build. Timers are saved for later.", 18, {
                         align_v = "center", width = 470, wrap = "word",
                     }),
@@ -237,3 +244,5 @@ return function()
     end
     return column { width = "fill", spacing = 26, children = children }
 end
+
+return setmetatable({ surface = tips.surface }, { __call = function() return build() end })

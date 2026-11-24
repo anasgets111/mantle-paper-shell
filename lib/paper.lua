@@ -116,14 +116,18 @@ local function paper_fx(o)
     }
 end
 
--- A strip of tape with zigzag torn ends.
+-- A strip of tape with zigzag torn ends. With `w` and `h` nil the shape follows its box (edge
+-- anchors and percents), so a `width = "fill"` strip fits whatever it sits behind.
 local function tape_shape(w, h, seed)
     local r = rng(seed)
-    local c = { { op = "M", points = { 0, 0 } }, { op = "L", points = { w, 0 } } }
-    for i = 1, 5 do c[#c + 1] = { op = "L", points = { w - (i % 2) * (2 + 3 * r()), h * i / 6 } } end
-    c[#c + 1] = { op = "L", points = { w, h } }
-    c[#c + 1] = { op = "L", points = { 0, h } }
-    for i = 5, 1, -1 do c[#c + 1] = { op = "L", points = { (i % 2) * (2 + 3 * r()), h * i / 6 } } end
+    local function x_right(d) return w and w - d or { from = "right", px = -d } end
+    local function y_at(f) return h and h * f or string.format("%.2f%%", f * 100) end
+    local right, bottom = x_right(0), y_at(1)
+    local c = { { op = "M", points = { 0, 0 } }, { op = "L", points = { right, 0 } } }
+    for i = 1, 5 do c[#c + 1] = { op = "L", points = { x_right((i % 2) * (2 + 3 * r())), y_at(i / 6) } } end
+    c[#c + 1] = { op = "L", points = { right, bottom } }
+    c[#c + 1] = { op = "L", points = { 0, bottom } }
+    for i = 5, 1, -1 do c[#c + 1] = { op = "L", points = { (i % 2) * (2 + 3 * r()), y_at(i / 6) } } end
     c[#c + 1] = { op = "Z", points = {} }
     return { commands = c }
 end
@@ -137,7 +141,7 @@ local function tape(o)
         translate = o.translate or { y = -12 },
         rotate = o.rotate or -3,
         z = 2,
-        background = o.color or "#D9C89BB0",
+        background = o.color or "#DDCDA5",
         shape = tape_shape(o.width or 86, o.height or 24, o.seed or 3),
         shadows = { { blur = 3, offset = { y = 1 }, color = "#00000030" } },
         effect = paper_fx { grain = 0.35, mottle = 0.2, rim = 0 },
@@ -324,7 +328,7 @@ end
 -- Card stocks: the tint of the paper and the ink written on it.
 local STOCK = {
     primary = { "#C5D7EE", DEEP_BLUE },
-    plain = { "#F4ECDA", INK },
+    plain = { "#F4ECDA", INK }, -- CARD
     danger = { "#F2CFC8", DEEP_RED },
 }
 
@@ -344,6 +348,8 @@ return {
     DIR = DIR, PAPER = PAPER, INK = INK, INK_SOFT = INK_SOFT, BLUE = BLUE, DEEP_BLUE = DEEP_BLUE,
     RED = RED, DEEP_RED = DEEP_RED, HAND = HAND, BODY = BODY,
     STICKY = "#F3E3A0", STICKY_FOLD = "#DCC67A", GROOVE = "#E2D6BC", HIGHLIGHT = "#F2C94C80",
+    -- Card stock: CARD for controls and cards, CARD_LIGHT for photo cuts and the lightest slips.
+    CARD = "#F4ECDA", CARD_LIGHT = "#F6EFE0",
     STOCK = STOCK, SHADOW = SHADOW, lift = lift,
     rng = rng, bite = bite, torn = torn, torn_bottom = torn_bottom, torn_top = torn_top, torn_circle = torn_circle,
     paper_fx = paper_fx, tape = tape, tape_shape = tape_shape, sheet = sheet, card = card,

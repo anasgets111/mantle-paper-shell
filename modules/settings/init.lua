@@ -2,9 +2,11 @@
 -- Returns a `components.modal` entry for `modules/modal_host.lua`, plus:
 --   page        state `settings.page`: the open page's key (`mantle set settings.page '"sound"'`)
 --   open(key)   open the modal on that page
+--   surfaces    the tooltip popup on the modal host, for shell.lua's surface list
 local modal = require("components.modal")
 local ui_state = require("lib.ui_state")
 local notebook = require("modules.settings.notebook")
+local tips = require("modules.settings.tips")
 
 local wifi = require("modules.settings.pages.wifi")
 local bluetooth = require("modules.settings.pages.bluetooth")
@@ -46,6 +48,7 @@ local entry = modal {
 }
 
 entry.page = page
+entry.surfaces = { tips.surface }
 function entry.open(key)
     page:set(key)
     ui_state.active_modal:set("settings")

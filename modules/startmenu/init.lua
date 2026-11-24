@@ -1,6 +1,6 @@
 -- Start menu (ArcMenu's default layout) as an open notebook: apps and search on the left page,
 -- the user, places and power on the right, index tabs down the left edge. Returns a
--- `components.modal` entry plus `surfaces` for its right-click note.
+-- `components.modal` entry plus `surfaces` for its right-click note and tooltip.
 local k = require("lib.paper")
 local controls = require("components.controls")
 local util = require("lib.util")
@@ -8,6 +8,7 @@ local ui_state = require("lib.ui_state")
 local modal = require("components.modal")
 local model = require("modules.startmenu.model")
 local context = require("modules.startmenu.context")
+local tips = require("modules.startmenu.tips")
 local power = require("modules.startmenu.power")
 local tabs = require("modules.startmenu.tabs")
 local left = require("modules.startmenu.left")
@@ -15,8 +16,6 @@ local right = require("modules.startmenu.right")
 
 local H = left.HEIGHT
 local BOOK_W = left.WIDTH + right.WIDTH
--- Tabs reach this far under the left page.
-local OVERLAP = 22
 -- Rules line up with the 40 px rows that start under the page title.
 local RULES = { top = 172, pitch = 40 }
 
@@ -60,10 +59,10 @@ end
 
 local entry = modal {
     kind = model.KIND,
-    scrim = false,
     align_h = "start",
     align_v = "end",
-    margin = { left = 12, bottom = 64 },
+    -- The host already ends at the taskbar; 20 px holds the sheet's shadow.
+    margin = { left = 12, bottom = 20 },
     reset_on_close = util.concat(model.reset, power.reset),
     card = rect {
         -- A click on bare paper cancels an armed power action.
@@ -80,14 +79,15 @@ local entry = modal {
         },
         children = {
             row {
-                spacing = -OVERLAP,
+                spacing = -tabs.OVERLAP,
                 children = { tabs.column(), rect { z = 1, children = { book() } } },
             },
+            tabs.bridge(),
         },
     },
 }
 
-entry.surfaces = context.surfaces
+entry.surfaces = util.concat(context.surfaces, { tips.surface })
 -- The note belongs to the open menu.
 ui_state.on_modal_close(model.KIND, context.close)
 

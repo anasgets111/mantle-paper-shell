@@ -3,9 +3,15 @@
 local k = require("lib.paper")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
+local tips = require("modules.settings.tips")
 local icons = require("modules.settings.icons")
 
 local net = mantle.network
+
+-- A Connect link can sit far down a long list; the key line is at the top, so go there.
+net:map(function(n) return n.password_ssid ~= nil end, false):on_change(function(asking)
+    if asking then scroll("settings.scroll.wifi"):scroll_to(0) end
+end)
 
 local function wifi_device(n)
     return n and n.wifi_devices and n.wifi_devices[1]
@@ -25,10 +31,10 @@ end
 local function radio_rows()
     return {
         rows.heading("Wireless", {
-            c.disc_button {
-                id = "settings.wifi.scan", icon = icons.name("refresh"), size = 34, tooltip = "Scan again",
+            tips.wrap(c.disc_button {
+                id = "settings.wifi.scan", icon = icons.name("refresh"), size = 34, tooltip = "Scan for networks",
                 on_click = function() net:scan() end,
-            },
+            }, "paper.disc.settings.wifi.scan", "Scan for networks"),
         }),
         rows.line({
             rows.label("Wi-Fi"),
@@ -87,6 +93,7 @@ local function password_rows()
                     width = 420,
                     size = 22,
                     placeholder = "Password, then Enter",
+                    autofocus = true,
                     secure_submit = { capability = "network", action = "connect" },
                     on_cancel = function() net:cancel_connect() end,
                 },
@@ -132,12 +139,12 @@ local function network_row(ap, busy)
                 if a.ssid == ap.ssid then return a.strength end
             end
             return 0
-        end, ap.strength)),
-        rows.label(ap.ssid, { font_weight = ap.active and 700 or 400 }),
+        end, ap.strength), "wifi.bars." .. ap.ssid),
+        rows.label(ap.ssid, { font_weight = ap.active and 700 or 400, tip = "wifi.ssid." .. ap.ssid }),
         -- Fixed slots keep the lock and band in columns down the list.
         ap.secure and icons.glyph("secure", 16, k.INK_SOFT) or rect { width = 16 },
         rows.caption(ap.band, { width = 58, text_align = "end" }),
-        ap.saved and c.chip("saved", "#C9D8EAC8", #ap.ssid) or false,
+        ap.saved and c.chip("saved", "#C9D8EA", #ap.ssid) or false,
     }
     return rows.line(left, right)
 end
@@ -192,7 +199,7 @@ local function vpn_rows()
             for _, vpn in ipairs(n and n.vpns or {}) do
                 list[#list + 1] = rows.line({
                     icons.glyph("vpn", 20),
-                    rows.label(vpn.id),
+                    rows.label(vpn.id, { tip = "wifi.vpn." .. vpn.uuid }),
                     rows.caption(vpn.kind),
                 }, {
                     rows.caption(net:map(function(now)

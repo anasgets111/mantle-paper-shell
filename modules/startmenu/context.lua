@@ -3,13 +3,15 @@ local apps = require("lib.apps")
 local menu = require("components.menu")
 local model = require("modules.startmenu.model")
 local icons = require("modules.startmenu.icons")
+local power = require("modules.startmenu.power")
 
-local note = menu.new { id = "startmenu-menu", parent = "paper-modal-host" }
+local note = menu.new { id = "paper-startmenu-menu", parent = "paper-modal-host" }
 
 local M = { surfaces = note.surfaces, close = note.close }
 
 -- `rect`: a surface-local box to hang the note from (the pointer, from `on_click`).
 function M.open(rect, app)
+    power.disarm()
     local id = app.id
     local function item(label, role, fn) return { label = label, icon = icons.name(role), on_click = fn } end
     note.open(rect, {

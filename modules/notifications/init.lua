@@ -10,9 +10,10 @@
 local history = require("modules.notifications.history")
 local popups = require("modules.notifications.popups")
 local center = require("modules.notifications.center")
+local tips = require("modules.notifications.tips")
 
 local M = {}
-M.surfaces = { popups, center.popup }
+M.surfaces = { popups, tips.popups.surface, center.popup, tips.menu.surface }
 M.unread = history.unread
 M.unread_by_app = history.unread_by_app
 M.open_center = center.open

@@ -3,6 +3,19 @@
 -- entry is dropped while a more important one shows, so a held volume key cannot swallow caps lock.
 local osd = {}
 
+-- Every icon the OSD draws: doodle names, or a theme name where no doodle exists.
+local G = {
+    muted = "volume-muted",
+    low = "volume-low",
+    medium = "volume-medium",
+    high = "volume-high",
+    mic = "mic",
+    mic_off = "mic-off",
+    brightness = "brightness",
+    keyboard = "keyboard",
+    backlight = "keyboard-brightness-symbolic",
+}
+
 -- Lower is more important; toggles a key press asked for outrank levels. Unlisted kinds are last.
 local PRIORITY = { mic = 1, locks = 2, layout = 2, volume = 3, brightness = 3, backlight = 3 }
 
@@ -31,10 +44,10 @@ local function active(devices)
 end
 
 local function volume_icon(sink)
-    if sink.muted or (sink.volume or 0) <= 0 then return "audio-volume-muted-symbolic" end
-    if sink.volume < 34 then return "audio-volume-low-symbolic" end
-    if sink.volume < 67 then return "audio-volume-medium-symbolic" end
-    return "audio-volume-high-symbolic"
+    if sink.muted or (sink.volume or 0) <= 0 then return G.muted end
+    if sink.volume < 34 then return G.low end
+    if sink.volume < 67 then return G.medium end
+    return G.high
 end
 
 local function toggle(kind, on, what, icon)
@@ -62,7 +75,7 @@ mantle.audio:on_change(function(audio, previous)
     local source, source_was = active(audio.sources), active(previous.sources)
     if source and source_was and source.id == source_was.id and source.muted ~= source_was.muted then
         osd.show("mic", {
-            icon = source.muted and "microphone-disabled-symbolic" or "microphone-sensitivity-high-symbolic",
+            icon = source.muted and G.mic_off or G.mic,
             text = source.muted and "Mic muted" or "Mic on",
             off = source.muted,
         })
@@ -72,7 +85,7 @@ end)
 mantle.brightness:on_change(function(brightness, previous)
     if previous and brightness.percent ~= previous.percent then
         osd.show("brightness", {
-            icon = "display-brightness-symbolic", text = brightness.percent .. "%", level = brightness.percent,
+            icon = G.brightness, text = brightness.percent .. "%", level = brightness.percent,
         })
     end
 end)
@@ -80,17 +93,17 @@ end)
 mantle.keyboard:on_change(function(keyboard, previous)
     if previous == nil then return end
     if keyboard.active_layout ~= previous.active_layout and keyboard.active_layout ~= "" then
-        osd.show("layout", { icon = "input-keyboard-symbolic", text = keyboard.active_layout })
+        osd.show("layout", { icon = G.keyboard, text = keyboard.active_layout })
     end
     if keyboard.caps_lock ~= previous.caps_lock then
-        toggle("locks", keyboard.caps_lock, "Caps lock", "input-keyboard-symbolic")
+        toggle("locks", keyboard.caps_lock, "Caps lock", G.keyboard)
     end
     if keyboard.num_lock ~= previous.num_lock then
-        toggle("locks", keyboard.num_lock, "Num lock", "input-keyboard-symbolic")
+        toggle("locks", keyboard.num_lock, "Num lock", G.keyboard)
     end
     if keyboard.backlight_percent and keyboard.backlight_percent ~= previous.backlight_percent then
         osd.show("backlight", {
-            icon = "keyboard-brightness-symbolic",
+            icon = G.backlight,
             text = keyboard.backlight_percent .. "%",
             level = keyboard.backlight_percent,
         })

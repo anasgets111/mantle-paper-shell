@@ -43,12 +43,13 @@ local function entry(id, label, glyph, on_click, width)
         on_click = on_click,
         children = {
             rect {
-                width = width - 6,
+                width = "fill",
                 height = 28,
                 align_v = "center",
+                margin = { right = 6 },
                 background = k.HIGHLIGHT,
                 blend = "multiply",
-                shape = k.tape_shape(width - 6, 28, #label),
+                shape = k.tape_shape(nil, nil, #label),
                 opacity = hovered:map(function(v) return v and 1 or 0 end),
                 animate = { opacity = { duration = 110 } },
             },

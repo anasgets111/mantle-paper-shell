@@ -1,11 +1,17 @@
 -- Quick settings (GNOME system menu): a card-stock sheet that pops up from the taskbar's status
 -- icons. Interface the taskbar relies on:
 --   surfaces      list of popups to add to the shell
---   open(rect)    toggle the quick-settings popup anchored to the clicked status icons
+--   open(rect, section?)  toggle the quick-settings popup anchored to the clicked status icons;
+--                         section "privacy" circles the "In use" strip (the privacy stickers)
 local k = require("lib.paper")
+local util = require("lib.util")
+local icons = require("components.icons")
 local controls = require("components.controls")
 local ui_state = require("lib.ui_state")
 local tiles = require("modules.quick.tiles")
+local privacy = require("modules.quick.privacy")
+local G = require("modules.quick.glyphs")
+local tooltip = require("components.tooltip")
 
 local M = {}
 
@@ -14,17 +20,26 @@ local MAX_VOLUME = 150
 
 local open = state("quick.open", false)
 local anchor = state("quick.anchor", { x = 0, y = 0, width = 1, height = 1 })
+-- The section the opener asked for; "" for none.
+local section = state("quick.section", "")
 
-function M.open(r)
-    if open:get() then
+-- A click on the status icons while open dismisses the grab first; if that same click then reaches
+-- `open`, it must close rather than reopen.
+local dismissed_at = -1
+
+function M.open(r, wanted)
+    if open:get() or mantle.clock:now() - dismissed_at < 0.3 then
         open:set(false)
         return
     end
+    section:set(wanted or "")
     anchor:set({ x = r.x or 0, y = r.y or 0, width = math.max(1, r.width or 1), height = math.max(1, r.height or 1) })
     open:set(true)
 end
 
 local function close() open:set(false) end
+
+local tips = tooltip.new { id = "paper-quick-tip", parent = "paper-quick", side = "top" }
 
 local function sink_of(audio)
     for _, sink in ipairs(audio and audio.sinks or {}) do
@@ -52,28 +67,24 @@ local function battery_line(b)
 end
 
 local function action_disc(id, icon_name, tooltip, fn)
-    return controls.disc_button {
+    return tips.wrap(controls.disc_button {
         id = "quick." .. id, icon = icon_name, size = 46, tooltip = tooltip,
         on_click = function()
             close()
             fn()
         end,
-    }
+    }, "paper.disc.quick." .. id, tooltip)
 end
 
 local header = row {
     width = "fill",
     spacing = 12,
     children = {
-        icon {
-            name = mantle.battery:map(function(b) return b.present and battery_icon(b) or "ac-adapter-symbolic" end,
-                "ac-adapter-symbolic"),
-            size = 22, foreground = k.INK, align_v = "center",
-        },
+        icons.doodle_for(mantle.battery:map(function(b) return b.present and battery_icon(b) or G.ac end, G.ac), 22),
         k.body(mantle.battery:map(battery_line, ""), 21, { align_v = "center", width = "fill" }),
-        action_disc("settings", "emblem-system-symbolic", "Settings", function() ui_state.toggle_modal("settings") end),
-        action_disc("lock", "system-lock-screen-symbolic", "Lock", function() mantle.lock:lock() end),
-        action_disc("power", "system-shutdown-symbolic", "Power", function() ui_state.toggle_modal("startmenu") end),
+        action_disc("settings", G.settings, "Settings", function() ui_state.toggle_modal("settings") end),
+        action_disc("lock", G.lock, "Lock", function() mantle.lock:lock() end),
+        action_disc("power", G.power, "Power", function() ui_state.toggle_modal("startmenu") end),
     },
 }
 
@@ -88,21 +99,24 @@ local volume = row {
     spacing = 12,
     visible = mantle.audio:map(function(a) return sink_of(a) ~= nil end, false),
     children = {
-        controls.disc_button {
+        tips.wrap(controls.disc_button {
             id = "quick.mute",
             seed = 61,
             size = 38,
             tooltip = "Mute",
             icon = mantle.audio:map(function(a)
                 local s = sink_of(a)
-                if not s or s.muted or (s.volume or 0) <= 0 then return "audio-volume-muted-symbolic" end
-                return s.volume < 50 and "audio-volume-low-symbolic" or "audio-volume-high-symbolic"
-            end, "audio-volume-high-symbolic"),
+                if not s or s.muted or (s.volume or 0) <= 0 then return G.volume_muted end
+                return s.volume < 50 and G.volume_low or G.volume_high
+            end, G.volume_high),
             on_click = function()
                 local s = sink_of(mantle.audio:get())
                 if s then mantle.audio:toggle_mute(s.id) end
             end,
-        },
+        }, "paper.disc.quick.mute", function()
+            local s = sink_of(mantle.audio:get())
+            return s and s.muted and "Unmute" or "Mute"
+        end),
         -- The bar spans the sink's whole range, 0 to 150%, so a boosted volume still has a place on it.
         controls.slider {
             id = "quick.volume",
@@ -129,7 +143,7 @@ local brightness = row {
     spacing = 12,
     visible = mantle.brightness:map(function(b) return b ~= nil end, false),
     children = {
-        rect { width = 38, height = 38, children = { k.glyph("display-brightness-symbolic", 20) } },
+        rect { width = 38, height = 38, children = { icons.doodle(G.brightness, 20) } },
         controls.slider {
             id = "quick.brightness",
             width = 300,
@@ -147,28 +161,34 @@ local brightness = row {
 local has_brightness = mantle.brightness:map(function(b) return b ~= nil end, false)
 
 -- The torn edge is cut for a fixed size, so the sheet is rebuilt when a tile or slider comes or goes.
-local sheet = computed({ tiles.count, has_brightness }, function(count, lit)
+local flagged = section:map(function(s) return s == "privacy" end)
+
+local sheet = computed({ tiles.count, has_brightness, privacy.in_use }, function(count, lit, in_use)
     local rows = (count + 1) // 2
-    local height = 24 + 46 + 16 + 6 + 16 + 38 + (lit and 54 or 0) + 16 + rows * tiles.HEIGHT + (rows - 1) * 10 + 22
+    local strip = privacy.height(#in_use)
+    local height = 24 + 46 + 16 + (strip > 0 and strip + 16 or 0) + 6 + 16 + 38 + (lit and 54 or 0) + 16
+        + rows * tiles.HEIGHT + (rows - 1) * 10 + 22
     return k.card {
         width = W,
         height = height,
         seed = 811,
         rotate = 0.4,
         color = k.STOCK.plain[1],
-        tapes = { { width = 96, height = 22, translate = { y = -10 }, rotate = -3, seed = 23, color = "#A9C3E3B8" } },
+        tapes = { { width = 96, height = 22, translate = { y = -10 }, rotate = -3, seed = 23, color = "#B4CBE6" } },
         child = column {
             width = "fill",
             height = "fill",
             spacing = 16,
             padding = { left = 22, right = 22, top = 24, bottom = 22 },
-            children = {
-                header,
-                controls.divider(W - 44, false, 7),
-                volume,
-                brightness,
-                row { width = "fill", wrap = true, spacing = 8, line_spacing = 10, children = tiles.build() },
-            },
+            children = util.concat(
+                { header },
+                util.concat(#in_use > 0 and { privacy.build(in_use, W - 44, tips, flagged) } or {}, {
+                    controls.divider(W - 44, false, 7),
+                    volume,
+                    brightness,
+                    row { width = "fill", wrap = true, spacing = 8, line_spacing = 10, children = tiles.build(tips) },
+                })
+            ),
         },
     }
 end)
@@ -177,6 +197,7 @@ M.surfaces = {
     popup {
         id = "paper-quick",
         parent = "paper-taskbar",
+        grab = false, -- TEMP-TEST
         visible = open,
         anchor_rect = anchor,
         anchor = "top_right",
@@ -184,16 +205,17 @@ M.surfaces = {
         offset = { y = -6 },
         constraint_adjustment = { "slide_x", "flip_y" },
         on_escape = close,
-        on_dismiss = close,
+        reset_on_close = { section },
+        on_dismiss = function()
+            dismissed_at = mantle.clock:now()
+            close()
+        end,
         child = rect {
             padding = 18,
-            -- Hyprland's `blur_popups` frosts a whole popup that asks for no blur region; a blur box
-            -- under the opaque sheet makes the region the sheet itself, where the blur never shows.
-            children = sheet:map(function(card)
-                return { rect { width = W - 16, height = "fill", margin = 14, compositor_blur = true }, card }
-            end),
+            children = sheet:map(function(card) return { card } end),
         },
     },
+    tips.surface,
 }
 
 return M

@@ -1,9 +1,9 @@
 -- The now-playing card under the calendar: cover pinned with tape, Caveat title, three paper discs.
 -- Shown only while an MPRIS player runs; the playing one wins, else the longest-running.
 local k = require("lib.paper")
-local controls = require("components.controls")
 local util = require("lib.util")
 local glyphs = require("modules.notifications.glyphs")
+local tips = require("modules.notifications.tips").menu
 
 local M = {}
 
@@ -30,26 +30,26 @@ local function cover(p)
 end
 
 local function controls_row(p)
-    local function disc(name, icon, cmd, enabled)
-        return controls.disc_button {
+    local function disc(name, label, icon, cmd, enabled)
+        return tips.wrap(glyphs.disc {
             id = "notifications.media." .. name,
             icon = icon,
             size = name == "play" and 38 or 32,
             seed = #name + 70,
-            tooltip = name,
+            tooltip = label,
             ink = enabled and k.INK or "#3A363160",
             on_click = function() if enabled then mantle.mpris:control(p.id, cmd) end end,
-        }
+        }, "paper.disc.notifications.media." .. name, label)
     end
     local playing = p.play_state == "playing"
     return row {
         spacing = 10,
         align_v = "center",
         children = {
-            disc("previous", glyphs.previous, "previous", p.can_go_previous),
-            disc("play", playing and glyphs.pause or glyphs.play,
+            disc("previous", "Previous track", glyphs.previous, "previous", p.can_go_previous),
+            disc("play", playing and "Pause" or "Play", playing and glyphs.pause or glyphs.play,
                 "play_pause", playing and p.can_pause or p.can_play),
-            disc("next", glyphs.next, "next", p.can_go_next),
+            disc("next", "Next track", glyphs.next, "next", p.can_go_next),
         },
     }
 end

@@ -4,6 +4,7 @@ local k = require("lib.paper")
 local c = require("components.controls")
 local util = require("lib.util")
 local rows = require("modules.settings.rows")
+local tips = require("modules.settings.tips")
 local icons = require("modules.settings.icons")
 
 local audio = mantle.audio
@@ -22,7 +23,7 @@ end
 local function level_row(kind, icon)
     local function current() return active(audio:get(), kind) end
     return rows.line({
-        c.disc_button {
+        tips.wrap(c.disc_button {
             id = "settings.sound.mute." .. kind,
             icon = icons.name(icon),
             size = 32,
@@ -32,7 +33,10 @@ local function level_row(kind, icon)
                 local d = current()
                 if d then audio:toggle_mute(d.id) end
             end,
-        },
+        }, "paper.disc.settings.sound.mute." .. kind, function()
+            local d = current()
+            return d and (d.muted and "Unmute " or "Mute ") .. d.name or ""
+        end),
         c.slider {
             id = "settings.sound.level." .. kind,
             width = 420,
@@ -103,8 +107,8 @@ local function app_rows()
                 if not app.recording then
                     local live = device("apps", app.id)
                     list[#list + 1] = rows.line({
-                        icons.glyph(app.icon or "stream", 20),
-                        rows.label(rows.clip(app_name(app), 40), { width = 230 }),
+                        icons.app(app.icon or "audio-x-generic"),
+                        rows.label(app_name(app), { width = 230, tip = "sound.app." .. app.id }),
                         c.slider {
                             id = "settings.sound.app." .. app.id,
                             width = 260,

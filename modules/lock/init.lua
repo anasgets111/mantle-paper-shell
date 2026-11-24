@@ -7,6 +7,7 @@ local util = require("lib.util")
 local cover = require("modules.lock.cover")
 local polkit = require("modules.lock.polkit")
 local dim_panel = require("modules.lock.idle_run")
+local idle_page = require("modules.lock.idle_page")
 
 -- Keep the lock up while the cover fades out after a correct password.
 mantle.lock:set_unlock_animation(260)
@@ -24,6 +25,7 @@ local preview_state = state("lock.preview_state", {
 
 local preview_panel = panel {
     id = "paper-lock-preview",
+    namespace = "paper-lock-preview",
     output = "active",
     layer = "overlay",
     anchor = { top = true, bottom = true, left = true, right = true },
@@ -37,4 +39,4 @@ local preview_panel = panel {
     end),
 }
 
-return { surfaces = { lock_screen, polkit, preview_panel, dim_panel } }
+return { surfaces = { lock_screen, polkit, preview_panel, dim_panel, idle_page.surface } }

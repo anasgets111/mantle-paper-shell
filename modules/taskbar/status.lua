@@ -40,14 +40,15 @@ local function battery_icon(b)
 end
 
 -- A yellow highlighter swipe behind a hovered button, as on the menu rows.
-local function swipe(hovered, w, h, seed)
+-- Fills the button, whatever its content: the button is a stack sized by its row.
+local function swipe(hovered, h, seed)
     return rect {
-        width = w,
+        width = "fill",
         height = h,
         align_v = "center",
         background = k.HIGHLIGHT,
         blend = "multiply",
-        shape = k.tape_shape(w, h, seed),
+        shape = k.tape_shape(nil, nil, seed),
         opacity = hovered:map(function(v) return v and 1 or 0 end),
         animate = { opacity = { duration = 120 } },
     }
@@ -62,7 +63,7 @@ local function button(o)
         cursor = "pointer",
         on_click = o.on_click,
         children = {
-            swipe(hovered, o.swipe_w, 30, o.seed),
+            swipe(hovered, 30, o.seed),
             row {
                 height = "fill",
                 spacing = o.spacing or 12,
@@ -79,7 +80,6 @@ function M.icons(output)
     return button {
         name = "taskbar.status." .. output,
         label = "Quick settings",
-        swipe_w = 178,
         seed = 21,
         on_click = function(r) quick.open(r) end,
         children = {
@@ -103,7 +103,6 @@ function M.clock(output)
     return button {
         name = "taskbar.clock." .. output,
         label = "Date, calendar and notifications",
-        swipe_w = 210,
         seed = 34,
         spacing = 10,
         on_click = function(r) notifications.open_center(r) end,
