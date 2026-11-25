@@ -66,6 +66,8 @@ local function nudge(kind, ceiling)
     end
 end
 local nudge_volume, nudge_mic = nudge("sinks", MAX_VOLUME), nudge("sources", 100)
+-- The taskbar's speaker wheel, so both stop at the same ceiling.
+M.nudge_volume = nudge_volume
 
 local function nudge_brightness(_, steps)
     local b = mantle.brightness:get()

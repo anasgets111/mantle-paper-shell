@@ -138,14 +138,10 @@ function M.icons(output)
         children = {
             icons.status_glyph(mantle.network:map(M.wifi_name, "wifi-off")),
             icons.status_glyph(mantle.bluetooth:map(M.bluetooth_name, "bluetooth-off")),
-            -- Wheel over the speaker: the default sink, 5 % a notch.
+            -- Wheel over the speaker: the default sink, 5 % a notch, as in quick settings.
             rect {
                 align_v = "center",
-                on_wheel = function(_, steps)
-                    local s = default_sink(mantle.audio:get())
-                    if not s then return end
-                    mantle.audio:set_volume(s.id, math.max(0, math.min(100, (s.volume or 0) + 5 * steps)))
-                end,
+                on_wheel = quick.nudge_volume,
                 children = { icons.status_glyph(mantle.audio:map(M.volume_name, "volume-muted")) },
             },
             row {
