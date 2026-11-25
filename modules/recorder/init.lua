@@ -8,7 +8,7 @@ local popup = require("modules.recorder.popup")
 local indicator = require("modules.recorder.indicator")
 
 return {
-    surfaces = { popup.surface },
+    surfaces = { popup.surface, popup.keyboard_surface },
     open = popup.open,
     indicator = indicator.indicator,
 }

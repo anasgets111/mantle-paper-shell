@@ -7,6 +7,7 @@ local icons = require("components.icons")
 local ui_state = require("lib.ui_state")
 local svc = require("modules.recorder.service")
 local marks = require("modules.recorder.marks")
+local catcher = require("components.catcher")
 
 local M = {}
 
@@ -14,7 +15,8 @@ local KIND = "recorder"
 local MS = 160
 local W = 560
 
--- A click opens it with a grab, so an outside click closes it; the action has no press to grab with.
+-- A click opens the grab popup, so an outside click closes it; the action has no press to grab with,
+-- so it opens the same card on a keyboard catcher instead.
 local grab = state("recorder.grab", true)
 -- The compositor closed it: hidden at once, so the exit fade cannot reopen it.
 local dismissed = state("recorder.dismissed", false)
@@ -166,7 +168,7 @@ local function live()
 end
 
 -- The torn edge is cut for a fixed box, so each mode has its own height.
-local card = svc.recording:map(function(up)
+local function card(up)
     return k.card {
         width = W,
         height = up and 214 or 330,
@@ -181,7 +183,12 @@ local card = svc.recording:map(function(up)
             children = { up and live() or setup() },
         },
     }
-end)
+end
+
+-- The card as children, built per surface: a node belongs to one.
+local function cards()
+    return svc.recording:map(function(up) return { card(up) } end)
+end
 
 M.surface = popup {
     id = "paper-recorder",
@@ -191,8 +198,8 @@ M.surface = popup {
     gravity = "top_left",
     offset = { y = -6 },
     constraint_adjustment = { "slide_x", "flip_y" },
-    grab = grab,
-    visible = computed({ util.linger(showing, MS), dismissed }, function(v, gone) return v and not gone end),
+    grab = true,
+    visible = computed({ util.linger(showing, MS), dismissed, grab }, function(v, gone, g) return v and g and not gone end),
     on_dismiss = function()
         dismissed:set(true)
         if ui_state.panel_is(KIND) then close() end
@@ -206,8 +213,15 @@ M.surface = popup {
             opacity = { duration = MS, easing = "out_cubic", from = 0 },
             translate = { duration = MS, easing = "out_cubic", from = { y = 12 } },
         },
-        children = card:map(function(c) return { c } end),
+        children = cards(),
     },
+}
+
+M.keyboard_surface = catcher {
+    id = "paper-recorder-keys",
+    visible = computed({ showing, grab }, function(v, g) return v and not g end),
+    close = close,
+    card = function() return rect { padding = 18, children = cards() } end,
 }
 
 return M

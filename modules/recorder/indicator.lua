@@ -36,6 +36,7 @@ local function sticker(output)
         padding = { left = 4, right = 4 },
         hover = hovered,
         accessible_name = "Stop recording",
+        cursor = "pointer",
         on_click = function(_, button)
             if button == "right" then svc.toggle_pause() elseif button == "left" then svc.stop() end
         end,
