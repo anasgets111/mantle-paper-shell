@@ -489,12 +489,15 @@ local function family(name)
         :gsub("%-low$", ""):gsub("%-medium$", ""):gsub("%-high$", ""))
 end
 
-local function draw(name, size, color)
-    local build = GLYPHS[name]
-    if build == nil then return { k.glyph(name, size, color) } end
-    local strokes = build()
+-- The jittered strokes depend only on name and size (the seed comes from the name), so each pair
+-- is built once; a level change or a remount reuses them.
+local stroke_cache = {}
+
+local function passes_for(name, size)
+    local key = name .. "@" .. size
+    if stroke_cache[key] then return stroke_cache[key] end
+    local strokes = GLYPHS[name]()
     local s = size / 24
-    local width = math.max(1.3, 1.6 * s)
     -- Seeded by family and pass, so a level or an added slash only changes its own marks.
     local seed = hash(family(name))
     local jit = 0.4
@@ -512,6 +515,14 @@ local function draw(name, size, color)
             append(bucket, st, s, r, jit, pass.dx, pass.dy, pass ~= passes[1])
         end
     end
+    stroke_cache[key] = passes
+    return passes
+end
+
+local function draw(name, size, color)
+    if GLYPHS[name] == nil then return { k.glyph(name, size, color) } end
+    local passes = passes_for(name, size)
+    local width = math.max(1.3, 1.6 * size / 24)
     local function node(commands, props)
         local t = {
             width = size, height = size, stroke = color, stroke_width = width,
