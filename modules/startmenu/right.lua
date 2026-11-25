@@ -7,6 +7,7 @@ local identity = require("lib.identity")
 local ui_state = require("lib.ui_state")
 local model = require("modules.startmenu.model")
 local power = require("modules.startmenu.power")
+local tips = require("modules.startmenu.tips")
 
 local M = {}
 
@@ -94,6 +95,40 @@ local function avatar()
     }
 end
 
+-- Beside the avatar, the name takes the largest hand from 34 px down to 24 px that fits, worked out
+-- from its width at 34 px laid out unseen; a name too long even at 24 px elides and shows whole in
+-- the tooltip.
+local NAME_W, NAME_MAX, NAME_MIN = W - 170, 34, 24
+
+local function name()
+    local slot = "startmenu.name"
+    local box, cut = geometry(slot .. ".measure"), elided(slot .. ".cut")
+    local size = box:map(function(r)
+        if r.width <= NAME_W then return NAME_MAX end
+        return math.max(NAME_MIN, math.floor(NAME_MAX * NAME_W / r.width))
+    end)
+    return tips.wrap(rect {
+        children = {
+            rect {
+                width = 0,
+                height = 0,
+                opacity = 0,
+                hittable = false,
+                children = { k.hand(identity.full_name, NAME_MAX, { font_weight = 700, geometry = box }) },
+            },
+            rect {
+                children = size:map(function(px)
+                    return {
+                        k.hand(identity.full_name, px, {
+                            font_weight = 700, elide = "end", max_width = NAME_W, elided = cut,
+                        }),
+                    }
+                end),
+            },
+        },
+    }, slot, function() return cut:get() and identity.full_name:get() or "" end)
+end
+
 local function pairs_of(list)
     local rows = {}
     for at = 1, #list, 2 do
@@ -122,9 +157,9 @@ function M.page()
                         align_v = "center",
                         spacing = 0,
                         children = {
-                            k.hand(identity.full_name, 34, { font_weight = 700, elide = "end", max_width = W - 170 }),
+                            name(),
                             k.body(identity.account, 16, {
-                                foreground = k.INK_SOFT, elide = "end", max_width = W - 170,
+                                foreground = k.INK_SOFT, elide = "end", max_width = NAME_W,
                             }),
                         },
                     },
