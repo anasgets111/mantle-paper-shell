@@ -666,6 +666,8 @@ function M.pencil_loop(w, h, seed, pad)
         c[#c + 1] = { op = "C", points = { -1, h * 0.4, 0, 4, w * 0.25 + pass * 8, 1 + j() } }
     end
     local loop = k.stroke_path(w, h, c, BLUE, 1.8)
+    -- Thin at the pencil's touch-down and lift-off, as a drawn loop is.
+    loop.taper_start, loop.taper_end = 10, 24
     if p > 0 then loop.translate = { x = -p, y = -p } end
     return loop
 end
