@@ -17,7 +17,9 @@ local H, GAP, TOP = 44, 7, 22
 local PAD_L, PAD_R = 16, 10
 -- How far a tab tucks further under the page: the open one least; all of them nearly away while a
 -- search is typed, since results ignore the tab.
-local TUCK = { open = 0, hover = 8, rest = 14, searching = 112, held = 5 }
+local TUCK = { open = 0, hover = 8, rest = 14, held = 5 }
+-- While a search is typed, every tab shows only this much past the page.
+local SEARCH_STUB = 32
 -- DESIGN.md's three tab stocks: cream, blue, pink.
 local TINTS = { "#E9DDBB", "#C9D8EA", "#EBCBC5" }
 
@@ -83,8 +85,8 @@ local function tab(t, i)
                 end,
                 on_drag = model.track(slot),
                 -- Held, a tab is pushed a little further under the page.
-                translate = computed({ open, lit, searching, held }, function(on, over, s, h)
-                    local x = s and TUCK.searching or on and TUCK.open or over and TUCK.hover or TUCK.rest
+                translate = computed({ open, lit, searching, held, M.width }, function(on, over, s, h, w)
+                    local x = s and w - M.OVERLAP - SEARCH_STUB or on and TUCK.open or over and TUCK.hover or TUCK.rest
                     return { x = x + (h and TUCK.held or 0) }
                 end),
                 animate = { translate = { spring = { stiffness = 320, damping = 22 } } },
