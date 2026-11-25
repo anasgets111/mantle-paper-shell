@@ -11,7 +11,8 @@ local store = require("lib.store")
 local W = {}
 
 W.DEFAULT = k.DIR .. "/img/wallpaper.jpg"
-W.FOLDER = "/mnt/Work/1Wallpapers/Main"
+-- The picker's folder: `$PAPER_WALLPAPERS`, else ~/Pictures/Wallpapers.
+W.FOLDER = os.getenv("PAPER_WALLPAPERS") or ((os.getenv("HOME") or "") .. "/Pictures/Wallpapers")
 -- `image.fit` values with the picker's labels.
 W.FITS = { { "cover", "Fill" }, { "contain", "Fit" }, { "stretch", "Stretch" } }
 
