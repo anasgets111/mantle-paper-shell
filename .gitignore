@@ -1,0 +1,9 @@
+# Runtime state the shell writes next to its config.
+state*.json
+positions.json
+# Local screenshots and review captures.
+shots/
+gaps/
+*.png
+!img/*.png
+.fc-cache/
