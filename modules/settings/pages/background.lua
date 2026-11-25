@@ -18,10 +18,11 @@ local IMG_W, IMG_H, BORDER = 124, 70, 6
 local CUT_W, CUT_H = IMG_W + 2 * BORDER, IMG_H + 2 * BORDER
 local CELL_H, VISIBLE_ROWS = rows.PITCH * 4, 3
 local GRID = scroll("settings.wallpaper.grid")
--- The grid opens at its top, as every page does.
+-- The grid opens at its top, as every page does, and again whenever Appearance's tab changes.
 ui_state.modal_showing("settings"):on_change(function(open)
     if open then GRID:scroll_to(0) end
 end)
+state("settings.appearance.tab", 1):on_change(function() GRID:scroll_to(0) end)
 
 local function slot(path) return "settings.wallpaper." .. path end
 
@@ -44,15 +45,16 @@ end
 
 local listed = wallpaper.folder:map(entries, entries(nil))
 
--- Left and Right step one photo, Up and Down one row. The list builds only rows near its
--- viewport, so the target row is revealed first and focus moves once it is built.
+-- Left and Right step one photo, Up and Down one row. A request only counts inside the key
+-- callback; the list keeps a viewport of rows built past each edge, so the neighbouring row
+-- exists, and the reveal scrolls it into view on the same pass.
 local function step(i, key)
     local by = ({ Left = -1, Right = 1, Up = -COLUMNS, Down = COLUMNS })[key.name]
     if not by then return false end
     local to = listed:get()[i + by]
     if to then
         GRID:reveal(math.ceil(to.index / COLUMNS))
-        timer(30, function() focus_target(slot(to.path)):request() end)
+        focus_target(slot(to.path)):request()
     end
     return true
 end
@@ -164,6 +166,27 @@ end
 
 -- One keyed, scrolling list of rows: only rows near the viewport are built, and a row is rebuilt
 -- only when its own paths change.
+-- A 12 px fade at an edge only while photos lie past it: at the top the first row's tape and
+-- tick show whole. Keyed by "top,bottom" so scrolling rebuilds the mask only at the ends.
+local FADE = 12
+local edges = computed({ GRID, listed }, function(offset, l)
+    local rows_n = math.ceil(#l / COLUMNS)
+    local max = math.max(0, rows_n - VISIBLE_ROWS) * CELL_H
+    return ((offset or 0) > 1 and "1" or "0") .. ((offset or 0) < max - 1 and "1" or "0")
+end, "00")
+local fade = edges:map(function(e)
+    local h = VISIBLE_ROWS * CELL_H
+    local top, bottom = e:sub(1, 1) == "1", e:sub(2, 2) == "1"
+    return {
+        gradient = "linear",
+        angle = 180,
+        stops = {
+            { 0, top and "#00000000" or "#000000" }, { FADE / h, "#000000" },
+            { 1 - FADE / h, "#000000" }, { 1, bottom and "#00000000" or "#000000" },
+        },
+    }
+end)
+
 local function grid()
     local empty = wallpaper.folder:map(function(f)
         if not (f and f.ready) then return "Reading " .. wallpaper.FOLDER .. "…" end
@@ -174,17 +197,10 @@ local function grid()
     return column {
         width = "fill",
         children = {
-            -- Rows scroll under a 12 px fade at each edge instead of a hard cut (a list takes no mask).
+            -- Rows scroll under the fade instead of a hard cut (a list takes no mask).
             rect {
                 width = "fill",
-                mask = {
-                    gradient = "linear",
-                    angle = 180,
-                    stops = {
-                        { 0, "#00000000" }, { 12 / (VISIBLE_ROWS * CELL_H), "#000000" },
-                        { 1 - 12 / (VISIBLE_ROWS * CELL_H), "#000000" }, { 1, "#00000000" },
-                    },
-                },
+                mask = fade,
                 children = {
                     list {
                         width = "fill",
@@ -226,7 +242,12 @@ return function()
                 value = wallpaper.fit,
                 on_select = wallpaper.set_fit,
             },
-        }, { rows.caption("same picture on every screen") }),
+        }, {
+            -- How many there are, since the grid shows twelve: the cue that it scrolls.
+            rows.caption(listed:map(function(l)
+                return #l .. " pictures" .. (#l > COLUMNS * VISIBLE_ROWS and ", scroll for more" or "")
+            end, "")),
+        }),
         grid(),
     }
 end
