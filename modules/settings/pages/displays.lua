@@ -1,8 +1,10 @@
 -- Displays page, read only: Mantle can't write output settings (gap 18). Screens are drawn as paper
--- rectangles arranged by position; each row offers the Hyprland `hl.monitor` line that would set it.
+-- rectangles arranged by position; under "More", each has the Hyprland `hl.monitor` line that would
+-- set it. Night light has its own tab.
 local k = require("lib.paper")
 local rows = require("modules.settings.rows")
 local nightlight_page = require("modules.nightlight.page")
+local ui_state = require("lib.ui_state")
 
 local MAP_W, MAP_H = rows.WIDTH - 20, rows.PITCH * 6 - 16
 
@@ -80,7 +82,34 @@ return {
     key = "displays",
     title = "Displays",
     build = function()
-        return {
+        local strip, tab = rows.tabs("displays", { "Screens", "Night light" })
+        local more, more_open = rows.more("displays", "Hyprland lines", {
+            column {
+                width = "fill",
+                children = mantle.screens:map(function(screens)
+                    local list = {}
+                    for _, s in ipairs(screens) do
+                        list[#list + 1] = rect {
+                            width = "fill",
+                            height = rows.PITCH * 2,
+                            children = {
+                                k.body(monitor_line(s), 16, {
+                                    font = "monospace", foreground = k.DEEP_BLUE, width = "fill", wrap = "word",
+                                    line_height = rows.PITCH / 16, padding = { top = 2 },
+                                }),
+                            },
+                        }
+                    end
+                    return list
+                end),
+            },
+            rows.note("Mantle can only read display settings. To change one, put its hl.monitor line "
+                .. "in Hyprland's config and reload Hyprland.", 2),
+        })
+        ui_state.modal_showing("settings"):on_change(function(open)
+            if open then more_open:set(false) end
+        end)
+        local screens = {
             rows.heading("Arrangement"),
             rect {
                 width = "fill",
@@ -99,23 +128,12 @@ return {
                             rows.caption(s.model ~= "" and s.model or (s.description or "")),
                         })
                         list[#list + 1] = rows.line({ rows.label(details(s)) })
-                        list[#list + 1] = rect {
-                            width = "fill",
-                            height = rows.PITCH * 2,
-                            children = {
-                                k.body(monitor_line(s), 16, {
-                                    font = "monospace", foreground = k.DEEP_BLUE, width = "fill", wrap = "word",
-                                    line_height = rows.PITCH / 16, padding = { top = 2 },
-                                }),
-                            },
-                        }
                     end
                     return list
                 end),
             },
-            rows.note("Mantle can only read display settings. To change one, put its hl.monitor line "
-                .. "in Hyprland's config and reload Hyprland.", 2),
-            nightlight_page(),
+            more,
         }
+        return { strip, rows.pane(tab, 1, screens), rows.pane(tab, 2, { nightlight_page() }) }
     end,
 }

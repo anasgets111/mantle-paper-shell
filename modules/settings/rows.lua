@@ -160,6 +160,25 @@ function R.pane(chosen, i, children)
     return column { width = "fill", visible = chosen:map(function(v) return v == i end), children = children }
 end
 
+-- A collapsed section for rarely used rows: a link that shows or hides them, closed on each open
+-- of the notebook (`settings.<id>.more`).
+function R.more(id, label, children)
+    local open = state("settings." .. id .. ".more", false)
+    return column {
+        width = "fill",
+        children = {
+            R.line({
+                rect {
+                    children = open:map(function(on)
+                        return { R.action(id .. ".more", on and ("Hide " .. label) or (label .. "…"), function() open:set(not on) end) }
+                    end),
+                },
+            }),
+            column { width = "fill", visible = open, children = children },
+        },
+    }, open
+end
+
 -- A row action as a deep-blue link: lighter than a button where a list has one per row.
 function R.action(id, label, on_click)
     return c.link { id = "settings." .. id, label = label, size = 24, on_click = on_click }
