@@ -48,7 +48,7 @@ function M.package(size, color)
     return pencil(PACKAGE, size or 22, color or k.INK, 4417)
 end
 
--- A red marker exclamation: a tapering stroke and a dot.
+-- A red marker exclamation: a stroke that thins as the marker lifts, and a dot.
 function M.exclamation(size)
     local s = size / 24
     return rect {
@@ -56,10 +56,10 @@ function M.exclamation(size)
         height = size,
         align_v = "center",
         children = {
-            k.stroke_path(size, size, {
+            util.with(k.stroke_path(size, size, {
                 { op = "M", points = { 12.6 * s, 3.5 * s } },
                 { op = "Q", points = { 11.6 * s, 9 * s, 12 * s, 15 * s } },
-            }, k.RED, 3.2 * s),
+            }, k.RED, 3.6 * s), "taper_end", 8 * s),
             path {
                 width = size, height = size, fill = k.RED,
                 commands = { { op = "A", points = { 12 * s, 19.8 * s, 1.9 * s, 0, 360 } } },
