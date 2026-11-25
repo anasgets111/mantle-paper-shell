@@ -28,7 +28,7 @@ local function art(p)
     local picture = path and image { source = path, fit = "cover", width = ART, height = ART, async = true }
         or rect {
             width = ART, height = ART, background = k.CARD,
-            children = { icons.doodle(G.music, 30, k.INK_SOFT) },
+            children = { util.with(icons.doodle(G.music, 30, k.INK_SOFT), "align_h", "center") },
         }
     return rect {
         rotate = -3,
@@ -62,7 +62,6 @@ local function scrap(p)
         height = H,
         seed = 961,
         depth = 2,
-        rotate = 0.8,
         color = k.CARD,
         shadows = k.SHADOW.rest,
         fx = { rim = 1.2 },
@@ -104,7 +103,8 @@ function M.card(player)
     return rect {
         width = "fill",
         children = (player or M.player):map(function(p)
-            return p and { rect { align_h = "center", children = { scrap(p) } } } or {}
+            -- k.sheet has no `rotate`: the tilt goes on this wrapper.
+            return p and { rect { align_h = "center", rotate = 0.8, children = { scrap(p) } } } or {}
         end, {}),
     }
 end

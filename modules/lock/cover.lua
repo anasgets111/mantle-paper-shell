@@ -9,6 +9,7 @@ local controls = require("components.controls")
 local identity = require("lib.identity")
 local password = require("modules.lock.password")
 local media = require("modules.lock.media")
+local wallpaper = require("lib.wallpaper")
 local G = require("modules.lock.glyphs")
 
 local CW, CH = 600, 800
@@ -66,6 +67,8 @@ local function status_line(source)
     local attempts = k.body(source:map(function(s)
         return (s.attempts or 0) > 0 and string.format("%d wrong %s", s.attempts, s.attempts == 1 and "try" or "tries") or ""
     end, ""), 20, { foreground = k.DEEP_RED, align_v = "center" })
+    -- Hidden when empty, so its share of the spacing does not pull the row off centre.
+    attempts.visible = source:map(function(s) return (s.attempts or 0) > 0 end, false)
     return row { align_h = "center", spacing = 26, children = { battery, layout, attempts } }
 end
 
@@ -194,7 +197,8 @@ return function(output, opts)
         height = "fill",
         background = "#1C1A24",
         children = {
-            image { source = k.DIR .. "/img/wallpaper.jpg", width = "fill", height = "fill", fit = "cover", async = true },
+            -- The desktop's picture and fit; the dark ground shows in "contain"'s bars.
+            image { source = wallpaper.path, fit = wallpaper.fit, width = "fill", height = "fill", async = true },
             cover,
         },
     }

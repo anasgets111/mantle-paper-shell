@@ -41,6 +41,8 @@ local preview_panel = panel {
     height = "fill",
     visible = preview,
     on_escape = function() preview:set(false) end,
+    -- `on_escape` needs the keyboard; the preview takes it while shown.
+    keyboard_interactivity = util.choose(preview, "exclusive", "none"),
     child = util.lift(preview, function(on)
         return on and cover("preview", { preview = true, source = preview_state, player = shown_player }) or rect {}
     end),
