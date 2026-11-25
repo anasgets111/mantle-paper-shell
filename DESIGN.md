@@ -98,10 +98,14 @@ of its size (section 7). Both fonts are OFL, bundled in `fonts/` and loaded thro
 
 ## 6. Shell parts
 
-- **Bar:** full width, 46 px, straight top, torn bottom. Caveat workspace numerals; the active one
-  sits on a hatched blue sticker. The focused app's name, then status icons, date and time in
-  Kalam.
-- **Cards:** 370 px wide, stacked on the right 4 px apart: clock, quote, todo, music, photo.
+- **Bar:** full width, 46 px, straight top, torn bottom. Desk chips instead of workspace numbers:
+  one card-stock tab per desk with windows, holding its apps' stickers; the one on screen is blue and
+  hatched. Empty desks stay hidden, a dashed "+" opens one, and with one desk in use only "+" shows.
+  Dragging a task icon onto a chip moves that app's windows there; onto "+", to a new desk. The
+  focused app's name, then status icons, date and time in Kalam.
+- **Cards:** 370 px wide, stacked on the right 4 px apart: clock, a quote that changes daily, a
+  sticky note, music, and a to-do list to add to, tick and clear. The note and the list save to
+  `state-desk.json`. A screen too short for the stack wraps it into a second column.
 - **Dock:** an 820 x 86 px scrap at the bottom centre. Symbolic icons in `INK`, at most two in
   colour, a pencil divider before the trash. Icons grow 12% on hover.
 

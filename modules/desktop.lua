@@ -1,8 +1,10 @@
--- The desk: the wallpaper and the cards pinned to it (clock, quote, todo, music, photo). Cards drag
+-- The desk: the wallpaper and the cards pinned to it (clock, quote, to-do, sticky note, music). Cards drag
 -- anywhere and remember where they were dropped; double-click puts one back. Right-click on the
 -- wallpaper offers "Change background…".
 local k = require("lib.paper")
 local menu_component = require("components.menu")
+local controls = require("components.controls")
+local util = require("lib.util")
 local settings = require("modules.settings")
 local wallpaper = require("lib.wallpaper")
 local DIR, INK, INK_SOFT, RED = k.DIR, k.INK, k.INK_SOFT, k.RED
@@ -60,79 +62,196 @@ local clock_card = card {
     },
 }
 
+-- What the desk remembers between restarts: the to-do list and the sticky note.
+local desk = persistent_table { path = DIR .. "/state-desk.json", defaults = { todo = {}, note = "" } }
+
+-- One line a day, chosen by the date, so it changes at midnight and stays put through restarts.
+local QUOTES = {
+    "A little progress every day adds up to big results.",
+    "Slow and steady wins the race.",
+    "Well begun is half done.",
+    "Do what you can, with what you have, where you are.",
+    "One thing at a time.",
+    "Small steps still move you forward.",
+    "Rest is part of the work.",
+    "Today is a good day to start.",
+    "Be kind to yourself today.",
+    "Done is better than perfect.",
+    "Every day is a fresh page.",
+    "Breathe in, breathe out, carry on.",
+    "The best time to start was yesterday. The next best is now.",
+    "Little by little, a little becomes a lot.",
+    "Make today count.",
+    "Keep going; you are doing fine.",
+    "Start where you are.",
+    "Good things take time.",
+    "Tidy desk, tidy mind.",
+    "A cup of tea solves most things.",
+    "You have done hard things before.",
+    "Focus on what you can change.",
+    "Write it down, then let it go.",
+    "Progress, not perfection.",
+    "Enjoy the little things.",
+    "Plan the day, then live it.",
+    "Smile; it is contagious.",
+    "One page at a time.",
+    "Courage grows with every try.",
+    "Finish what you start.",
+    "Let today be gentle.",
+}
+local quote = mantle.clock:map(function(c)
+    return QUOTES[tonumber(os.date("%j", c.time)) % #QUOTES + 1]
+end, QUOTES[1])
+
 local quote_card = card {
     width = CARD_W,
-    height = 170,
+    height = 136,
     seed = 202,
     rotate = -0.8,
     child = rect {
         width = "fill",
         height = "fill",
-        padding = { left = 34, right = 24, top = 26, bottom = 18 },
+        padding = { left = 30, right = 44, top = 22, bottom = 18 },
         children = {
-            body("\u{201C}A little progress\nevery day\u{2026}\nadds up to\nbig results.", 25, {
+            body(quote:map(function(q) return "\u{201C}" .. q .. "\u{201D}" end), 24, {
+                width = "fill",
+                wrap = "word",
+                max_lines = 4,
+                elide = "end",
                 foreground = INK_SOFT,
                 line_height = 1.25,
             }),
-            rect { align_h = "end", align_v = "end", children = { star(24, INK) } },
+            rect { align_h = "end", align_v = "end", translate = { x = 30 }, children = { star(24, INK) } },
         },
     },
 }
 
-local todo_items = {
-    { "Study for the exam", false },
-    { "Rust crash course", true },
-    { "Work on project", false },
-    { "Workout", false },
-    { "Read something new", false },
-}
+-- The list is a JSON array of { text, done }; every edit writes a fresh copy.
+local function edit_todo(fn)
+    local list = {}
+    for i, t in ipairs(desk.todo:get() or {}) do list[i] = { text = t.text, done = t.done } end
+    fn(list)
+    desk:set("todo", list)
+end
 
 local function todo_row(i, item)
-    local done = state("paper.todo." .. i, item[2])
+    local name = "paper.todo.row." .. i
+    local hovered = hover(name)
+    local label = body(item.text, 21, {
+        max_width = CARD_W - 130,
+        elide = "end",
+        foreground = item.done and INK_SOFT or INK,
+        align_v = "center",
+    })
     return row {
+        width = "fill",
         spacing = 10,
-        on_click = function() done:set(not done:get()) end,
-        children = done:map(function(d)
-            local label = body(item[1], 21, { foreground = d and INK_SOFT or INK, align_v = "center" })
-            return {
-                checkbox(18, d),
-                d and rect {
-                    align_v = "center",
-                    children = {
-                        label,
-                        rect { width = "fill", height = 1.6, align_v = "center", translate = { y = 1 }, background = INK },
-                    },
-                } or label,
-            }
-        end),
+        hover = hovered,
+        children = {
+            rect {
+                cursor = "pointer",
+                accessible_name = (item.done and "Mark not done: " or "Mark done: ") .. item.text,
+                on_click = function() edit_todo(function(l) l[i].done = not l[i].done end) end,
+                children = { checkbox(18, item.done) },
+            },
+            item.done and rect {
+                align_v = "center",
+                children = {
+                    label,
+                    rect { width = "fill", height = 1.6, align_v = "center", translate = { y = 1 }, background = INK },
+                },
+            } or label,
+            rect { width = "fill" },
+            rect {
+                cursor = "pointer",
+                accessible_name = "Remove " .. item.text,
+                opacity = hovered:map(function(v) return v and 1 or 0 end),
+                animate = { opacity = { duration = 120, easing = "out_cubic" } },
+                padding = { left = 4, right = 4 },
+                on_click = function() edit_todo(function(l) table.remove(l, i) end) end,
+                children = { body("\u{00D7}", 24, { foreground = INK_SOFT, align_v = "center" }) },
+            },
+        },
     }
 end
 
-local todo_rows = {}
-for i, item in ipairs(todo_items) do todo_rows[i] = todo_row(i, item) end
+-- ponytail: the card grows with the list (32 px a task) and the desk wraps it; past about 12 tasks
+-- it outgrows a 864 px screen. Upgrade: a scrolling `list` capped at the screen's height.
+local todo_card = rect {
+    children = desk.todo:map(function(items)
+        items = items or {}
+        local rows = {}
+        for i, item in ipairs(items) do rows[i] = todo_row(i, item) end
+        -- The field keeps one place in the tree, so it holds focus while the list above it grows.
+        local add = controls.field {
+            id = "desk.todo.add",
+            placeholder = "Add a task\u{2026}",
+            width = CARD_W - 60,
+            size = 22,
+            on_submit = function(text)
+                text = util.trim(text)
+                if text ~= "" then edit_todo(function(l) l[#l + 1] = { text = text, done = false } end) end
+            end,
+        }
+        return {
+            card {
+                width = CARD_W,
+                height = 116 + #items * 32,
+                seed = 303,
+                rotate = 0.4,
+                child = rect {
+                    width = "fill",
+                    height = "fill",
+                    padding = { left = 26, right = 22, top = 16, bottom = 14 },
+                    children = {
+                        column {
+                            width = "fill",
+                            spacing = 6,
+                            children = {
+                                row {
+                                    spacing = 12,
+                                    children = { checkbox(26, true), hand("To do", 36, { font_weight = 700, align_v = "center" }) },
+                                },
+                                column { width = "fill", spacing = 6, padding = { left = 4 }, children = rows },
+                                add,
+                            },
+                        },
+                    },
+                },
+            },
+        }
+    end, {}),
+}
 
-local todo_card = card {
+-- A yellow sticky note she types straight onto; saved a second after the last key.
+local note_card = card {
     width = CARD_W,
-    height = 270,
-    seed = 303,
-    rotate = 0.4,
+    height = 190,
+    seed = 404,
+    rotate = -0.5,
+    color = "#F0DDB8",
     child = rect {
         width = "fill",
         height = "fill",
-        padding = { left = 26, right = 22, top = 18, bottom = 18 },
+        padding = { left = 26, right = 22, top = 18, bottom = 16 },
         children = {
-            column {
-                spacing = 8,
-                children = {
-                    row {
-                        spacing = 12,
-                        padding = { bottom = 6 },
-                        children = { checkbox(30, true), hand("Todo", 40, { font_weight = 700, align_v = "center" }) },
-                    },
-                    column { spacing = 6, padding = { left = 4 }, children = todo_rows },
-                },
+            textfield {
+                width = "fill",
+                height = "fill",
+                multiline = true,
+                initial_text = desk.note,
+                placeholder = "Write a note\u{2026}",
+                placeholder_color = "#3A363170",
+                font = k.HAND,
+                font_size = 24,
+                foreground = INK,
+                caret = { color = k.BLUE, width = 2 },
+                selection = { background = "#F2C94C90" },
+                accessible_name = "Sticky note",
+                focus_ring = false,
+                escape = "blur",
+                on_change = function(text) desk:set("note", text) end,
             },
-            rect { align_h = "end", align_v = "start", translate = { y = 4 }, children = { star(26, RED, true) } },
         },
     },
 }
@@ -259,41 +378,6 @@ local music_card = card {
     },
 }
 
-local photo_card = card {
-    width = CARD_W,
-    height = 170,
-    seed = 505,
-    rotate = 1.2,
-    child = rect {
-        width = "fill",
-        height = "fill",
-        padding = { left = 18, right = 18, top = 18, bottom = 18 },
-        children = {
-            rect {
-                rotate = -4,
-                align_v = "center",
-                children = {
-                    rect {
-                        padding = 5,
-                        background = "#F7F2E6",
-                        shadows = { { blur = 6, offset = { x = 1, y = 2 }, color = "#00000050" } },
-                        children = { image { source = DIR .. "/img/photo.png", width = 170, height = 112, fit = "cover" } },
-                    },
-                    tape { width = 50, height = 18, align_h = "start", translate = { x = -14, y = -6 }, rotate = -38, seed = 21 },
-                },
-            },
-            hand("Same\nSky\nDifferent\nDay\u{2026}", 28, {
-                align_h = "end",
-                align_v = "center",
-                text_align = "center",
-                line_height = 1.0,
-                rotate = 6,
-                foreground = INK_SOFT,
-            }),
-        },
-    },
-}
-
 -- Dragging cards: each card keeps an offset from its slot in the column. The live offset is a
 -- state while the pointer holds the card; on release it is saved to positions.json, so a card
 -- stays where it was dropped across restarts. Double-click puts it back in its slot.
@@ -412,20 +496,28 @@ M.cards = panel {
     id = "paper-cards",
     namespace = "paper-cards",
     layer = "bottom",
+    -- On demand: a click in the to-do field or the sticky note takes the keyboard, nothing else does.
+    keyboard_interactivity = "on_demand",
     -- The panel covers the output so a card can be dropped anywhere; only the cards take input.
     anchor = { top = true, bottom = true, left = true, right = true },
     width = "fill",
     height = "fill",
+    -- A screen too short for the stack (1920x1080 at 125% is 864 px) wraps it into a second column.
     child = column {
         width = "fill",
+        height = "fill",
         padding = { left = 24, right = 24, top = 18, bottom = 24 },
         spacing = 4,
+        wrap = true,
+        line_spacing = 8,
+        align_h = "end",
         children = {
             draggable("clock", clock_card),
             draggable("quote", quote_card),
-            draggable("todo", todo_card),
+            draggable("note", note_card),
             draggable("music", music_card),
-            draggable("photo", photo_card),
+            -- Last: the only card that grows, so a new task never pushes another card to a new column.
+            draggable("todo", todo_card),
         },
     },
 }
