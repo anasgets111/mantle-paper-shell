@@ -290,9 +290,9 @@ end
 
 -- Dropdown: a card-stock strip showing the current choice and a chevron. A click, Enter or Space
 -- opens `o.menu` (a `components/menu.lua` menu on the same surface) under it, the current option
--- ticked; the wheel steps through the options without opening it.
+-- ticked; the wheel steps through the options without opening it, unless `wheel = false`.
 -- o = { id, options = { {value, label}, ... }, value = signal|plain, on_select = fn(v), menu, width?,
---       height?, label? (accessible name), empty? (text while no option matches) }
+--       height?, label? (accessible name), empty? (text while no option matches), wheel? }
 function M.dropdown(o)
     local W, H = o.width or 260, o.height or 28
     local hovered = hover_of("dropdown", o.id)
@@ -333,14 +333,14 @@ function M.dropdown(o)
             end
             o.menu.open(r, items, { anchor = "bottom_left", gravity = "bottom_right", width = math.max(W + 28, 250) })
         end,
-        on_wheel = function(_, steps)
+        on_wheel = o.wheel ~= false and function(_, steps)
             notches = notches + steps
             while math.abs(notches) >= 1 do
                 -- Away from the user is up the list.
                 step(notches > 0 and -1 or 1)
                 notches = notches - (notches > 0 and 1 or -1)
             end
-        end,
+        end or nil,
         translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
         animate = { translate = { duration = 140, easing = "out_cubic" } },
         children = {

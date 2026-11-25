@@ -1,5 +1,5 @@
--- Sound page: the default output and input (radio lists), their volume and mute, every app's
--- stream with its own level, and each sound card's profile and ports.
+-- Sound page under four tabs: the default output and the default input (a dropdown each, with
+-- volume and mute), every app's stream with its own level, and each sound card's profile and ports.
 local k = require("lib.paper")
 local c = require("components.controls")
 local util = require("lib.util")
@@ -66,9 +66,9 @@ local function level_row(kind, icon)
     })
 end
 
--- Radio list of devices; picking one makes it the default.
-local function device_list(kind, set_default, empty)
-    local shape = audio:map(function(a) return rows.key(a[kind], { "id", "name", "active" }) end, "")
+-- The default device as a dropdown of every device of the kind.
+local function device_row(kind, label, set_default, empty)
+    local shape = audio:map(function(a) return rows.key(a[kind], { "id", "name" }) end, "")
     return column {
         width = "fill",
         children = shape:map(function()
@@ -79,28 +79,30 @@ local function device_list(kind, set_default, empty)
             end
             if #options == 0 then return { rows.note(empty) } end
             return {
-                rows.list(
-                    c.radio_group {
-                        id = "settings.sound." .. kind,
-                        vertical = true,
+                rows.line({ rows.label(label) }, {
+                    rows.dropdown {
+                        id = "sound." .. kind,
+                        label = label,
+                        width = 440,
                         options = options,
                         value = audio:map(function(now)
                             local d = active(now, kind)
                             return d and d.id
                         end),
                         on_select = function(id) set_default(id) end,
-                    }, #options
-                ),
+                    },
+                }),
             }
         end),
     }
 end
 
--- One card: its name, its profile (available ones only, plus the active one) and, under that
--- profile, the ports it can route to. A list with a single choice has nothing to pick and is left out.
+-- One card: its name and its profile (available ones only, plus the active one), then, under that
+-- profile, the ports it can route to. A choice of one has nothing to pick and is left out. The
+-- wheel never steps these: scrolling past would cut the sound.
 local function card_rows(card)
     local list = {
-        rows.line({ icons.glyph("sound", 20), rows.label(card.name, { tip = "sound.card." .. card.device }) }),
+        rows.line({ icons.glyph("sound", 20), rows.label(card.name, { tip = "sound.card." .. card.device, font_weight = 700 }) }),
     }
     local profiles = {}
     for _, p in ipairs(card.profiles) do
@@ -109,16 +111,20 @@ local function card_rows(card)
         end
     end
     if #profiles > 1 then
-        list[#list + 1] = rows.list(c.radio_group {
-            id = "settings.sound.profile." .. card.device,
-            vertical = true,
-            options = profiles,
-            value = audio:map(function(a)
-                local now = util.find(a.cards, function(x) return x.device == card.device end)
-                return now and now.active
-            end),
-            on_select = function(index) audio:set_card_profile(card.device, index) end,
-        }, #profiles)
+        list[#list + 1] = rows.line({ rows.label("Profile", { width = 150 }) }, {
+            rows.dropdown {
+                id = "sound.profile." .. card.device,
+                label = card.name .. " profile",
+                width = 440,
+                wheel = false,
+                options = profiles,
+                value = audio:map(function(a)
+                    local now = util.find(a.cards, function(x) return x.device == card.device end)
+                    return now and now.active
+                end),
+                on_select = function(index) audio:set_card_profile(card.device, index) end,
+            },
+        })
     end
     local ports = {}
     for _, p in ipairs(card.ports) do
@@ -129,10 +135,12 @@ local function card_rows(card)
     for _, dir in ipairs({ "output", "input" }) do
         local options = util.filter(ports, function(p) return p[3] == dir end)
         if #options > 1 then
-            list[#list + 1] = rows.line({
-                rows.label(dir == "output" and "Plays through" or "Listens on", { width = 150 }),
-                c.radio_group {
-                    id = "settings.sound.port." .. card.device .. "." .. dir,
+            list[#list + 1] = rows.line({ rows.label(dir == "output" and "Plays through" or "Listens on", { width = 150 }) }, {
+                rows.dropdown {
+                    id = "sound.port." .. card.device .. "." .. dir,
+                    label = dir == "output" and "Plays through" or "Listens on",
+                    width = 440,
+                    wheel = false,
                     options = options,
                     value = audio:map(function(a)
                         local now = util.find(a.cards, function(x) return x.device == card.device end)
@@ -221,17 +229,21 @@ return {
     key = "sound",
     title = "Sound",
     build = function()
+        local strip, tab = rows.tabs("sound", { "Output", "Input", "Apps", "Cards" }, 130)
         return {
-            rows.heading("Output"),
-            level_row("sinks", "volume-high"),
-            device_list("sinks", function(id) audio:set_default_sink(id) end, "No output devices."),
-            rows.heading("Input"),
-            level_row("sources", "mic"),
-            device_list("sources", function(id) audio:set_default_source(id) end, "No microphones."),
-            rows.heading("Applications"),
-            app_rows(),
-            rows.heading("Devices"),
-            card_list(),
+            strip,
+            rows.pane(tab, 1, {
+                rows.heading("Output"),
+                device_row("sinks", "Play sound through", function(id) audio:set_default_sink(id) end, "No output devices."),
+                level_row("sinks", "volume-high"),
+            }),
+            rows.pane(tab, 2, {
+                rows.heading("Input"),
+                device_row("sources", "Record from", function(id) audio:set_default_source(id) end, "No microphones."),
+                level_row("sources", "mic"),
+            }),
+            rows.pane(tab, 3, { rows.heading("Applications"), app_rows() }),
+            rows.pane(tab, 4, { rows.heading("Sound cards"), card_list() }),
         }
     end,
 }
