@@ -132,4 +132,23 @@ function M.open_settings(rect_)
     toggle("status", rect_, list, { title = "Settings" })
 end
 
+-- The keyboard layouts by name, the active one ticked, then the Keyboard settings page.
+function M.open_layouts(rect_, layouts, active)
+    local list = {}
+    for i, l in ipairs(layouts) do
+        list[i] = {
+            label = l.name,
+            checked = i - 1 == active,
+            on_click = function() mantle.keyboard:switch_layout(i - 1) end,
+        }
+    end
+    if #list > 0 then list[#list + 1] = { separator = true } end
+    list[#list + 1] = {
+        label = "Keyboard settings",
+        icon = "input-keyboard-symbolic",
+        on_click = function() settings.open("keyboard") end,
+    }
+    toggle("layouts", rect_, list, { title = "Keyboard layout" })
+end
+
 return M

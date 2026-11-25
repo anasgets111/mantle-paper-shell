@@ -102,7 +102,7 @@ local function button(o)
             row {
                 height = "fill",
                 spacing = o.spacing or 14,
-                padding = { left = 10, right = 10 },
+                padding = { left = o.pad or 10, right = o.pad or 10 },
                 translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
                 scale = press.scale(o.name),
                 animate = {
@@ -114,6 +114,10 @@ local function button(o)
         },
     }, o.name, o.tip)
 end
+
+-- A status-area button: highlighter swipe on hover, lift, press, tooltip. o = { name, label, seed,
+-- on_click, tip, children, spacing?, pad? (side padding, default 10) }.
+M.button = button
 
 function M.icons(output)
     return button {
