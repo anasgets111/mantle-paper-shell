@@ -8,8 +8,12 @@ local controls = require("components.controls")
 local idle = require("modules.lock.idle")
 local G = require("modules.lock.glyphs")
 local tooltip = require("components.tooltip")
+local rows = require("modules.settings.rows")
 
-local ROW_H = 72
+-- One ruled pitch per stage, so the rules run under the text and all four stages fit the tab.
+local ROW_H = rows.PITCH
+-- The page body: the notebook's content width less its 12 px right padding.
+local BODY_W = rows.WIDTH - 12
 
 -- The page is drawn inside the settings modal, so its notes hang from that surface.
 local tips = tooltip.new { id = "paper-idle-tip", parent = "paper-modal-host", side = "top" }
@@ -62,13 +66,13 @@ local function stepper(stage)
         on_drag = function() end,
         on_wheel = function(_, steps) step(steps > 0 and 1 or -1) end,
         children = {
-            tips.wrap(controls.disc_button { id = "lock.idle.less." .. stage.key, icon = G.less, size = 34, seed = 3,
+            tips.wrap(controls.disc_button { id = "lock.idle.less." .. stage.key, icon = G.less, size = 28, seed = 3,
                 tooltip = "Shorter", on_click = function() step(-1) end }, "paper.disc.lock.idle.less." .. stage.key, "Shorter"),
-            k.hand(current:map(idle.format), 28, {
-                font_weight = 700, width = 78, text_align = "center", align_v = "center",
+            k.hand(current:map(idle.format), 26, {
+                font_weight = 700, width = 66, text_align = "center", align_v = "center",
                 foreground = current:map(function(sec) return sec > 0 and k.DEEP_BLUE or k.INK_SOFT end),
             }),
-            tips.wrap(controls.disc_button { id = "lock.idle.more." .. stage.key, icon = G.more, size = 34, seed = 5,
+            tips.wrap(controls.disc_button { id = "lock.idle.more." .. stage.key, icon = G.more, size = 28, seed = 5,
                 tooltip = "Longer", on_click = function() step(1) end }, "paper.disc.lock.idle.more." .. stage.key, "Longer"),
         },
     }
@@ -81,6 +85,7 @@ local function stage_row(item)
         return held[item.key .. "_on"] and held[item.key .. "_sec"] > 0
     end)
     local mine = dragging:map(function(drag) return drag.key == item.key end)
+    local cut = elided("lock.idle.detail." .. item.key)
     return rect {
         width = "fill",
         height = ROW_H,
@@ -118,33 +123,21 @@ local function stage_row(item)
             -- Lifted while dragged: the row becomes a scrap of card stock held above the page.
             rect {
                 width = "fill",
-                height = ROW_H - 8,
+                height = ROW_H - 2,
                 align_v = "center",
-                shape = k.torn(720, ROW_H - 8, 70 + item.index, 2),
+                shape = k.torn(BODY_W, ROW_H - 2, 70 + item.index, 2),
                 background = k.CARD,
                 opacity = util.choose(mine, 1, 0),
                 shadows = k.SHADOW.lift,
             },
-            row {
-                width = "fill",
-                height = "fill",
-                spacing = 14,
-                padding = { left = 6, right = 8 },
-                children = {
-                    icons.doodle(G.drag, 18, k.INK_SOFT),
-                    k.hand(tostring(item.index), 30, { font_weight = 700, foreground = k.BLUE, width = 24, align_v = "center" }),
-                    icons.doodle(stage.icon, 22, k.INK),
-                    column {
-                        width = "fill",
-                        align_v = "center",
-                        children = {
-                            k.body(stage.title, 22, { foreground = util.choose(enabled, k.INK, k.INK_SOFT) }),
-                            k.body(stage.detail, 16, { foreground = k.INK_SOFT }),
-                        },
-                    },
-                    stepper(stage),
-                },
-            },
+            rows.line({
+                icons.doodle(G.drag, 18, k.INK_SOFT),
+                k.hand(tostring(item.index), 28, { font_weight = 700, foreground = k.BLUE, width = 18 }),
+                icons.doodle(stage.icon, 20, k.INK),
+                k.body(stage.title, 21, { foreground = util.choose(enabled, k.INK, k.INK_SOFT) }),
+                tips.wrap(k.body(stage.detail, 16, { foreground = k.INK_SOFT, width = "fill", elide = "end", elided = cut }),
+                    "lock.idle.detail." .. item.key, function() return cut:get() and stage.detail or "" end),
+            }, { stepper(stage) }),
         },
     }
 end
@@ -162,18 +155,11 @@ local stages = list {
     each = stage_row,
 }
 
--- A settings row: the words on the left, a caption under them, the switch at the right edge.
-local function switch_row(id, label, value, on_toggle, caption)
-    local words = { k.body(label, 21) }
-    if caption then words[2] = k.body(caption, 16, { foreground = k.INK_SOFT, width = "fill", elide = "end" }) end
-    return row {
-        width = "fill",
-        spacing = 16,
-        children = {
-            column { width = "fill", align_v = "center", children = words },
-            controls.toggle { id = "lock.idle." .. id, value = value, on_toggle = on_toggle },
-        },
-    }
+-- A ruled row: the words on the left, the switch at the right edge.
+local function switch_row(id, label, value, on_toggle)
+    return rows.line({ rows.label(label) }, {
+        controls.toggle { id = "lock.idle." .. id, value = value, on_toggle = on_toggle },
+    })
 end
 
 local function setting_toggle(id, label, field)
@@ -192,58 +178,65 @@ end)
 -- Called like a function by the settings page; `surface` is the tooltip popup for the shell's list.
 -- `part` = "idle" or "awake" builds one section, for a page that shows them under separate tabs.
 local function build(part)
-    local function when_idle()
-        return controls.section("When idle", {
-            switch_row("enabled", "Automatic actions", settings:map(function(s) return s.enabled end),
-                function(on) idle.write({ enabled = on }) end, status),
-            rect {
-                visible = has_battery,
+    local list = {}
+    local function add(node) list[#list + 1] = node end
+    if part ~= "awake" then
+        if not idle.ENABLED then
+            -- A sticky note so nobody wonders why the timers do nothing yet. Two pitches tall, and
+            -- inset so its tilt clears the card's clip.
+            add(rect {
+                width = "fill",
+                height = rows.PITCH * 2,
+                padding = { left = 8, top = 2 },
                 children = {
+                    controls.sticky {
+                        width = BODY_W - 40,
+                        seed = 13,
+                        rotate = -0.6,
+                        tape = false,
+                        child = row {
+                            width = "fill",
+                            spacing = 10,
+                            padding = { left = 16, right = 16, top = 12, bottom = 12 },
+                            children = {
+                                icons.doodle(G.info, 20),
+                                k.body("Idle actions are switched off in this build. Timers are saved for later.", 18, {
+                                    align_v = "center", width = "fill", elide = "end",
+                                }),
+                            },
+                        },
+                    },
+                },
+            })
+        end
+        add(rows.heading("When idle"))
+        add(switch_row("enabled", "Automatic actions", settings:map(function(s) return s.enabled end),
+            function(on) idle.write({ enabled = on }) end))
+        add(rows.line({ rows.caption(status, { width = "fill", elide = "end" }) }))
+        add(rect {
+            width = "fill",
+            visible = has_battery,
+            children = {
+                rows.line({
                     controls.radio_group {
                         id = "lock.idle.profile",
                         options = PROFILES,
                         value = shown_profile,
                         on_select = function(p) picked:set(p) end,
                     },
-                },
-            },
-            k.body("Each step counts from the one before it. Drag a row to change the order.", 17, {
-                foreground = k.INK_SOFT,
-            }),
-            stages,
-        })
-    end
-    local function keep_awake()
-        return controls.section("Keep awake", {
-            switch_row("manual", "Keep awake now", idle.manual, idle.set_manual),
-            setting_toggle("capture", "While the camera, microphone or screen is being captured", "privacy_auto_inhibit"),
-            setting_toggle("sleep", "While an app is blocking sleep", "sleep_holds_keep_awake"),
-        })
-    end
-    local children = {}
-    if part ~= "awake" then children[#children + 1] = when_idle() end
-    if part ~= "idle" then children[#children + 1] = keep_awake() end
-    if not idle.ENABLED and part ~= "awake" then
-        -- A sticky note so nobody wonders why the timers do nothing yet.
-        table.insert(children, 1, controls.sticky {
-            width = 520,
-            height = 64,
-            seed = 13,
-            rotate = -1,
-            tape = false,
-            child = row {
-                spacing = 10,
-                padding = { left = 16, top = 10 },
-                children = {
-                    icons.doodle(G.info, 20),
-                    k.body("Idle actions are switched off in this build. Timers are saved for later.", 18, {
-                        align_v = "center", width = 470, wrap = "word",
-                    }),
-                },
+                }),
             },
         })
+        add(rows.note("Each step counts from the one before it. Drag a row to change the order."))
+        add(stages)
     end
-    return column { width = "fill", spacing = 26, children = children }
+    if part ~= "idle" then
+        add(rows.heading("Keep awake"))
+        add(switch_row("manual", "Keep awake now", idle.manual, idle.set_manual))
+        add(setting_toggle("capture", "While the camera, microphone or screen is being captured", "privacy_auto_inhibit"))
+        add(setting_toggle("sleep", "While an app is blocking sleep", "sleep_holds_keep_awake"))
+    end
+    return column { width = "fill", children = list }
 end
 
 return setmetatable({ surface = tips.surface }, { __call = function(_, part) return build(part) end })

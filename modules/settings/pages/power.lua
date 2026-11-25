@@ -121,8 +121,9 @@ return {
         return {
             strip,
             rows.pane(tab, 1, power),
-            rows.pane(tab, 2, { rect { width = "fill", padding = { top = 4 }, children = { idle_page("idle") } } }),
-            rows.pane(tab, 3, { rect { width = "fill", padding = { top = 16 }, children = { idle_page("awake") } } }),
+            -- The idle rows sit on the ruled pitch themselves.
+            rows.pane(tab, 2, { idle_page("idle") }),
+            rows.pane(tab, 3, { idle_page("awake") }),
         }
     end,
 }
