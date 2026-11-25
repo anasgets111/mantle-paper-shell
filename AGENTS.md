@@ -1,94 +1,77 @@
-# Paper shell: shared brief for every builder
+# Paper shell: notes for agents
 
-You are one of five builders working **at the same time** on one Mantle shell config in
-`~/mantle-paper-shell`. The shell is running live on the user's Hyprland desktop (monitor DP-1,
-3440x1440, scale 1) and reloads on every save. The user is using the desktop while you work.
+A hand-drawn notebook desktop shell for [Mantle](https://github.com/anasgets111/mantle). It runs
+live on the user's desktop (niri or Hyprland) and reloads on every save, while they use it.
 
 ## Read first
 
-- `~/mantle-paper-shell/plan.html`: the plan (open it as text). Your feature's row is the spec.
-- `~/mantle-paper-shell/DESIGN.md`: the paper design rules (materials, ink, type, motion). Follow them.
+- `DESIGN.md`: the paper design rules (materials, ink, type, motion). Follow them.
+- `theme.lua`: every colour, font and size. Screens under 1000 px tall scale sizes by 0.8. Add a
+  size here and read it from the module rather than writing a bare pixel number.
 - `lib/paper.lua` (the kit: `sheet`, `card`, `torn`, `torn_top`, `torn_circle`, `tape`,
-  `paper_fx`, `hand` (Caveat), `body` (Kalam, weights 300/400/700), `glyph`, `checkbox`, `squiggle`, `star`...),
+  `paper_fx`, `hand`, `body`, `glyph`, `checkbox`, `squiggle`, `star`...),
   `components/controls.lua` (button, link, disc_button, toggle, radio_group, checkbox_row, slider,
   field, tabs, chip, sticky, pencil_loop, ruled, divider), `components/menu.lua` (sticky-note
   context menu on a popup, with submenus), `components/modal.lua` + `modules/modal_host.lua`,
   `lib/ui_state.lua` (`active_modal`, `toggle_modal`, `close_modal`, `on_modal_close`),
   `lib/apps.lua` (pins, launch, entry lookup), `lib/store.lua`, `lib/util.lua`,
-  `lib/identity.lua` (user full name/host), `lib/compositor.lua` (logout/dpms on Hyprland).
-- Mantle API: the stubs in `/mnt/Work/0Coding/1Rust/mantle/lua-meta/*.lua` are the exact truth
-  for every node property, signal and capability. Docs: `/mnt/Work/0Coding/1Rust/mantle/docs/`
-  (`guide/agents.md`, `guide/input.md`, `nodes/*.md`, `surfaces/*.md`, `capabilities/*.md`,
-  `cookbook/*.md`). Never guess a property name; grep the stubs.
-- The user's own shell, for LOGIC to reuse (not its look): `~/.config/mantle` (see the
-  "Logic to reuse" column in the plan). Copy and adapt logic into this config; never edit
-  `~/.config/mantle`.
+  `lib/identity.lua` (user full name/host), `lib/compositor.lua` (logout and DPMS per compositor).
+- Mantle API: the engine's `lua-meta/*.lua` stubs are the exact truth for every node property,
+  signal and capability; its `docs/` explain them. Never guess a property name; grep the stubs.
 
 ## Rules
 
-1. **Own your files.** Write only inside your module directory (named in your task). Shared files
-   (`lib/*`, `components/*`, `shell.lua`, `modules/modal_host.lua`, `modules/desktop.lua`) may get
-   a small additive change only with the Edit tool (never Write/rewrite them), and only when your
-   module truly cannot work otherwise; say so in your report. A new shared helper you need goes in
-   your own module first.
-2. **Persistence:** keep your own `persistent_table` at `mantle.config_dir .. "/state-<module>.json"`
-   rather than editing `lib/store.lua` (pins and app usage stay in `lib/store.lua` via `lib/apps.lua`).
-3. **Names are global.** Prefix every `state`, `hover`, `focused`, `geometry`, `scroll`, `action`
-   name and every surface/popup `id` with your module name (e.g. `taskbar.`, `paper-taskbar-...`).
-4. **`require` inside a table constructor keeps two values.** Bind every `require` to a local first.
-5. **Validate before you consider a change done:** `cd ~/mantle-paper-shell && ./run.sh check`
-   (must say ok; fix shadow-cut warnings for your surfaces too), then save and watch
-   `mantle log 2>&1 | tail -30` for errors from the live reload. A failed reload keeps the old
-   scene, so an error you cause also blocks the other builders' changes: fix it at once.
-   Another builder's error may show up there too; ignore errors in files you don't own.
-6. **Look at it.** Take screenshots: `grim -o DP-1 /tmp/<module>-N.png`, then crop the region you
-   care about with `magick in.png -crop WxH+X+Y +repage out.png` and view it with the Read tool.
-   The bottom layer (desktop cards) is hidden behind the user's windows; top/overlay layers (taskbar,
-   modals, notifications, OSD) draw above them, so they show. Iterate until it looks polished and
-   consistent with the desk: torn paper, card stock, pencil, marker, highlighter, washi tape,
-   sticky notes. No flat UI rectangles, no rounded material cards.
-7. **Drive it without the user's mouse:** `mantle set <state> <json>`, `mantle toggle <state>`,
+1. **Persistence:** a module that saves state keeps its own `persistent_table` at
+   `require("lib.paths").state("state-<module>.json")`, under `$XDG_STATE_HOME/paper-shell`.
+   Pins and app usage stay in `lib/store.lua` via `lib/apps.lua`.
+2. **Names are global.** Prefix every `state`, `hover`, `focused`, `geometry`, `scroll`, `action`
+   name and every surface/popup `id` with the module name (e.g. `taskbar.`, `paper-taskbar-...`).
+3. **`require` inside a table constructor keeps two values.** Bind every `require` to a local first.
+4. **Validate before a change is done:** `./run.sh check` must say ok (fix shadow-cut warnings
+   too), then save and watch `mantle log 2>&1 | tail -30` for errors from the live reload. A failed
+   reload keeps the old scene, so fix an error at once.
+5. **Look at it.** Screenshot with `grim -o <output> /tmp/shot.png`, crop with
+   `magick in.png -crop WxH+X+Y +repage out.png`, and view the crop. The bottom layer (desk cards)
+   hides behind windows; top and overlay layers show. Keep it consistent with the desk: torn paper,
+   card stock, pencil, marker, highlighter, washi tape, sticky notes. No flat UI rectangles, no
+   rounded material cards. For layout at other screen sizes, run a copy in a nested compositor.
+6. **Drive it without the user's mouse:** `mantle set <state> <json>`, `mantle toggle <state>`,
    `mantle call <action>`, `mantle input <surface-id> click X Y | move X Y | wheel X Y DY | key COMBO | type TEXT`.
    `mantle set` / `mantle toggle` with no args list the states. The modal host is
-   `mantle set modal '"startmenu"'` / `'"settings"'` / `'""'`.
-8. **Don't steal the user's desktop.** Close anything you opened (modals take the keyboard
-   exclusively) right after each screenshot: `mantle set modal '""'`. Never lock the screen, log
-   out, suspend, reboot or power off. Never launch apps except to test one launch, then close it.
-   Never send real notifications in a loop (one or two `notify-send` tests are fine).
-9. **Never stop or restart the running shell**, never run `mantle stop`, never edit Hyprland config.
-10. Code style: Lua, 4-space indent, 120 columns, comments only for non-obvious decisions. Small
-    files per concern inside your module directory. No dead code.
-11. Report at the end: what you built (files), what works (verified by screenshot/log), what doesn't,
-    engine gaps you hit (with stub/doc evidence), and any shared-file edits. Keep screenshots you
-    want the coordinator to see under `~/mantle-paper-shell/shots/<module>-*.png`.
+   `mantle set modal '"startmenu"'` / `'"settings"'` / `'""'`. Popups with `grab = true` don't
+   open from synthetic input; ask the user to test those by hand.
+7. **Don't steal the user's desktop.** Close anything you opened right after each screenshot
+   (`mantle set modal '""'`): modals take the keyboard. Never lock the screen, log out, suspend,
+   reboot or power off. Launch apps only to test one launch, then close it. One or two
+   `notify-send` tests are fine; never a loop.
+8. **Never stop or restart the running shell** and never edit the compositor config.
+9. **Code style:** Lua, 4-space indent, 120 columns, comments only for non-obvious decisions. One
+   concern per file inside the module directory. No dead code.
 
-## Verified engine facts (from a source review)
+## Engine facts
 
 - Mouse wheel: `on_wheel = function(rect, steps, modifiers)`.
-- `capture { window = id, live = 4 }` needs an explicit `width`/`height`; Hyprland only; give a
-  title/icon fallback.
+- `capture { window = id, live = 4 }` needs an explicit `width`/`height`; give a title/icon fallback.
 - Popups: `parent` is the surface id; on a per-output panel a click opens it on the clicked
-  instance. For a hover popup (no click), use `parent = "paper-taskbar@DP-1"` and `grab = false`.
-- Tray: call `mantle.tray:menu_will_show(...)` before showing a dbusmenu, children can be lazy.
-- Logout: `lib/compositor.lua` (`hyprctl dispatch 'hl.dsp.exit()'`). Reboot/poweroff/suspend:
-  `process.detach("systemctl", {...})`. Hibernate is unavailable here (`CanHibernate=na`): hide it.
-- Minimize does nothing on Hyprland; Mantle reports no minimized state.
-- `WindowEntry` has no geometry; `fullscreen` is reported on Hyprland.
-- `applications.entries` have no categories or desktop actions.
+  instance. A hover popup (no click) uses `parent = "paper-taskbar@<output>"` and `grab = false`.
+- Tray: call `mantle.tray:menu_will_show(...)` before showing a dbusmenu; children can be lazy.
+- Reboot, poweroff, suspend: `process.detach("systemctl", {...})`. Hide hibernate when logind
+  reports `CanHibernate=na`.
+- `WindowEntry` has no geometry. `applications.entries` have no categories or desktop actions.
 - No recent-files feed: parse `~/.local/share/recently-used.xbel` with `file.read` on open.
 - Light/dark for apps: `gsettings set org.gnome.desktop.interface color-scheme prefer-dark|prefer-light`.
-- Keyboard layout names: `hyprctl -j devices`. Display changes: write a Hyprland monitor fragment
-  (settings builder only proposes this; never edit Hyprland config).
+- A surface takes pointer input only where it has content or a handler; elsewhere clicks, hover and
+  focus-follows-mouse pass through to the window below.
 
 ## Interaction checklist (every surface, every iteration)
 
-The user judges polish by behaviour as much as looks. Walk this list for everything you own, with
-`mantle input`, before each report, and fix what fails:
+The user judges polish by behaviour as much as looks. Walk this list with `mantle input` for
+everything you change, and fix what fails:
 
 - **Dismiss:** every popup, menu and modal closes on an outside click (popups opened by a click use
   `grab = true` + `on_dismiss`), on Escape (`on_escape`), and when its opener is clicked again
-  (toggle, no reopen flicker). Opening one closes any other open one. No `grab = false` left in
-  except on hover popups (tooltips, previews).
+  (toggle, no reopen flicker). Opening one closes any other open one. `grab = false` only on hover
+  popups (tooltips, previews).
 - **Wheel:** wheel over a value changes it: the volume icon (default sink ±5 %, `set_volume`),
   brightness, every slider, the mic icon. Wheel over the taskbar task icons cycles that app's windows;
   over the desk chips it steps through the desks that hold windows. Lists scroll.

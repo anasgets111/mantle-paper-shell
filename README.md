@@ -38,9 +38,8 @@ The wallpaper picker lists `~/Pictures/Wallpapers`, or the folder `$PAPER_WALLPA
 ## Files
 
 `shell.lua` wires the modules under `modules/`; shared drawing lives in `lib/paper.lua` and
-`components/`. Design rules: `DESIGN.md` and `briefs/BUILD.md`. `python3 -I tools/make_assets.py`
-regenerates `img/`. The shell keeps its state in `state*.json` beside the config; those files are
-ignored.
+`components/`. Design rules: `DESIGN.md` and `AGENTS.md`. `python3 -I tools/make_assets.py`
+regenerates `img/`. The shell keeps its state in `~/.local/state/paper-shell/` (`$XDG_STATE_HOME`).
 
 ## License
 

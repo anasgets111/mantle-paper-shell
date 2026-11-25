@@ -17,7 +17,7 @@ local sheet = require("modules.updates.sheet")
 local M = {}
 
 -- The surface the widget sits on. ponytail: one static parent, so a widget on a second taskbar
--- output opens the popup on the instance clicked only when the click arms a grab (BUILD.md).
+-- output opens the popup on the instance clicked only when the click arms a grab (AGENTS.md).
 M.PARENT = "paper-taskbar"
 M.ID = "paper-updates"
 
