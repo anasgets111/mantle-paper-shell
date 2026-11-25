@@ -12,6 +12,7 @@ local tiles = require("modules.quick.tiles")
 local privacy = require("modules.quick.privacy")
 local G = require("modules.quick.glyphs")
 local tooltip = require("components.tooltip")
+local recorder = require("modules.recorder")
 
 local M = {}
 
@@ -99,6 +100,7 @@ local header = row {
         k.body(mantle.battery:map(battery_line, ""), 21, { align_v = "center", width = "fill" }),
         action_disc("settings", G.settings, "Settings", function() ui_state.toggle_modal("settings") end),
         action_disc("lock", G.lock, "Lock", function() mantle.lock:lock() end),
+        action_disc("record", "video", "Record screen", function() recorder.open(anchor:get()) end),
         action_disc("power", G.power, "Power", function() ui_state.toggle_modal("startmenu") end),
     },
 }

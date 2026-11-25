@@ -14,6 +14,7 @@ local status = require("modules.taskbar.status")
 local start = require("modules.taskbar.start")
 local privacy = require("modules.taskbar.privacy")
 local awake = require("modules.taskbar.awake")
+local recorder = require("modules.recorder")
 local layouts = require("modules.taskbar.layouts")
 local tips = require("modules.taskbar.tips")
 
@@ -135,6 +136,7 @@ local function bar(output)
     local hidden = fullscreen_on(output)
     local right = {}
     if updates then right[#right + 1] = updates.widget(output) end
+    right[#right + 1] = recorder.indicator(output)
     right[#right + 1] = awake.indicator(output)
     right[#right + 1] = privacy.indicators(output)
     right[#right + 1] = layouts.widget(output)
@@ -189,5 +191,6 @@ local panel_surface = panel {
 
 local surfaces = { panel_surface, previews.surface, previews.tip_surface, tips.surface, privacy.live_surface }
 for _, s in ipairs(menus.surfaces) do surfaces[#surfaces + 1] = s end
+for _, s in ipairs(recorder.surfaces) do surfaces[#surfaces + 1] = s end
 
 return { surfaces = surfaces }
