@@ -5,6 +5,7 @@ local util = require("lib.util")
 local controls = require("components.controls")
 local G = require("modules.quick.glyphs")
 local icons = require("components.icons")
+local idle = require("modules.lock.idle")
 
 local TW, TH = 218, 78
 
@@ -98,7 +99,7 @@ local function next_profile()
 end
 
 local count = computed({ network, mantle.bluetooth, mantle.power, mantle.radio }, function(n, b, p, r)
-    local c = 1
+    local c = 2 -- Do not disturb and Keep awake always show.
     if n and n.wifi_present then c = c + 1 end
     if b and b.available then c = c + 1 end
     if p and p.profiles and #p.profiles > 1 then c = c + 1 end
@@ -165,6 +166,13 @@ return {
                 status = airplane_on:map(function(v) return v and "Radios off" or "Off" end),
                 visible = mantle.radio:map(function(r) return #r.radios > 0 end, false),
                 on_click = function() mantle.radio:set_all_blocked(not airplane_on:get()) end,
+            },
+            tile {
+                id = "awake", label = "Keep awake", seed = 61, tilt = -0.4,
+                icon = G.awake,
+                on = idle.manual,
+                status = idle.manual:map(function(v) return v and "Screen stays on" or "Off" end),
+                on_click = function() idle.set_manual(not idle.manual:get()) end,
             },
         }
         -- The network name can be cut short on the tile.

@@ -7,6 +7,7 @@ return {
     bluetooth_off = "bluetooth-off",
     dnd = "bell-off",
     airplane = "airplane",
+    awake = "coffee",
     profile = {
         ["power-saver"] = "power-profile-power-saver-symbolic",
         balanced = "power-profile-balanced-symbolic",
