@@ -415,6 +415,10 @@ local GLYPHS = {
     night = function()
         return { moon(10.5, 13.5, 0.85), line(18, 3.5, 18, 8.5), line(15.5, 6, 20.5, 6) }
     end,
+    play = function() return { line(8, 5, 19, 12, 8, 19, 8, 5) } end,
+    pause = function() return { line(9, 5.5, 9, 18.5), line(15, 5.5, 15, 18.5) } end,
+    ["skip-forward"] = function() return { line(5, 6, 14, 12, 5, 18, 5, 6), line(18, 6, 18, 18) } end,
+    ["skip-back"] = function() return { line(19, 6, 10, 12, 19, 18, 19, 6), line(6, 6, 6, 18) } end,
     -- Half the disc hatched: dark style.
     ["dark-style"] = function()
         return {
@@ -577,6 +581,10 @@ local SYMBOLIC = {
     ["bluetooth-active"] = "bluetooth",
     ["bluetooth-disabled"] = "bluetooth-off",
     ["bluetooth-disconnected"] = "bluetooth-off",
+    ["media-playback-start"] = "play",
+    ["media-playback-pause"] = "pause",
+    ["media-skip-forward"] = "skip-forward",
+    ["media-skip-backward"] = "skip-back",
     ["audio-volume-muted"] = "volume-muted",
     ["audio-volume-low"] = "volume-low",
     ["audio-volume-medium"] = "volume-medium",

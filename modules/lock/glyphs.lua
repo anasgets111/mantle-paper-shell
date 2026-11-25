@@ -14,4 +14,9 @@ return {
     less = "chevron-left",
     more = "chevron-right",
     info = "dialog-information-symbolic",
+    music = "music",
+    play = "play",
+    pause = "pause",
+    previous = "skip-back",
+    next = "skip-forward",
 }

@@ -23,6 +23,13 @@ local preview_state = state("lock.preview_state", {
     active = true, authenticating = false, unlocking = false, attempts = 0, error = "", messages = {},
 })
 
+-- `mantle set lock.preview_player '{...}'` shows a fake `PlayerState` on the preview; `{}` shows the real one.
+local preview_player = state("lock.preview_player", {})
+local media = require("modules.lock.media")
+local shown_player = computed({ preview_player, media.player }, function(fake, real)
+    return fake.id and fake or real
+end)
+
 local preview_panel = panel {
     id = "paper-lock-preview",
     namespace = "paper-lock-preview",
@@ -35,7 +42,7 @@ local preview_panel = panel {
     visible = preview,
     on_escape = function() preview:set(false) end,
     child = util.lift(preview, function(on)
-        return on and cover("preview", { preview = true, source = preview_state }) or rect {}
+        return on and cover("preview", { preview = true, source = preview_state, player = shown_player }) or rect {}
     end),
 }
 

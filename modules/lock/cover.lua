@@ -8,6 +8,7 @@ local util = require("lib.util")
 local controls = require("components.controls")
 local identity = require("lib.identity")
 local password = require("modules.lock.password")
+local media = require("modules.lock.media")
 local G = require("modules.lock.glyphs")
 
 local CW, CH = 600, 800
@@ -126,7 +127,7 @@ local function label(output, opts)
     }
 end
 
--- opts = { preview?, source? }
+-- opts = { preview?, source?, player? }
 return function(output, opts)
     opts = opts or {}
     local source = opts.source or mantle.lock
@@ -179,6 +180,8 @@ return function(output, opts)
                     end), 26, { foreground = k.DEEP_BLUE, align_h = "center" }),
                     rect { height = 50 },
                     label(output, { preview = opts.preview, source = source }),
+                    rect { height = 14 },
+                    media.card(opts.player),
                     rect { height = "fill" },
                     status_line(source),
                 },
