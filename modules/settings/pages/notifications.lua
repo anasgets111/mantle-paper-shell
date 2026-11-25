@@ -8,6 +8,7 @@ local rows = require("modules.settings.rows")
 local icons = require("modules.settings.icons")
 local store = require("lib.store")
 local apps = require("lib.apps")
+local history = require("modules.notifications.history")
 
 local notes = mantle.notifications
 
@@ -29,9 +30,10 @@ end
 store.muted_apps:on_change(apply)
 apply(store.muted_apps:get(), {})
 
--- Senders seen in the feed plus anything already muted, so a muted app that has gone quiet stays listed.
+-- Senders in the live feed and in the saved history (the server forgets its feed on restart), plus
+-- anything already muted, so a muted app that has gone quiet stays listed.
 -- Icon: the sender's own, else its desktop entry's, so a muted list reads as app icons.
-local senders = computed({ notes, store.muted_apps, mantle.applications }, function(n, muted, applications)
+local senders = computed({ notes, history.records, store.muted_apps, mantle.applications }, function(n, saved, muted, applications)
     local seen, list = {}, {}
     local function add(key, name, icon)
         if key and key ~= "" and not seen[key] then
@@ -40,8 +42,10 @@ local senders = computed({ notes, store.muted_apps, mantle.applications }, funct
             list[#list + 1] = { key = key, name = name, icon = icon or (entry and entry.icon) }
         end
     end
-    for _, item in ipairs(n and n.feed or {}) do
-        add(item.desktop_entry or item.app_name, item.app_name ~= "" and item.app_name or item.desktop_entry, item.app_icon)
+    for _, source in ipairs({ n and n.feed or {}, saved or {} }) do
+        for _, item in ipairs(source) do
+            add(item.desktop_entry or item.app_name, item.app_name ~= "" and item.app_name or item.desktop_entry, item.app_icon)
+        end
     end
     for _, key in ipairs(muted or {}) do add(key, key) end
     table.sort(list, function(a, b) return a.name:lower() < b.name:lower() end)
@@ -49,7 +53,8 @@ local senders = computed({ notes, store.muted_apps, mantle.applications }, funct
 end, {})
 
 -- A sound per urgency tier, from the freedesktop sound theme. The engine plays nothing for a tier
--- until one is set and keeps no record of it, so the choice lives here and is reapplied at load.
+-- until one is set and keeps no record of it, so the choice lives here and is reapplied whenever the
+-- file pushes: at load (the table reads its empty defaults until then) and on every pick.
 local SOUND_DIR = "/usr/share/sounds/freedesktop/stereo/"
 local SOUNDS = { { "message", "Message" }, { "bell", "Bell" }, { "complete", "Chime" }, { "dialog-warning", "Alert" } }
 local TIERS = { { "low", "Low" }, { "normal", "Normal" }, { "critical", "Critical" } }
@@ -58,7 +63,11 @@ local sounds = persistent_table {
     defaults = { notification_sounds = {} },
 }
 local function sound_path(name) return SOUND_DIR .. name .. ".oga" end
-for tier, name in pairs(sounds.notification_sounds:get()) do notes:set_sound(tier, sound_path(name)) end
+local function apply_sounds(chosen)
+    for tier, name in pairs(chosen or {}) do notes:set_sound(tier, sound_path(name)) end
+end
+sounds.notification_sounds:on_change(apply_sounds)
+apply_sounds(sounds.notification_sounds:get())
 
 local function sound_rows()
     local list = {}
@@ -73,14 +82,13 @@ local function sound_rows()
                 value = sounds.notification_sounds:map(function(t) return t[tier[1]] end),
                 on_select = function(name)
                     sounds:set("notification_sounds", util.with(sounds.notification_sounds:get(), tier[1], name))
-                    notes:set_sound(tier[1], sound_path(name))
                 end,
             },
         })
     end
     -- ponytail: the engine has no call to clear a tier's sound, so there is no "None" choice; an
     -- unset tier stays silent until one is picked. Upgrade: offer "None" once set_sound takes "".
-    list[#list + 1] = rows.note("Unset tiers stay silent; a picked sound stays until the shell restarts.", 1)
+    list[#list + 1] = rows.note("Unset tiers stay silent. A pick is saved and comes back after a restart.", 1)
     return list
 end
 
