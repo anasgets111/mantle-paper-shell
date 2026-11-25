@@ -128,8 +128,10 @@ end
 -- Index tabs standing on a ruled line at the top of a page, two pitches tall, for a page with
 -- distinct parts. Returns the strip and the chosen index (`settings.<page>.tab`); `R.pane` shows a
 -- part only under its tab. Choosing a tab scrolls the page back to its top.
+R.tab_states = {}
 function R.tabs(page, names, width)
     local chosen = state("settings." .. page .. ".tab", 1)
+    R.tab_states[page] = chosen
     local strip = rect {
         width = "fill",
         height = R.PITCH * 2,

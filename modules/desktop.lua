@@ -355,7 +355,7 @@ local function open_menu(x, y)
         {
             label = "Change background…",
             icon = "preferences-desktop-wallpaper-symbolic",
-            on_click = function() settings.open("appearance") end,
+            on_click = function() settings.open("appearance", 2) end,
         },
     }, { anchor = "bottom_right", gravity = "bottom_right" })
 end

@@ -1,7 +1,7 @@
 -- Settings modal: a ring-bound notebook with card-stock index tabs down its left edge, one per page.
 -- Returns a `components.modal` entry for `modules/modal_host.lua`, plus:
 --   page        state `settings.page`: the open page's key (`mantle set settings.page '"sound"'`)
---   open(key)   open the modal on that page
+--   open(key, tab?)   open the modal on that page, on its first tab or tab number `tab`
 --   surfaces    the tooltip popup on the modal host, for shell.lua's surface list
 local modal = require("components.modal")
 local ui_state = require("lib.ui_state")
@@ -57,8 +57,9 @@ entry.page = page
 entry.surfaces = { tips.surface, rows.menu.surfaces[1], rows.menu.surfaces[2] }
 -- A dropdown left open belongs to the page it was opened from.
 page:on_change(function() rows.menu.close() end)
-function entry.open(key)
+function entry.open(key, tab)
     page:set(key)
+    if rows.tab_states[key] then rows.tab_states[key]:set(tab or 1) end
     ui_state.active_modal:set("settings")
 end
 
