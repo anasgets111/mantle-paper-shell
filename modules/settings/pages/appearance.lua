@@ -6,6 +6,8 @@ local k = require("lib.paper")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
 local scheme = require("lib.scheme")
+local util = require("lib.util")
+local icons = require("components.icons")
 local background = require("modules.settings.pages.background")
 
 local SCHEMES = {
@@ -20,6 +22,7 @@ local choose = scheme.set
 local function swatch(s, i)
     local key, name, paper, ink = s[1], s[2], s[3], s[4]
     local hovered = hover("settings.appearance." .. key)
+    local keyed = focus_visible("settings.appearance." .. key)
     local lines = {}
     for n = 0, 3 do
         lines[#lines + 1] = { op = "M", points = { 18, 44 + n * 14 } }
@@ -27,6 +30,8 @@ local function swatch(s, i)
     end
     return rect {
         hover = hovered,
+        focus_visible = keyed,
+        focus_ring = false,
         accessible_name = name,
         cursor = "pointer",
         on_click = function() choose(key) end,
@@ -56,9 +61,25 @@ local function swatch(s, i)
                     },
                 },
             },
+            -- The chosen scheme wears a punched tick, as the chosen wallpaper does; the keyboard's one
+            -- gets the pencil loop, 12 px round the 170 x 112 sheet that sits 10 px inside this box.
             rect {
                 visible = current:map(function(v) return v == key end),
-                -- 12 px of loop round the 170 x 112 sheet, which sits 10 px inside this box.
+                align_h = "end",
+                translate = { x = 4, y = -4 },
+                children = {
+                    k.sheet {
+                        width = 26,
+                        height = 26,
+                        shape = k.torn_circle(26, i),
+                        color = k.CARD,
+                        shadows = k.SHADOW.rest,
+                        child = util.with(icons.doodle("check", 18, k.BLUE), "align_h", "center"),
+                    },
+                },
+            },
+            rect {
+                visible = keyed,
                 translate = { x = -12, y = -12 },
                 children = { c.pencil_loop(194, 136, 20 + i) },
             },

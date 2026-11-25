@@ -306,7 +306,8 @@ end
 -- opens `o.menu` (a `components/menu.lua` menu on the same surface) under it, the current option
 -- ticked; the wheel steps through the options without opening it, unless `wheel = false`.
 -- o = { id, options = { {value, label}, ... }, value = signal|plain, on_select = fn(v), menu, width?,
---       height?, label? (accessible name), empty? (text while no option matches), wheel? }
+--       height?, label? (accessible name), empty? (text while no option matches), wheel?,
+--       elided? (an `elided` signal for the shown value, so a caller can tooltip a cut one) }
 function M.dropdown(o)
     local W, H = o.width or 260, o.height or 28
     local hovered = hover_of("dropdown", o.id)
@@ -374,7 +375,7 @@ function M.dropdown(o)
                     spacing = 6,
                     padding = { left = 12, right = 8 },
                     children = {
-                        body(current, 19, { width = "fill", elide = "end", align_v = "center" }),
+                        body(current, 19, { width = "fill", elide = "end", elided = o.elided, align_v = "center" }),
                         util.with(icons.doodle("chevron-down", 18, INK_SOFT), "align_v", "center"),
                     },
                 },
@@ -559,10 +560,11 @@ function M.tabs(o)
                                 padding = { top = 6, right = 4 },
                                 foreground = p == i and INK or INK_SOFT,
                             }),
+                            -- Round the label, about 12 px a letter, with a little air.
                             rect {
-                                translate = { x = 8, y = 4 },
+                                translate = { x = (w - math.min(w - 12, #n * 12 + 20)) / 2, y = 4 },
                                 opacity = focus:map(function(v) return v and 1 or 0 end),
-                                children = { M.pencil_loop(w - 16, h - 14, 60 + i, 2) },
+                                children = { M.pencil_loop(math.min(w - 12, #n * 12 + 20), h - 8, 60 + i, 2) },
                             },
                         },
                     },
