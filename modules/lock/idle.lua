@@ -189,9 +189,10 @@ function idle.sleep_held(settings, foreign)
     return settings.sleep_holds_keep_awake and foreign ~= nil and foreign.sleep_inhibited == true
 end
 
---- Everything named as holding the session awake, ours and other apps'.
-idle.reasons = computed({ mantle.privacy, idle.settings, idle.manual, mantle.idle }, function(privacy, settings, manual, foreign)
-    local reasons, seen = own_reasons(privacy, settings, manual), {}
+-- Other apps' holders by name, once each, appended to `reasons`.
+local function foreign_reasons(reasons, settings, foreign)
+    local seen = {}
+    for _, name in ipairs(reasons) do seen[name] = true end
     local function add(list)
         for _, holder in ipairs(list or {}) do
             local name = holder.who ~= "" and holder.who or holder.why ~= "" and holder.why or "another app"
@@ -204,6 +205,16 @@ idle.reasons = computed({ mantle.privacy, idle.settings, idle.manual, mantle.idl
     add(foreign and foreign.inhibitors)
     if settings.sleep_holds_keep_awake then add(foreign and foreign.sleep_inhibitors) end
     return reasons
+end
+
+--- Everything named as holding the session awake, ours and other apps'.
+idle.reasons = computed({ mantle.privacy, idle.settings, idle.manual, mantle.idle }, function(privacy, settings, manual, foreign)
+    return foreign_reasons(own_reasons(privacy, settings, manual), settings, foreign)
+end, {})
+
+--- Only other apps holding the session awake, by name.
+idle.others = computed({ idle.settings, mantle.idle }, function(settings, foreign)
+    return foreign_reasons({}, settings, foreign)
 end, {})
 
 --- Make our logind hold match our reasons. The one writer, so the take/release count stays right.
