@@ -76,7 +76,7 @@ return {
                 k.hand(identity.account:map(function(a) return a:match("@(.*)$") or a end), 52, { font_weight = 700 }),
             }, {
                 k.hand("Mantle " .. version(), 28, { foreground = k.BLUE }),
-            }, 3),
+            }, 2),
             rows.heading("This machine"),
             fact("System", facts:map(function(f) return f.os end)),
             fact("Kernel", facts:map(function(f) return f.kernel end)),
