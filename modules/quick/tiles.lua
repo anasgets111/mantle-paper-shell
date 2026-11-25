@@ -7,6 +7,7 @@ local G = require("modules.quick.glyphs")
 local icons = require("components.icons")
 local idle = require("modules.lock.idle")
 local scheme = require("lib.scheme")
+local nightlight = require("modules.nightlight")
 
 local TW, TH = 218, 78
 
@@ -101,7 +102,7 @@ local function next_profile()
 end
 
 local count = computed({ network, mantle.bluetooth, mantle.power, mantle.radio }, function(n, b, p, r)
-    local c = 3 -- Do not disturb, Keep awake and Dark style always show.
+    local c = 4 -- Do not disturb, Keep awake, Dark style and Night light always show.
     if n and n.wifi_present then c = c + 1 end
     if b and b.available then c = c + 1 end
     if p and p.profiles and #p.profiles > 1 then c = c + 1 end
@@ -182,6 +183,17 @@ return {
                 on = dark_on,
                 status = dark_on:map(function(v) return v and "Apps are dark" or "Off" end),
                 on_click = function() scheme.set(dark_on:get() and "light" or "dark") end,
+            },
+            tile {
+                id = "night", label = "Night light", seed = 71, tilt = -0.5,
+                icon = G.night,
+                on = nightlight.store.enabled:map(function(v) return v == true end),
+                status = nightlight.status,
+                -- Without hyprsunset the status says so; a click looks again, in case it was just installed.
+                on_click = function()
+                    if not nightlight.installed:get() then return nightlight.recheck() end
+                    nightlight.set_enabled(not nightlight.store.enabled:get())
+                end,
             },
         }
         -- The network name can be cut short on the tile.

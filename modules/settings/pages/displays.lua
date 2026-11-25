@@ -2,6 +2,7 @@
 -- rectangles arranged by position; each row offers the Hyprland `hl.monitor` line that would set it.
 local k = require("lib.paper")
 local rows = require("modules.settings.rows")
+local nightlight_page = require("modules.nightlight.page")
 
 local MAP_W, MAP_H = rows.WIDTH - 20, rows.PITCH * 6 - 16
 
@@ -114,6 +115,7 @@ return {
             },
             rows.note("Mantle can only read display settings. To change one, put its hl.monitor line "
                 .. "in Hyprland's config and reload Hyprland.", 2),
+            nightlight_page(),
         }
     end,
 }

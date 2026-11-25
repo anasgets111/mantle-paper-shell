@@ -9,6 +9,7 @@ return {
     airplane = "airplane",
     awake = "coffee",
     dark = "dark-style",
+    night = "night",
     profile = {
         ["power-saver"] = "power-profile-power-saver-symbolic",
         balanced = "power-profile-balanced-symbolic",
