@@ -370,9 +370,13 @@ M.wallpaper = panel {
     width = "fill",
     height = "fill",
     exclusive_zone = "ignore",
+    -- The keyboard only while the menu is open, so Escape reaches it; the desktop never holds it.
+    keyboard_interactivity = menu.is_open:map(function(open) return open and "exclusive" or "none" end),
     child = rect {
         width = "fill",
         height = "fill",
+        -- Fit leaves bars on a screen of another shape: dark desk, opaque.
+        background = "#1E1B18",
         on_click = function(r, button, p)
             if button == "right" then open_menu(r.x + p.x, r.y + p.y) end
         end,
