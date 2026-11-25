@@ -55,14 +55,17 @@ local function tool_rows()
 end
 
 return function()
-    return {
+    local strip, tab = rows.tabs("updates", { "Checking", "Developer tools" }, 190)
+    return { strip, rows.pane(tab, 1, {
         rows.heading("Checking", {
             rows.button("updates.check", "Check now", "plain", S.check),
         }),
         rows.line({ rows.label(status) }, { rows.caption(ago:map(function(a) return "checked " .. a end)) }),
         rows.line({ rows.label("Check") }, {
-            c.radio_group {
+            rows.dropdown {
                 id = "updates.interval",
+                label = "Check for updates",
+                width = 180,
                 options = S.INTERVALS,
                 value = saved.interval,
                 on_select = S.set_interval,
@@ -78,8 +81,9 @@ return function()
         }),
         rows.heading("Last update"),
         rows.note(saved.last_install:map(last_install)),
+    }), rows.pane(tab, 2, {
         rows.heading("Developer tools"),
         rows.note("Updated after the packages, as you, in the order below."),
         tool_rows(),
-    }
+    }) }
 end
