@@ -10,6 +10,7 @@ local controls = require("components.controls")
 local ui_state = require("lib.ui_state")
 local tiles = require("modules.quick.tiles")
 local privacy = require("modules.quick.privacy")
+local devices = require("modules.quick.devices")
 local G = require("modules.quick.glyphs")
 local tooltip = require("components.tooltip")
 local recorder = require("modules.recorder")
@@ -25,6 +26,8 @@ M.is_open = open
 local anchor = state("quick.anchor", { x = 0, y = 0, width = 1, height = 1 })
 -- The section the opener asked for; "" for none.
 local section = state("quick.section", "")
+-- The device list open under its row: "sinks", "sources" or "" for none.
+local chooser = state("quick.chooser", "")
 
 -- A click on the status icons while open dismisses the grab first; if that same click then reaches
 -- `open`, it must close rather than reopen.
@@ -46,17 +49,23 @@ local function close() open:set(false) end
 
 local tips = tooltip.new { id = "paper-quick-tip", parent = "paper-quick", side = "top" }
 
-local function sink_of(audio)
-    for _, sink in ipairs(audio and audio.sinks or {}) do
-        if sink.active then return sink end
+local function default_of(audio, kind)
+    for _, device in ipairs(audio and audio[kind] or {}) do
+        if device.active then return device end
     end
 end
 
--- One wheel notch is 5%, as on the taskbar's volume icon.
-local function nudge_volume(_, steps)
-    local s = sink_of(mantle.audio:get())
-    if s then mantle.audio:set_volume(s.id, math.max(0, math.min(MAX_VOLUME, (s.volume or 0) + steps * 5))) end
+local function sink_of(audio) return default_of(audio, "sinks") end
+local function source_of(audio) return default_of(audio, "sources") end
+
+-- One wheel notch is 5%, as on the taskbar's volume icon. A source tops out at 100%.
+local function nudge(kind, ceiling)
+    return function(_, steps)
+        local d = default_of(mantle.audio:get(), kind)
+        if d then mantle.audio:set_volume(d.id, math.max(0, math.min(ceiling, (d.volume or 0) + steps * 5))) end
+    end
 end
+local nudge_volume, nudge_mic = nudge("sinks", MAX_VOLUME), nudge("sources", 100)
 
 local function nudge_brightness(_, steps)
     local b = mantle.brightness:get()
@@ -111,6 +120,26 @@ local function percent_label(value)
     return k.body(value, 20, { align_v = "center", width = 50 })
 end
 
+local SLIDER_W = 276
+
+-- The chevron that opens `kind`'s device list under its row, GNOME-style.
+local function chooser_disc(kind, tip)
+    local id = "quick.chooser." .. kind
+    return tips.wrap(controls.disc_button {
+        id = id,
+        seed = kind == "sinks" and 63 or 67,
+        size = 30,
+        tooltip = tip,
+        icon = chooser:map(function(v) return v == kind and "chevron-up" or "chevron-down" end),
+        on_click = function() chooser:set(chooser:get() == kind and "" or kind) end,
+    }, "paper.disc." .. id, tip)
+end
+
+-- Only worth a chevron when there is a choice to make.
+local function with_choice(node, kind)
+    return util.with(node, "visible", mantle.audio:map(function(a) return #(a[kind] or {}) > 1 end, false))
+end
+
 local volume = row {
     width = "fill",
     spacing = 12,
@@ -137,7 +166,7 @@ local volume = row {
         -- The bar spans the sink's whole range, 0 to 150%, so a boosted volume still has a place on it.
         controls.slider {
             id = "quick.volume",
-            width = 320,
+            width = SLIDER_W,
             show_value = false,
             value = mantle.audio:map(function(a)
                 local s = sink_of(a)
@@ -153,6 +182,54 @@ local volume = row {
             local s = sink_of(a)
             return s and s.muted and "muted" or string.format("%d%%", math.floor((s and s.volume or 0) + 0.5))
         end, "")),
+        with_choice(chooser_disc("sinks", "Output device"), "sinks"),
+    },
+}
+
+local has_source = mantle.audio:map(function(a) return source_of(a) ~= nil end, false)
+
+local mic = row {
+    width = "fill",
+    spacing = 12,
+    visible = has_source,
+    children = {
+        util.with(tips.wrap(controls.disc_button {
+            id = "quick.mic",
+            seed = 65,
+            size = 38,
+            tooltip = "Mute microphone",
+            icon = mantle.audio:map(function(a)
+                local s = source_of(a)
+                return (s and s.muted) and G.mic_off or G.mic
+            end, G.mic),
+            on_click = function()
+                local s = source_of(mantle.audio:get())
+                if s then mantle.audio:toggle_mute(s.id) end
+            end,
+        }, "paper.disc.quick.mic", function()
+            local s = source_of(mantle.audio:get())
+            return s and s.muted and "Unmute microphone" or "Mute microphone"
+        end), "on_wheel", nudge_mic),
+        controls.slider {
+            id = "quick.mic",
+            accessible_name = "Microphone volume",
+            width = SLIDER_W,
+            show_value = false,
+            value = mantle.audio:map(function(a)
+                local s = source_of(a)
+                return s and (s.volume or 0) / 100 or 0
+            end, 0),
+            on_change = function(v)
+                local s = source_of(mantle.audio:get())
+                if s then mantle.audio:set_volume(s.id, math.floor(v * 100 + 0.5)) end
+            end,
+            on_wheel = nudge_mic,
+        },
+        percent_label(mantle.audio:map(function(a)
+            local s = source_of(a)
+            return s and s.muted and "muted" or string.format("%d%%", math.floor((s and s.volume or 0) + 0.5))
+        end, "")),
+        with_choice(chooser_disc("sources", "Input device"), "sources"),
     },
 }
 
@@ -164,7 +241,7 @@ local brightness = row {
         rect { width = 38, height = 38, children = { icons.doodle(G.brightness, 20) } },
         controls.slider {
             id = "quick.brightness",
-            width = 320,
+            width = SLIDER_W,
             show_value = false,
             value = mantle.brightness:map(function(b) return b.percent / 100 end, 0),
             -- Never fully dark from a slider: 1% keeps the screen readable enough to drag back.
@@ -172,6 +249,7 @@ local brightness = row {
             on_wheel = nudge_brightness,
         },
         percent_label(mantle.brightness:map(function(b) return b.percent .. "%" end, "")),
+        rect { width = 30 },
     },
 }
 
@@ -182,11 +260,33 @@ local has_brightness = mantle.brightness:map(function(b) return b ~= nil end, fa
 -- The torn edge is cut for a fixed size, so the sheet is rebuilt when a tile or slider comes or goes.
 local flagged = section:map(function(s) return s == "privacy" end)
 
-local sheet = computed({ tiles.count, has_brightness, privacy.in_use }, function(count, lit, in_use)
+-- The open device list's kind and devices, as a key: the sheet is rebuilt only when it opens,
+-- closes, or its devices come or go, not on every volume push.
+local listed = computed({ chooser, mantle.audio }, function(kind, a)
+    if kind == "" or not a then return "" end
+    local parts = { kind }
+    for _, d in ipairs(a[kind] or {}) do parts[#parts + 1] = d.id .. "=" .. d.name end
+    return table.concat(parts, "\n")
+end, "")
+
+local sheet = computed({ tiles.count, has_brightness, privacy.in_use, has_source, listed },
+    function(count, lit, in_use, mic_shown, key)
     local rows = (count + 1) // 2
     local strip = privacy.height(#in_use)
-    local height = 28 + 46 + 18 + (strip > 0 and strip + 18 or 0) + 6 + 18 + 38 + (lit and 56 or 0) + 18
-        + rows * tiles.HEIGHT + (rows - 1) * 10 + 28
+    local kind = key:match("^[^\n]*")
+    local list = kind ~= "" and devices.build(kind, mantle.audio:get(), W - 56, tips) or nil
+    local list_h = list and devices.height(#(mantle.audio:get()[kind] or {})) + 18 or 0
+    local height = 28 + 46 + 18 + (strip > 0 and strip + 18 or 0) + 6 + 18 + 38 + (mic_shown and 56 or 0)
+        + list_h + (lit and 56 or 0) + 18 + rows * tiles.HEIGHT + (rows - 1) * 10 + 28
+    local body = { header }
+    if #in_use > 0 then body[#body + 1] = privacy.build(in_use, W - 56, tips, flagged) end
+    body[#body + 1] = controls.divider(W - 56, false, 7)
+    body[#body + 1] = volume
+    if kind == "sinks" then body[#body + 1] = list end
+    body[#body + 1] = mic
+    if kind == "sources" then body[#body + 1] = list end
+    body[#body + 1] = brightness
+    body[#body + 1] = row { width = "fill", wrap = true, spacing = 8, line_spacing = 10, children = tiles.build(tips) }
     return k.card {
         width = W,
         height = height,
@@ -199,15 +299,7 @@ local sheet = computed({ tiles.count, has_brightness, privacy.in_use }, function
             height = "fill",
             spacing = 18,
             padding = { left = 28, right = 28, top = 28, bottom = 28 },
-            children = util.concat(
-                { header },
-                util.concat(#in_use > 0 and { privacy.build(in_use, W - 56, tips, flagged) } or {}, {
-                    controls.divider(W - 56, false, 7),
-                    volume,
-                    brightness,
-                    row { width = "fill", wrap = true, spacing = 8, line_spacing = 10, children = tiles.build(tips) },
-                })
-            ),
+            children = body,
         },
     }
 end)
@@ -224,7 +316,7 @@ M.surfaces = {
         constraint_adjustment = { "slide_x", "flip_y" },
         grab = true,
         on_escape = close,
-        reset_on_close = { section },
+        reset_on_close = { section, chooser },
         on_dismiss = function()
             dismissed_at = mantle.clock:now()
             close()
