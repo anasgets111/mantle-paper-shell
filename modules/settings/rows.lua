@@ -118,17 +118,27 @@ function R.button(id, label, kind, on_click)
     }
 end
 
--- A dropdown sized for a ruled row; `o` as `controls.dropdown`, without `menu`.
+-- A dropdown sized for a ruled row; `o` as `controls.dropdown`, without `menu`. A value cut with
+-- "…" shows in full in a tooltip.
 function R.dropdown(o)
     o.id = "settings." .. o.id
     o.menu = R.menu
-    return c.dropdown(o)
+    local cut = elided("settings.cut." .. o.id)
+    o.elided = cut
+    return tips.wrap(c.dropdown(o), "paper.dropdown." .. o.id, function()
+        if not cut:get() then return "" end
+        local now = util.get(o.value)
+        local opt = util.find(o.options, function(x) return x[1] == now end)
+        return opt and opt[2] or ""
+    end)
 end
 
 -- Index tabs standing on a ruled line at the top of a page, two pitches tall, for a page with
 -- distinct parts. Returns the strip and the chosen index (`settings.<page>.tab`); `R.pane` shows a
--- part only under its tab. Choosing a tab scrolls the page back to its top.
+-- part only under its tab. Choosing a tab scrolls the page back to its top. Put the strip first in
+-- the page's list: the notebook finds it in `R.strips` and pins it above the scrolling rows.
 R.tab_states = {}
+R.strips = setmetatable({}, { __mode = "k" })
 function R.tabs(page, names, width)
     local chosen = state("settings." .. page .. ".tab", 1)
     R.tab_states[page] = chosen
@@ -155,6 +165,7 @@ function R.tabs(page, names, width)
             },
         },
     }
+    R.strips[strip] = true
     return strip, chosen
 end
 

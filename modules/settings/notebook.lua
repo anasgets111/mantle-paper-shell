@@ -27,12 +27,13 @@ local TINTS = { "#E9DDBB", "#C9D8EA", "#EBCBC5" }
 
 local function tab_face(p, chosen)
     return row {
-        spacing = 10,
+        spacing = chosen and 10 or 8,
         align_v = "center",
-        padding = { left = chosen and 18 or 16 },
+        padding = { left = chosen and 18 or 14 },
         children = {
             icons.glyph(p.key, 20, chosen and k.INK or k.INK_SOFT),
-            k.hand(p.title, chosen and 27 or 24, {
+            -- 22 px keeps "Notifications", the longest title, 10 px clear of the page's torn edge.
+            k.hand(p.title, chosen and 27 or 22, {
                 font_weight = chosen and 700 or 400,
                 foreground = chosen and k.INK or k.INK_SOFT,
                 align_v = "center",
@@ -72,7 +73,7 @@ local function tab(p, i, page, pages)
             rect {
                 width = TABS_W,
                 height = TAB_H,
-                translate = hovered:map(function(over) return { x = over and 12 or 22 } end),
+                translate = hovered:map(function(over) return { x = over and 6 or 16 } end),
                 animate = { translate = { spring = { stiffness = 320, damping = 22 } } },
                 children = {
                     rect {
@@ -170,18 +171,54 @@ for y = rows.PITCH, rows.PITCH * RULE_COUNT, rows.PITCH do
     RULES[#RULES + 1] = { op = "L", points = { rows.WIDTH, y } }
 end
 
-local FADE_MASK = {
-    gradient = "linear",
-    angle = 180,
-    stops = {
-        { 0, "#00000000" }, { FADE_TOP / CARD_MAX_H, "#000000" },
-        { 1 - FADE / CARD_MAX_H, "#000000" }, { 1, "#00000000" },
-    },
-}
+local function fade_mask(h)
+    return {
+        gradient = "linear",
+        angle = 180,
+        stops = {
+            { 0, "#00000000" }, { FADE_TOP / h, "#000000" },
+            { 1 - FADE / h, "#000000" }, { 1, "#00000000" },
+        },
+    }
+end
 
+-- A page that opens with an in-page tab strip (`rows.tabs`) keeps it pinned above the rows that
+-- scroll, and the scrolling part is that much shorter.
 local function card(p, page)
     local body = p.build()
+    local header = rows.strips[body[1]] and table.remove(body, 1)
     body[#body + 1] = rect { height = FADE }
+    local viewport = CARD_MAX_H - 2 * CARD_PAD - (header and rows.PITCH * 2 or 0)
+    local scroller = column {
+        width = rows.WIDTH,
+        max_height = viewport,
+        scroll = scroll("settings.scroll." .. p.key),
+        mask = fade_mask(viewport),
+        children = {
+            -- Index-card rules behind the rows, scrolling with them: every row is a
+            -- whole number of pitches, so each sits on one.
+            rect {
+                width = "fill",
+                clip = "box",
+                children = {
+                    -- A "fill" height would make the scroll content as tall as the viewport,
+                    -- so the rules hang from a zero-height box and the wrapper clips them.
+                    rect {
+                        height = 0,
+                        children = {
+                            path {
+                                width = rows.WIDTH, height = rows.PITCH * RULE_COUNT,
+                                stroke = "#7FA3D050", stroke_width = 1, commands = RULES,
+                            },
+                        },
+                    },
+                    -- Right-aligned controls keep clear of the torn edge, and controls at the left
+                    -- edge keep room for their 5 px focus loop, which the viewport would clip.
+                    column { width = "fill", padding = { left = 6, right = 12 }, children = body },
+                },
+            },
+        },
+    }
     return rect {
         visible = page:map(function(key) return key == p.key end),
         children = {
@@ -195,33 +232,8 @@ local function card(p, page)
             },
             column {
                 width = rows.WIDTH,
-                max_height = CARD_MAX_H - 2 * CARD_PAD,
                 margin = { left = CARD_PAD, right = CARD_PAD, top = CARD_PAD - 8, bottom = CARD_PAD },
-                scroll = scroll("settings.scroll." .. p.key),
-                mask = FADE_MASK,
-                children = {
-                    -- Index-card rules behind the rows, scrolling with them: every row is a
-                    -- whole number of pitches, so each sits on one.
-                    rect {
-                        width = "fill",
-                        clip = "box",
-                        children = {
-                            -- A "fill" height would make the scroll content as tall as the viewport,
-                            -- so the rules hang from a zero-height box and the wrapper clips them.
-                            rect {
-                                height = 0,
-                                children = {
-                                    path {
-                                        width = rows.WIDTH, height = rows.PITCH * RULE_COUNT,
-                                        stroke = "#7FA3D050", stroke_width = 1, commands = RULES,
-                                    },
-                                },
-                            },
-                            -- Right-aligned controls keep clear of the torn edge; the rules still run to it.
-                            column { width = "fill", padding = { right = 12 }, children = body },
-                        },
-                    },
-                },
+                children = header and { header, scroller } or { scroller },
             },
             k.tape { width = 78, height = 22, align_h = "start", translate = { x = 40, y = -11 }, rotate = -3, seed = #p.key },
             k.tape { width = 78, height = 22, align_h = "end", translate = { x = -40, y = -11 }, rotate = 2.5, seed = #p.key + 9 },

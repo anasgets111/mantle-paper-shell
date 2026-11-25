@@ -38,7 +38,7 @@ end
 local function fact(label, value)
     return rows.line({
         rows.label(label, { width = 150, foreground = k.INK_SOFT }),
-        rows.label(value),
+        rows.label(value, { tip = "about." .. label }),
     })
 end
 
