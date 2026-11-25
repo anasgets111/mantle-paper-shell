@@ -57,7 +57,10 @@ local function tile(o)
                         align_v = "center",
                         spacing = -2,
                         children = {
-                            k.hand(o.label, 25, { font_weight = 700, foreground = ink, elide = "end", width = "fill" }),
+                            -- 150 px of text: "Do not disturb" fits only a size down. Titles are
+                            -- ours, so a length rule keeps every built-in one whole.
+                            k.hand(o.label, #o.label > 12 and 21 or 25,
+                                { font_weight = 700, foreground = ink, elide = "end", width = "fill" }),
                             k.body(o.status, 17, { foreground = ink, elide = "end", width = "fill" }),
                         },
                     },
