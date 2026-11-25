@@ -216,18 +216,17 @@ local function grid()
 end
 
 return function()
+    -- Under its own tab, so no heading: the scale row and the grid fill the card exactly.
     return {
-        rows.heading("Background"),
         rows.line({
-            rows.label("Scale", { width = 90 }),
+            rows.label("Scale", { width = 70 }),
             c.radio_group {
                 id = "settings.appearance.fit",
                 options = wallpaper.FITS,
                 value = wallpaper.fit,
                 on_select = wallpaper.set_fit,
             },
-        }),
+        }, { rows.caption("same picture on every screen") }),
         grid(),
-        rows.note("Every screen shows the same picture.", 1),
     }
 end

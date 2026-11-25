@@ -1,4 +1,5 @@
--- Appearance page: light or dark for apps, and the desktop background (`pages/background.lua`).
+-- Appearance page under two tabs: light or dark for apps, and the desktop background
+-- (`pages/background.lua`).
 -- `lib/scheme.lua` switches apps' light/dark pair (GTK, libadwaita, Qt, the portal). The paper shell
 -- stays light.
 local k = require("lib.paper")
@@ -71,7 +72,8 @@ return {
     build = function()
         local options = {}
         for i, s in ipairs(SCHEMES) do options[i] = { s[1], s[2] } end
-        local list = {
+        local strip, tab = rows.tabs("appearance", { "Style", "Background" })
+        local style = {
             rows.heading("Style for apps"),
             row { height = rows.PITCH * 5, spacing = 40, padding = { top = 10, left = 6 }, children = { swatch(SCHEMES[1], 1), swatch(SCHEMES[2], 2) } },
             rows.line({
@@ -85,7 +87,6 @@ return {
             rows.note("GTK and libadwaita apps follow this through the desktop portal. The paper shell keeps "
                 .. "its light desk for now.", 2),
         }
-        for _, node in ipairs(background()) do list[#list + 1] = node end
-        return list
+        return { strip, rows.pane(tab, 1, style), rows.pane(tab, 2, background()) }
     end,
 }
