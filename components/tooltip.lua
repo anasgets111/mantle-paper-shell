@@ -10,6 +10,7 @@
 -- Where: icon-only controls, live values (battery %, volume), elided text, pinned-but-closed
 -- taskbar icons, the clock. Not on labelled buttons, menu rows, running taskbar icons (the window
 -- preview is their tooltip) or the lock screen (a lock can't parent a popup).
+local theme = require("theme")
 local k = require("lib.paper")
 
 local M = {}
@@ -83,7 +84,7 @@ function M.new(o)
     end
 
     local anchor = ({ top = "top", bottom = "bottom", left = "left", right = "right" })[side]
-    local gap = 6
+    local gap = theme.tooltip.gap
 
     tips.surface = popup {
         id = o.id,
@@ -102,20 +103,20 @@ function M.new(o)
         -- The clock ticks once a second, so live values (battery, time) stay current while shown.
         child = computed({ current, mantle.clock }, function(slot)
             return rect {
-                padding = { top = 12, left = 12, right = 14, bottom = 16 },
+                padding = { top = theme.spacing.md, left = theme.spacing.md, right = theme.spacing.inset, bottom = theme.spacing.lg },
                 children = {
                     rect {
                         rotate = 1.5,
-                        background = k.STICKY,
-                        padding = { top = 7, bottom = 6, left = 11, right = 11 },
-                        shadows = { { blur = 6, offset = { x = 1, y = 3 }, color = "#00000050" } },
+                        background = theme.STICKY,
+                        padding = { top = theme.tooltip.pad_top, bottom = theme.spacing.xs, left = theme.tooltip.pad_side, right = theme.tooltip.pad_side },
+                        shadows = theme.SHADOW.tooltip,
                         effect = k.paper_fx { rim = 0, grain = 0.16 },
                         children = {
                             -- Long values (an app list, a window title) wrap rather than run off the screen.
-                            k.body(resolve(slot), 17, { max_width = 420, wrap = "word" }),
+                            k.body(resolve(slot), theme.font.caption, { max_width = theme.tooltip.max_width, wrap = "word" }),
                         },
                     },
-                    k.tape { width = 34, height = 12, translate = { y = -7 }, rotate = -4, seed = #slot },
+                    k.tape { width = theme.tooltip.tape_w, height = theme.tooltip.tape_h, translate = { y = -theme.tooltip.pad_top }, rotate = -4, seed = #slot },
                 },
             }
         end),

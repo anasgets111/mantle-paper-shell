@@ -1,6 +1,7 @@
 -- The popup stack: up to four sticky notes at the bottom-right, above the taskbar, newest at the
 -- bottom where the eye already is. One surface for the stack, sized to the screen's height so a new
 -- note never resizes the buffer; its empty part takes no input.
+local theme = require("theme")
 local util = require("lib.util")
 local feed = require("modules.notifications.feed")
 local st = require("modules.notifications.state")
@@ -64,8 +65,8 @@ return panel {
     layer = "overlay",
     anchor = { top = true, bottom = true, right = true },
     -- No right margin: a note swiped right slides off the screen edge, not into a cut 10 px short of it.
-    margin = { top = 12, bottom = 6 },
-    width = card.WIDTH + 80,
+    margin = { top = theme.spacing.md, bottom = theme.spacing.xs },
+    width = card.WIDTH + theme.notifications.toast_shadow_w,
     height = "fill",
     visible = util.linger(notes:map(function(shown) return #shown > 0 end), EXIT_MS),
     -- Bound, not constant: an `on_demand` surface can take the keyboard at map, which would steal it
@@ -80,12 +81,12 @@ return panel {
             rect { height = "fill" },
             column {
                 width = "fill",
-                padding = { left = 30, right = 40, top = 24, bottom = 40 },
+                padding = { left = theme.spacing.page, right = theme.spacing.section, top = theme.spacing.xxl, bottom = theme.spacing.section },
                 hover = HOVER,
                 children = {
                     list {
                         width = "fill",
-                        spacing = 14,
+                        spacing = theme.spacing.inset,
                         items = notes,
                         limit = MAX_NOTES,
                         key = function(item) return feed.key(item.n) end,

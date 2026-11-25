@@ -1,11 +1,12 @@
 -- Quick settings' device chooser: a card-stock list that opens under the volume or mic row, one
 -- line per output or input, the default ticked in blue. A click makes that device the default.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local controls = require("components.controls")
 local icons = require("components.icons")
 
-local ROW, PAD = 38, 8
+local ROW, PAD = theme.quick.device_row_h, theme.quick.device_pad
 
 local M = {}
 
@@ -27,7 +28,7 @@ local function device_row(kind, device, width, tips, index)
         end
         return false
     end, false)
-    local ink = active:map(function(v) return v and k.DEEP_BLUE or k.INK end)
+    local ink = active:map(function(v) return v and theme.DEEP_BLUE or theme.INK end)
     return tips.wrap(rect {
         width = width,
         height = ROW,
@@ -41,32 +42,32 @@ local function device_row(kind, device, width, tips, index)
             -- Hover: a strip of blue stock under the line, opaque like every fill on the sheet.
             rect {
                 width = "fill",
-                height = ROW - 4,
+                height = ROW - theme.quick.device_highlight_inset,
                 align_v = "center",
-                shape = k.torn(width, ROW - 4, 120 + index, 1),
-                background = k.STOCK.primary[1],
+                shape = k.torn(width, ROW - theme.quick.device_highlight_inset, 120 + index, theme.paper.fine_tear),
+                background = theme.STOCK.primary[1],
                 opacity = util.choose(hovered, 1, 0),
                 animate = { opacity = { duration = 120 } },
             },
             row {
                 width = "fill",
                 height = "fill",
-                spacing = 10,
-                padding = { left = 10, right = 10 },
+                spacing = theme.spacing.snug,
+                padding = { left = theme.spacing.snug, right = theme.spacing.snug },
                 children = {
                     rect {
-                        width = 20,
-                        height = 20,
+                        width = theme.quick.device_mark,
+                        height = theme.quick.device_mark,
                         align_v = "center",
                         opacity = util.choose(active, 1, 0),
-                        children = { icons.doodle("check", 20, k.DEEP_BLUE) },
+                        children = { icons.doodle("check", theme.icon.md, theme.DEEP_BLUE) },
                     },
-                    k.body(device.name, 19, { width = "fill", elide = "end", elided = cut, align_v = "center", foreground = ink }),
+                    k.body(device.name, theme.font.label, { width = "fill", elide = "end", elided = cut, align_v = "center", foreground = ink }),
                 },
             },
             rect {
                 opacity = util.choose(keyed, 1, 0),
-                children = { controls.pencil_loop(width, ROW, 70 + index, 5) },
+                children = { controls.pencil_loop(width, ROW, 70 + index, theme.quick.device_loop_inset) },
             },
         },
     }, slot, function()
@@ -79,14 +80,14 @@ end
 function M.build(kind, audio, width, tips)
     local devices = audio and audio[kind] or {}
     local rows = {}
-    for i, device in ipairs(devices) do rows[i] = device_row(kind, device, width - 16, tips, i) end
+    for i, device in ipairs(devices) do rows[i] = device_row(kind, device, width - PAD * 2, tips, i) end
     return k.sheet {
         width = width,
         height = M.height(#devices),
         seed = kind == "sinks" and 931 or 937,
-        depth = 2,
-        color = k.CARD_LIGHT,
-        shadows = k.SHADOW.rest,
+        depth = theme.paper.light_tear,
+        color = theme.CARD_LIGHT,
+        shadows = theme.SHADOW.rest,
         fx = { rim = 0 },
         child = column { width = "fill", padding = PAD, children = rows },
     }

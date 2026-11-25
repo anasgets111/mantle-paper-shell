@@ -1,10 +1,22 @@
 -- Shared panel and modal navigation; domain modules own their contents.
+local theme = require("theme")
 local M = {}
 
 local disclosure = require("lib.disclosure")
 
+M.BAR_H = theme.bar.height
+M.BAR_HEADROOM = theme.bar.headroom
+
+function M.screen_height(output)
+    local screens = mantle.screens:get() or {}
+    for _, screen in ipairs(screens) do
+        if screen.name == output then return screen.height end
+    end
+    return screens[1] and screens[1].height or math.huge
+end
+
 -- The bar host uses only x to clamp its card to the output.
-M.popup_anchor = state("popup_anchor", { x = 0, y = 0, width = 70, height = 24 })
+M.popup_anchor = state("popup_anchor", { x = 0, y = 0, width = theme.bar.anchor_w, height = theme.control.xs })
 
 M.panel_open = state("panel_open", false)
 M.panel_kind = state("panel_kind", "")

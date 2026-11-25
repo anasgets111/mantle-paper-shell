@@ -1,6 +1,7 @@
 -- The date menu's left page: a ruled notepad of notification history grouped by app, in urgent /
 -- today / earlier sections, with dismiss per note, per app and for everything, and do-not-disturb.
 -- Hover and tooltip names come from a row's position (at most 100 notes), never a notification id.
+local theme = require("theme")
 local k = require("lib.paper")
 local controls = require("components.controls")
 local util = require("lib.util")
@@ -16,19 +17,19 @@ local M = {}
 
 M.scroll = scroll("notifications.history")
 
-local W, H = 450, 560
-local LIST_H = 400
-local MARGIN = 46
+local W, H = theme.notifications.notepad_w, theme.notifications.notepad_h
+local LIST_H = theme.notifications.history_h
+local MARGIN = theme.notifications.notepad_margin
 
 -- A bare pencil cross with a finger-sized hit area, for one note.
 local function cross(slot, label, on_click, size)
     return tips.wrap(rect {
-        padding = 8,
+        padding = theme.spacing.sm,
         align_v = "center",
         cursor = "pointer",
         accessible_name = label,
         on_click = on_click,
-        children = { glyphs.doodle(glyphs.close, size, k.INK_SOFT) },
+        children = { glyphs.doodle(glyphs.close, size, theme.INK_SOFT) },
     }, slot, label)
 end
 
@@ -48,20 +49,20 @@ local function item(record, now, slot)
     local lines = {
         row {
             width = "fill",
-            spacing = 6,
+            spacing = theme.spacing.xs,
             children = {
-                tips_mod.elided(tips, k.body(summary, 19, {
-                    width = "fill", elide = "end", foreground = critical and k.DEEP_RED or k.INK,
+                tips_mod.elided(tips, k.body(summary, theme.font.label, {
+                    width = "fill", elide = "end", foreground = critical and theme.DEEP_RED or theme.INK,
                 }), name .. ".summary", summary),
-                tips.wrap(k.body(feed.age(now, record.timestamp), 15, { foreground = k.INK_SOFT, align_v = "center" }),
+                tips.wrap(k.body(feed.age(now, record.timestamp), theme.font.version, { foreground = theme.INK_SOFT, align_v = "center" }),
                     name .. ".age", tips_mod.exact(record.timestamp)),
-                cross(name .. ".dismiss", "Dismiss", function() history.dismiss({ record }) end, 15),
+                cross(name .. ".dismiss", "Dismiss", function() history.dismiss({ record }) end, theme.notifications.clear_icon),
             },
         },
     }
     if (record.body or "") ~= "" then
-        lines[2] = tips_mod.elided(tips, k.body(record.body, 16, {
-            foreground = k.INK_SOFT, width = "fill", wrap = "word", max_lines = 2, elide = "end",
+        lines[2] = tips_mod.elided(tips, k.body(record.body, theme.font.xs, {
+            foreground = theme.INK_SOFT, width = "fill", wrap = "word", max_lines = 2, elide = "end",
         }), name .. ".body", record.body)
     end
     -- Hover swipes yellow highlighter across the note, as a link does.
@@ -76,17 +77,17 @@ local function item(record, now, slot)
             rect {
                 width = "fill",
                 height = "fill",
-                padding = { left = 24 },
+                padding = { left = theme.spacing.xxl },
                 opacity = hovered:map(function(v) return v and 1 or 0 end),
                 animate = { opacity = { duration = 140 } },
                 children = {
                     rect {
-                        width = "fill", height = "fill", background = k.HIGHLIGHT, blend = "multiply",
+                        width = "fill", height = "fill", background = theme.HIGHLIGHT, blend = "multiply",
                         shape = k.tape_shape(nil, nil, slot),
                     },
                 },
             },
-            column { width = "fill", padding = { left = 30, right = 2 }, children = lines },
+            column { width = "fill", padding = { left = theme.spacing.page, right = theme.spacing.hairline }, children = lines },
         },
     }
 end
@@ -96,21 +97,21 @@ local function group_row(group, now)
     local children = {
         row {
             width = "fill",
-            spacing = 8,
+            spacing = theme.spacing.sm,
             children = {
-                glyphs.app(group.app_icon, 22),
-                tips_mod.elided(tips, k.hand(group.app_name, 26, {
-                    font_weight = 700, align_v = "center", elide = "end", max_width = 260,
+                glyphs.app(group.app_icon, theme.icon.control),
+                tips_mod.elided(tips, k.hand(group.app_name, theme.font.heading, {
+                    font_weight = theme.BOLD, align_v = "center", elide = "end", max_width = theme.notifications.group_name_w,
                 }), name .. ".app", group.app_name),
-                k.body(#group.items > 1 and ("×" .. #group.items) or "", 16, {
-                    foreground = k.INK_SOFT, align_v = "center",
+                k.body(#group.items > 1 and ("×" .. #group.items) or "", theme.font.xs, {
+                    foreground = theme.INK_SOFT, align_v = "center",
                 }),
                 rect { width = "fill" },
                 -- The whole app's dismiss is a paper disc on the header, apart from each note's cross.
                 tips.wrap(glyphs.disc {
                     id = name .. ".dismiss",
                     icon = glyphs.close,
-                    size = 30,
+                    size = theme.icon.task,
                     seed = group.slot + 20,
                     tooltip = "Dismiss all from " .. group.app_name,
                     on_click = function() history.dismiss(group.items) end,
@@ -120,23 +121,23 @@ local function group_row(group, now)
     }
     for i, record in ipairs(group.items) do children[#children + 1] = item(record, now, group.first + i - 1) end
     children[#children + 1] = rect {
-        padding = { top = 6 },
-        children = { controls.divider(W - MARGIN - 40, false, group.slot) },
+        padding = { top = theme.spacing.xs },
+        children = { controls.divider(W - MARGIN - theme.notifications.group_rule_inset, false, group.slot) },
     }
-    return column { width = "fill", spacing = 2, padding = { bottom = 6 }, children = children }
+    return column { width = "fill", spacing = theme.spacing.hairline, padding = { bottom = theme.spacing.xs }, children = children }
 end
 
 local function header_row(label)
     local urgent = label == "urgent"
-    local ink, mark = urgent and k.DEEP_RED or k.BLUE, urgent and k.RED or k.BLUE
+    local ink, mark = urgent and theme.DEEP_RED or theme.BLUE, urgent and theme.RED or theme.BLUE
     return rect {
-        padding = { top = 4, bottom = 4 },
+        padding = { top = theme.spacing.xxs, bottom = theme.spacing.xxs },
         children = {
-            k.hand(label:sub(1, 1):upper() .. label:sub(2), 26, { foreground = ink }),
+            k.hand(label:sub(1, 1):upper() .. label:sub(2), theme.font.heading, { foreground = ink }),
             rect {
                 width = "fill",
                 align_v = "end",
-                padding = { right = 4 },
+                padding = { right = theme.spacing.xxs },
                 translate = { y = 2 },
                 children = { glyphs.underline(mark, #label) },
             },
@@ -148,12 +149,12 @@ local function empty()
     return column {
         width = "fill",
         height = LIST_H,
-        spacing = 6,
+        spacing = theme.spacing.xs,
         children = {
-            rect { height = 90 },
-            rect { align_h = "center", rotate = -8, children = { k.sprig(56) } },
-            k.hand("Nothing new", 32, { align_h = "center", foreground = k.INK_SOFT }),
-            k.body("Notifications land here.", 17, { align_h = "center", foreground = k.INK_SOFT }),
+            rect { height = theme.notifications.empty_h },
+            rect { align_h = "center", rotate = -8, children = { k.sprig(theme.icon.hero) } },
+            k.hand("Nothing new", theme.font.banner, { align_h = "center", foreground = theme.INK_SOFT }),
+            k.body("Notifications land here.", theme.font.caption, { align_h = "center", foreground = theme.INK_SOFT }),
         },
     }
 end
@@ -212,22 +213,22 @@ function M.page(now)
     local content = column {
         width = "fill",
         height = "fill",
-        spacing = 8,
-        padding = { top = 18, left = MARGIN + 12, right = 22, bottom = 18 },
+        spacing = theme.spacing.sm,
+        padding = { top = theme.spacing.roomy, left = MARGIN + theme.spacing.md, right = theme.spacing.wide, bottom = theme.spacing.roomy },
         children = {
             row {
                 width = "fill",
                 align_v = "center",
                 children = {
-                    k.hand("Notifications", 38, { font_weight = 700, width = "fill" }),
+                    k.hand("Notifications", theme.font.feature, { font_weight = theme.BOLD, width = "fill" }),
                     row {
                         visible = has_any,
-                        spacing = 4,
+                        spacing = theme.spacing.xxs,
                         align_v = "center",
                         children = {
-                            glyphs.doodle(glyphs.trash, 20, k.DEEP_BLUE),
+                            glyphs.doodle(glyphs.trash, theme.icon.md, theme.DEEP_BLUE),
                             controls.link {
-                                id = "notifications.clear_all", label = "clear all", size = 26,
+                                id = "notifications.clear_all", label = "clear all", size = theme.font.heading,
                                 on_click = history.dismiss_all,
                             },
                         },
@@ -267,11 +268,11 @@ function M.page(now)
             rect { height = "fill" },
             row {
                 width = "fill",
-                spacing = 10,
+                spacing = theme.spacing.snug,
                 align_v = "center",
                 children = {
-                    glyphs.doodle(dnd:map(function(on) return on and glyphs.bell_off or glyphs.bell end), 22),
-                    k.body("Do not disturb", 20, { align_v = "center" }),
+                    glyphs.doodle(dnd:map(function(on) return on and glyphs.bell_off or glyphs.bell end), theme.icon.control),
+                    k.body("Do not disturb", theme.font.md, { align_v = "center" }),
                     rect { width = "fill" },
                     dnd_toggle,
                 },
@@ -284,11 +285,11 @@ function M.page(now)
         height = H,
         seed = 41,
         rotate = -0.6,
-        tapes = { { width = 96, height = 24, rotate = 2.5, seed = 12 } },
+        tapes = { { width = theme.notifications.notepad_tape_w, height = theme.control.xs, rotate = 2.5, seed = 12 } },
         child = rect {
             width = "fill",
             height = "fill",
-            children = util.concat(controls.ruled(W, H, { top = 78, pitch = 34, margin = MARGIN }), { content }),
+            children = util.concat(controls.ruled(W, H, { top = theme.notifications.notepad_rule_top, pitch = theme.notifications.notepad_rule_pitch, margin = MARGIN }), { content }),
         },
     }
 end

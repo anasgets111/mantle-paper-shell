@@ -5,6 +5,9 @@ notes. `shell.lua` draws the bar, cards and dock; `controls.lua` draws the contr
 (`mantle toggle paper.controls`). Screenshots: `screenshot.png`, `controls.png`. Rules marked
 *spec* are not built yet.
 
+Edit the paper palette, type and layout sizes in `theme.lua`. Sizes scale to 80% when the shortest
+logical screen height is below 1000 px.
+
 ## 1. Materials
 
 Every surface is one of these. Do not invent another.
@@ -105,7 +108,7 @@ of its size (section 7). Both fonts are OFL, bundled in `fonts/` and loaded thro
   focused app's name, then status icons, date and time in Kalam.
 - **Cards:** 370 px wide, stacked on the right 4 px apart: clock, a quote that changes daily, a
   sticky note, music, and a to-do list to add to, tick and clear. The note and the list save to
-  `state-desk.json`. A screen too short for the stack wraps it into a second column.
+  `~/.local/state/paper-shell/state-desk.json`. A screen too short for the stack wraps it into a second column.
 - **Dock:** an 820 x 86 px scrap at the bottom centre. Symbolic icons in `INK`, at most two in
   colour, a pencil divider before the trash. Icons grow 12% on hover.
 

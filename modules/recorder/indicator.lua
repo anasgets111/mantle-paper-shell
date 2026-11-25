@@ -1,5 +1,6 @@
 -- While recording: a red marker loop on the taskbar round a dot and the elapsed time. A click stops,
 -- a right click pauses or resumes. Nothing shows, and nothing takes space, while idle.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local controls = require("components.controls")
@@ -10,7 +11,7 @@ local marks = require("modules.recorder.marks")
 
 local M = {}
 
-local H = 36
+local H = theme.recorder.indicator_h
 local shown = svc.recording:map(function(up) return up and { { key = "rec" } } or {} end, {})
 
 local function tip()
@@ -23,17 +24,17 @@ end
 -- character count changes, once a minute at most.
 local function loop(width)
     local node = controls.pencil_loop(width, H, 47)
-    node.stroke = k.RED
+    node.stroke = theme.RED
     return node
 end
 
 local function sticker(output)
     local slot = "recorder.sticker." .. output
     local hovered = hover(slot)
-    local width = svc.elapsed:map(function(t) return 40 + #t * 10 end, 80)
+    local width = svc.elapsed:map(function(t) return theme.recorder.clock_base_w + #t * theme.recorder.clock_char_w end, theme.recorder.clock_idle_w)
     return tips.wrap(rect {
         height = "fill",
-        padding = { left = 4, right = 4 },
+        padding = { left = theme.spacing.xxs, right = theme.spacing.xxs },
         hover = hovered,
         accessible_name = "Stop recording",
         cursor = "pointer",
@@ -41,7 +42,7 @@ local function sticker(output)
             if button == "right" then svc.toggle_pause() elseif button == "left" then svc.stop() end
         end,
         on_drag = press.track(slot),
-        animate = { exit = { duration = 160, easing = "in_cubic", opacity = 0, translate = { y = -10 }, scale = 1.1 } },
+        animate = { exit = { duration = 160, easing = "in_cubic", opacity = 0, translate = { y = -theme.spacing.snug }, scale = 1.1 } },
         children = {
             rect {
                 align_v = "center",
@@ -57,13 +58,13 @@ local function sticker(output)
                     rect { children = width:map(function(w) return { loop(w) } end) },
                     row {
                         height = H,
-                        padding = { left = 14 },
-                        spacing = 7,
+                        padding = { left = theme.spacing.inset },
+                        spacing = theme.recorder.clock_pad,
                         children = {
-                            rect { align_v = "center", children = marks.state(svc.paused, 13) },
-                            k.hand(svc.elapsed, 24, {
-                                font_weight = 700, align_v = "center",
-                                foreground = util.choose(svc.paused, k.INK_SOFT, k.DEEP_RED),
+                            rect { align_v = "center", children = marks.state(svc.paused, theme.recorder.record_dot) },
+                            k.hand(svc.elapsed, theme.font.xl, {
+                                font_weight = theme.BOLD, align_v = "center",
+                                foreground = util.choose(svc.paused, theme.INK_SOFT, theme.DEEP_RED),
                             }),
                         },
                     },

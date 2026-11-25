@@ -6,7 +6,8 @@
 --   open(rect)      toggle the popup anchored to `rect` (in the taskbar surface, from `on_click`)
 --   page()          the settings page body: a list of ruled rows for the notebook's `build`
 -- `mantle call updates.toggle` opens the popup without a click. Testing: `mantle set updates.fake`
--- (see service.lua) fakes any state for the views; install and restart refuse while it is set.
+-- (see S.lua) fakes any state for the views; install and restart refuse while it is set.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("components.icons")
 local tooltip = require("components.tooltip")
@@ -39,16 +40,16 @@ local SIZE = bar_icons.STATUS
 local function face(name)
     if name == "installing" then
         return {
-            G.ring(SIZE + 12, fraction, spinning),
+            G.ring(SIZE + theme.updates.badge_ring_extra, fraction, spinning),
             rect { align_h = "center", align_v = "center", children = { G.package(SIZE * 0.75) } },
         }
     elseif name == "restart" then
-        return { rect { align_h = "center", align_v = "center", children = { icons.doodle("restart", SIZE, k.RED) } } }
+        return { rect { align_h = "center", align_v = "center", children = { icons.doodle("restart", SIZE, theme.RED) } } }
     end
     local failed = name == "failed" or name == "warning"
     return {
         rect { align_h = "center", align_v = "center", children = { G.package(SIZE) } },
-        failed and corner(G.exclamation(16), 0) or corner(G.badge(S.count), 8),
+        failed and corner(G.exclamation(theme.icon.sm), 0) or corner(G.badge(S.count), theme.updates.badge_corner_offset),
     }
 end
 
@@ -81,9 +82,9 @@ function M.widget(output)
         children = {
             rect {
                 width = "fill",
-                height = 30,
+                height = theme.control.chip,
                 align_v = "center",
-                background = k.HIGHLIGHT,
+                background = theme.HIGHLIGHT,
                 blend = "multiply",
                 shape = k.tape_shape(nil, nil, 17),
                 opacity = hovered:map(function(v) return v and 1 or 0 end),
@@ -93,7 +94,7 @@ function M.widget(output)
                 align_v = "center",
                 translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
                 animate = { translate = { duration = 140, easing = "out_cubic" } },
-                children = { rect { width = SIZE + 12, height = SIZE + 12, children = glyph:map(face) } },
+                children = { rect { width = SIZE + theme.updates.badge_ring_extra, height = SIZE + theme.updates.badge_ring_extra, children = glyph:map(face) } },
             },
         },
     }, slot, tip_text)

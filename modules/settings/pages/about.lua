@@ -1,5 +1,6 @@
 -- About page: the machine on an index card. Files are read and tools run each time the notebook
 -- opens; disks come from `mantle.sysinfo`.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local identity = require("lib.identity")
@@ -37,7 +38,7 @@ end
 
 local function fact(label, value)
     return rows.line({
-        rows.label(label, { width = 150, foreground = k.INK_SOFT }),
+        rows.label(label, { width = theme.settings.fact_label_w, foreground = theme.INK_SOFT }),
         rows.label(value, { tip = "about." .. label }),
     })
 end
@@ -73,9 +74,9 @@ return {
     build = function()
         return {
             rows.line({
-                k.hand(identity.account:map(function(a) return a:match("@(.*)$") or a end), 52, { font_weight = 700 }),
+                k.hand(identity.account:map(function(a) return a:match("@(.*)$") or a end), theme.settings.about_title, { font_weight = theme.BOLD }),
             }, {
-                k.hand("Mantle " .. version(), 28, { foreground = k.BLUE }),
+                k.hand("Mantle " .. version(), theme.font.title, { foreground = theme.BLUE }),
             }, 2),
             rows.heading("This machine"),
             fact("System", facts:map(function(f) return f.os end)),

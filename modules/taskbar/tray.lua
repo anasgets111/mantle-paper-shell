@@ -1,5 +1,6 @@
 -- System tray: one small ink icon per item, passive ones hidden. Left click activates (or opens the
 -- menu when the item is only a menu), right click opens its DBusMenu on a sticky note.
+local theme = require("theme")
 local k = require("lib.paper")
 local menus = require("modules.taskbar.menus")
 local icons = require("modules.taskbar.icons")
@@ -34,14 +35,14 @@ local function face(item)
     if file and file ~= "" then
         return icons.pixmap(file, SIZE)
     end
-    return k.hand(string.upper((menus.tray_label(item)):sub(1, 1)), 24, { align_h = "center", align_v = "center" })
+    return k.hand(string.upper((menus.tray_label(item)):sub(1, 1)), theme.font.xl, { align_h = "center", align_v = "center" })
 end
 
 local function tray_item(output, item)
     local slot = "taskbar.tray." .. output .. "." .. item.id
     local hovered = hover(slot)
     return tips.wrap(rect {
-        width = SIZE + 12,
+        width = SIZE + theme.bar.tray_pad,
         height = "fill",
         hover = hovered,
         accessible_name = menus.tray_label(item),

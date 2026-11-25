@@ -1,6 +1,7 @@
 -- Window previews: hovering a task for 400 ms opens a sticky note above it holding one polaroid per
 -- window, a live capture over an icon-and-title fallback, with a close disc. The note stays while
 -- the pointer is on the icon or the note, and for 250 ms after it leaves both.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local controls = require("components.controls")
@@ -11,8 +12,8 @@ local tooltip = require("components.tooltip")
 
 local M = {}
 
-local SHOT_W, SHOT_H, FRAME = 248, 140, 10
-local CARD_W, CARD_H = SHOT_W + 2 * FRAME, SHOT_H + FRAME + 40
+local SHOT_W, SHOT_H, FRAME = theme.previews.shot_w, theme.previews.shot_h, theme.previews.frame
+local CARD_W, CARD_H = SHOT_W + 2 * FRAME, SHOT_H + FRAME + theme.previews.label_area_h
 -- ponytail: at most 8 photos (about 2300 px); more windows of one app show as "+N". Upgrade: rows.
 local MAX_CARDS = 8
 
@@ -72,7 +73,7 @@ local function close_disc(win)
     local disc = controls.disc_button {
         id = id,
         icon = "window-close-symbolic",
-        size = 26,
+        size = theme.control.knob,
         seed = #win.id + 3,
         tooltip = "Close window",
         on_click = function() mantle.windows:close(win.id) end,
@@ -80,7 +81,7 @@ local function close_disc(win)
     return rect {
         align_h = "end",
         align_v = "start",
-        translate = { x = 9, y = -9 },
+        translate = { x = theme.previews.close_offset, y = -theme.previews.close_offset },
         children = { note_tips.wrap(disc, "paper.disc." .. id, "Close window") },
     }
 end
@@ -108,30 +109,30 @@ local function polaroid(win, item, i)
                 width = CARD_W,
                 height = CARD_H,
                 seed = i * 17 + #win.id,
-                depth = 2,
-                color = k.CARD_LIGHT,
+                depth = theme.paper.light_tear,
+                color = theme.CARD_LIGHT,
                 shadows = k.lift(h),
                 animate = { shadows = { duration = 160, easing = "out_cubic" } },
                 fx = { rim = 0, grain = 0.08 },
                 child = column {
                     padding = { top = FRAME, left = FRAME, right = FRAME },
-                    spacing = 6,
+                    spacing = theme.spacing.xs,
                     children = {
                         rect {
                             width = SHOT_W,
                             height = SHOT_H,
-                            background = "#3A363114",
+                            background = theme.PREVIEW_WASH,
                             border_width = 1,
-                            border_color = "#3A363140",
+                            border_color = theme.INK_FAINT,
                             children = {
                                 -- A failed capture draws nothing, so the fallback sits underneath.
                                 column {
                                     align_h = "center",
                                     align_v = "center",
-                                    spacing = 6,
+                                    spacing = theme.spacing.xs,
                                     children = {
-                                        icons.app(item.icon, 48),
-                                        k.body(item.name, 16, { foreground = k.INK_SOFT, align_h = "center" }),
+                                        icons.app(item.icon, theme.icon.xxl),
+                                        k.body(item.name, theme.font.xs, { foreground = theme.INK_SOFT, align_h = "center" }),
                                     },
                                 },
                                 capture { window = win.id, live = 4, width = SHOT_W, height = SHOT_H, fit = "contain" },
@@ -139,12 +140,12 @@ local function polaroid(win, item, i)
                         },
                         row {
                             width = SHOT_W,
-                            spacing = 6,
+                            spacing = theme.spacing.xs,
                             children = {
-                                icons.app(item.icon, 16),
-                                k.body(win.title ~= "" and win.title or item.name, 18, {
+                                icons.app(item.icon, theme.icon.sm),
+                                k.body(win.title ~= "" and win.title or item.name, theme.font.sm, {
                                     width = "fill", elide = "end", align_v = "center",
-                                    foreground = win.focused and k.DEEP_BLUE or k.INK,
+                                    foreground = win.focused and theme.DEEP_BLUE or theme.INK,
                                 }),
                             },
                         },
@@ -163,28 +164,28 @@ local function note(name, windows)
     local wins = tasks.windows_of(item.wins, windows)
     for i = 1, math.min(#wins, MAX_CARDS) do cards[i] = polaroid(wins[i], item, i) end
     if #cards == 0 then return rect { width = 1, height = 1 } end
-    local w = #cards * (CARD_W + 14) + 26
+    local w = #cards * (CARD_W + theme.previews.card_gap) + theme.previews.note_extra_w
     if #wins > MAX_CARDS then
-        cards[#cards + 1] = k.hand("+" .. (#wins - MAX_CARDS), 32, { font_weight = 700, align_v = "center" })
-        w = w + 60
+        cards[#cards + 1] = k.hand("+" .. (#wins - MAX_CARDS), theme.font.banner, { font_weight = theme.BOLD, align_v = "center" })
+        w = w + theme.previews.overflow_w
     end
     return rect {
         -- The sticky's shadow needs 21 px below it; its tilt swings a wide note's ends a few px more.
-        padding = { left = 16, right = 22, top = 8, bottom = 26 },
+        padding = { left = theme.spacing.lg, right = theme.spacing.wide, top = theme.spacing.sm, bottom = theme.spacing.tab },
         hover = note_hovered,
         animate = {
             opacity = { duration = 140, easing = "out_cubic", from = 0 },
-            translate = { duration = 160, easing = "out_cubic", from = { y = 8 } },
+            translate = { duration = 160, easing = "out_cubic", from = { y = theme.spacing.sm } },
         },
         children = {
             controls.sticky {
                 width = w,
-                height = CARD_H + 44,
+                height = CARD_H + theme.control.disc,
                 seed = #name,
                 rotate = -0.6,
                 child = row {
-                    padding = { left = 16, top = 22 },
-                    spacing = 14,
+                    padding = { left = theme.spacing.lg, top = theme.spacing.wide },
+                    spacing = theme.spacing.inset,
                     children = cards,
                 },
             },

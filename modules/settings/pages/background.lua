@@ -3,6 +3,7 @@
 -- applied one has a hatched border and a tick, the keyboard's one a pencil loop. Arrows move
 -- between photos. With more than one screen a Display dropdown picks whose picture the grid sets:
 -- one output, or all of them. The choices live in `lib/wallpaper.lua`.
+local theme = require("theme")
 local k = require("lib.paper")
 local c = require("components.controls")
 local util = require("lib.util")
@@ -14,8 +15,8 @@ local ui_state = require("lib.ui_state")
 
 -- Four photos to a 672 px row: 152 px cells 14 px apart. A cell is four rules tall; the grid shows
 -- three rows and scrolls the rest.
-local COLUMNS, CELL_W, GAP = 4, 152, 14
-local IMG_W, IMG_H, BORDER = 124, 70, 6
+local COLUMNS, CELL_W, GAP = 4, theme.settings.wallpaper_cell_w, theme.settings.wallpaper_gap
+local IMG_W, IMG_H, BORDER = theme.settings.wallpaper_image_w, theme.settings.wallpaper_image_h, theme.settings.wallpaper_border
 local CUT_W, CUT_H = IMG_W + 2 * BORDER, IMG_H + 2 * BORDER
 local CELL_H, VISIBLE_ROWS = rows.PITCH * 4, 3
 local GRID = scroll("settings.wallpaper.grid")
@@ -78,7 +79,7 @@ end
 -- Mount outlines by cell index: a rebuilt row reuses them instead of tearing new paper.
 local MOUNTS = {}
 local function mount(i)
-    MOUNTS[i] = MOUNTS[i] or k.torn(CUT_W, CUT_H, 300 + i, 2)
+    MOUNTS[i] = MOUNTS[i] or k.torn(CUT_W, CUT_H, 300 + i, theme.paper.light_tear)
     return MOUNTS[i]
 end
 
@@ -90,23 +91,23 @@ local function photo(entry)
     local chosen = shown_path:map(function(p) return p == entry.path end, false)
     local r = k.rng(#entry.name + i)
     local cut = elided(name .. ".label")
-    local label = tips.wrap(k.body(entry.label, 16, {
-        width = CELL_W - 12,
+    local label = tips.wrap(k.body(entry.label, theme.font.xs, {
+        width = CELL_W - theme.settings.wallpaper_label_inset,
         elide = "end",
         elided = cut,
         text_align = "center",
-        foreground = k.INK_SOFT,
+        foreground = theme.INK_SOFT,
     }), "settings.tip.wallpaper." .. entry.path, function()
         return cut:get() and entry.label or ""
     end)
     return column {
         width = CELL_W,
         height = CELL_H,
-        spacing = 2,
+        spacing = theme.spacing.hairline,
         children = {
             rect {
                 width = CELL_W,
-                padding = { left = (CELL_W - CUT_W) / 2, top = 12, bottom = 8 },
+                padding = { left = (CELL_W - CUT_W) / 2, top = theme.spacing.md, bottom = theme.spacing.sm },
                 hover = hovered,
                 accessible_name = entry.label,
                 cursor = "pointer",
@@ -126,11 +127,11 @@ local function photo(entry)
                                 width = CUT_W,
                                 height = CUT_H,
                                 shape = mount(i),
-                                background = k.CARD_LIGHT,
+                                background = theme.CARD_LIGHT,
                                 shadows = k.lift(hovered),
                                 animate = { shadows = { duration = 160 } },
                                 effect = chosen:map(function(on)
-                                    return k.paper_fx { rim = 1.2, hatch = on and 1 or 0, hatch_spacing = 3.2 }
+                                    return k.paper_fx { rim = 1.2, hatch = on and 1 or 0, hatch_spacing = theme.paper.hatch_fine }
                                 end),
                             },
                             rect {
@@ -145,21 +146,21 @@ local function photo(entry)
                                     },
                                 },
                             },
-                            k.tape { width = 44, height = 14, translate = { y = -7 }, rotate = (r() - 0.5) * 10, seed = i },
+                            k.tape { width = theme.settings.wallpaper_tape_w, height = theme.settings.wallpaper_tape_h, translate = { y = -theme.settings.wallpaper_tape_lift }, rotate = (r() - 0.5) * 10, seed = i },
                             -- The tick: a punched disc on the corner, so "chosen" never rests on colour.
                             rect {
                                 align_h = "end",
-                                translate = { x = 9, y = -9 },
+                                translate = { x = theme.settings.wallpaper_badge_offset, y = -theme.settings.wallpaper_badge_offset },
                                 children = chosen:map(function(on)
                                     if not on then return {} end
                                     return {
                                         k.sheet {
-                                            width = 24,
-                                            height = 24,
-                                            shape = k.torn_circle(24, i),
-                                            color = k.CARD,
-                                            shadows = k.SHADOW.rest,
-                                            child = util.with(icons.doodle("check", 16, k.BLUE), "align_h", "center"),
+                                            width = theme.settings.wallpaper_badge,
+                                            height = theme.control.xs,
+                                            shape = k.torn_circle(theme.settings.wallpaper_badge, i),
+                                            color = theme.CARD,
+                                            shadows = theme.SHADOW.rest,
+                                            child = util.with(icons.doodle("check", theme.icon.sm, theme.BLUE), "align_h", "center"),
                                         },
                                     }
                                 end),
@@ -168,9 +169,9 @@ local function photo(entry)
                     },
                     -- Built when shown: a hidden loop and tick on every photo cost more than the photo.
                     rect {
-                        translate = { x = -8, y = -8 },
+                        translate = { x = -theme.spacing.sm, y = -theme.spacing.sm },
                         children = keyed:map(function(on)
-                            return on and { c.pencil_loop(CUT_W + 16, CUT_H + 16, 70 + i) } or {}
+                            return on and { c.pencil_loop(CUT_W + theme.settings.wallpaper_loop_inset, CUT_H + theme.settings.wallpaper_loop_inset, 70 + i) } or {}
                         end),
                     },
                 },
@@ -184,7 +185,7 @@ end
 -- only when its own paths change.
 -- A 12 px fade at an edge only while photos lie past it: at the top the first row's tape and
 -- tick show whole. Keyed by "top,bottom" so scrolling rebuilds the mask only at the ends.
-local FADE = 12
+local FADE = theme.settings.wallpaper_fade
 local edges = computed({ GRID, listed }, function(offset, l)
     local rows_n = math.ceil(#l / COLUMNS)
     local max = math.max(0, rows_n - VISIBLE_ROWS) * CELL_H
@@ -268,11 +269,11 @@ local function display_row()
         children = options:map(function(list)
             return {
                 rows.line({
-                    rows.label("Display", { width = 70 }),
+                    rows.label("Display", { width = theme.settings.wallpaper_label_w }),
                     rows.dropdown {
                         id = "appearance.display",
                         label = "Display",
-                        width = 260,
+                        width = theme.settings.wallpaper_fit_w,
                         options = list,
                         value = target,
                         on_select = function(name) picked:set(name) end,
@@ -289,7 +290,7 @@ return function()
     return {
         display_row(),
         rows.line({
-            rows.label("Scale", { width = 70 }),
+            rows.label("Scale", { width = theme.settings.wallpaper_label_w }),
             c.radio_group {
                 id = "settings.appearance.fit",
                 options = wallpaper.FITS,

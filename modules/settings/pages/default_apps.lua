@@ -4,6 +4,7 @@
 -- default; `xdg-settings` sets the browser and `xdg-mime default` the rest. The terminal follows
 -- the proposed XDG Default Terminal spec (`xdg-terminal-exec`, `xdg-terminals.list`), the only
 -- standard there is; without `xdg-terminal-exec` the row says so.
+local theme = require("theme")
 local util = require("lib.util")
 local rows = require("modules.settings.rows")
 local apps = require("lib.apps")
@@ -156,7 +157,7 @@ local function chooser(id, label, current, ids, on_pick, empty)
         rows.dropdown {
             id = "default_apps." .. id,
             label = label,
-            width = 320,
+            width = theme.settings.default_app_w,
             options = options,
             value = current,
             empty = "no default set",

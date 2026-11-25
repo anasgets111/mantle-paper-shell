@@ -1,6 +1,7 @@
 -- Power page under three tabs: Power (profile, screen brightness when there is a backlight, the
 -- battery and other batteries UPower knows), then Idle and Keep awake, the two halves of the idle
 -- settings the lock builder owns (`modules/lock/idle_page.lua`).
+local theme = require("theme")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
 local icons = require("modules.settings.icons")
@@ -56,10 +57,10 @@ local function brightness_rows()
         children = {
             rows.heading("Screen"),
             rows.line({
-                icons.glyph("brightness", 22),
+                icons.glyph("brightness", theme.icon.control),
                 c.slider {
                     id = "settings.power.brightness",
-                    width = 420,
+                    width = theme.settings.brightness_slider_w,
                     value = mantle.brightness:map(function(b) return b.percent / 100 end, 0),
                     on_change = function(v) mantle.brightness:set(math.max(1, v * 100)) end,
                     on_wheel = function(_, steps)
@@ -90,7 +91,7 @@ local function battery_rows()
             end, "")),
         }),
         rows.line({
-            icons.glyph("battery", 20),
+            icons.glyph("battery", theme.icon.md),
             rows.label(mantle.battery:map(battery_text, "Reading the battery…")),
         }),
         column {
@@ -99,7 +100,7 @@ local function battery_rows()
                 local list = {}
                 for _, p in ipairs(mantle.battery:get() and mantle.battery:get().peripherals or {}) do
                     list[#list + 1] = rows.line({
-                        icons.glyph(p.icon or "peripheral", 20),
+                        icons.glyph(p.icon or "peripheral", theme.icon.md),
                         rows.label(p.name),
                     }, {
                         rows.caption(p.percent and (p.percent .. "%") or (p.level or "")),

@@ -1,16 +1,6 @@
--- The paper kit: tokens, torn shapes, the paper finish, tape, sheets, cards, doodles and text
--- helpers. Every module draws with these, so the desk reads as one material.
+-- Torn shapes, paper finish, sheets, tape, doodles and text. Design tokens live in theme.lua.
 local DIR = mantle.config_dir
-local PAPER = "#EEE3CB"
-local INK = "#3A3631"
-local INK_SOFT = "#6B6258"
-local BLUE = "#3F74C7"
-local DEEP_BLUE = "#24477F"
-local RED = "#D9534F"
-local DEEP_RED = "#8E2B25"
-local HAND = "Caveat"
--- Body text: Kalam (Light 300, Regular 400, Bold 700), legible at 16 to 20 px where Caveat is not.
-local BODY = "Kalam"
+local theme = require("theme")
 
 -- Park-Miller LCG with a fixed seed per shape, so edges stay put across reloads.
 local function rng(seed)
@@ -31,9 +21,9 @@ end
 
 -- A torn contour for a fixed w x h box: every edge jittered inward, at most 254 points.
 local function torn(w, h, seed, depth, flat_top)
-    depth = depth or 4
+    depth = depth or theme.paper.sheet_tear
     local r = rng(seed)
-    local step = math.max(6, 2 * (w + h) / 240)
+    local step = math.max(theme.paper.deckle_step, 2 * (w + h) / 240)
     local pts = {}
     local function edge(x0, y0, x1, y1, nx, ny)
         local len = math.sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2)
@@ -59,13 +49,13 @@ end
 -- step here. Upgrade: a shader edge, or a shape that repeats a pattern along an edge.
 local function torn_bottom(height, seed)
     local r = rng(seed)
-    local span, step = 3840, 16
+    local span, step = theme.paper.edge_span, theme.paper.edge_step
     local commands = {
         { op = "M", points = { 0, 0 } },
         { op = "L", points = { span, 0 } },
     }
     for x = span, 0, -step do
-        commands[#commands + 1] = { op = "L", points = { x, height - bite(r, 5) } }
+        commands[#commands + 1] = { op = "L", points = { x, height - bite(r, theme.paper.bar_tear) } }
     end
     commands[#commands + 1] = { op = "Z", points = {} }
     return { commands = commands }
@@ -74,10 +64,10 @@ end
 -- The mirror of `torn_bottom`: straight bottom, torn top, for a strip along the screen's bottom edge.
 local function torn_top(height, seed)
     local r = rng(seed)
-    local span, step = 3840, 16
+    local span, step = theme.paper.edge_span, theme.paper.edge_step
     local commands = { { op = "M", points = { 0, height } } }
     for x = 0, span, step do
-        commands[#commands + 1] = { op = "L", points = { x, bite(r, 5) } }
+        commands[#commands + 1] = { op = "L", points = { x, bite(r, theme.paper.bar_tear) } }
     end
     commands[#commands + 1] = { op = "L", points = { span, height } }
     commands[#commands + 1] = { op = "Z", points = {} }
@@ -90,7 +80,7 @@ local function torn_circle(size, seed, depth)
     local c, n, R = {}, 48, size / 2
     for i = 0, n - 1 do
         local a = 2 * math.pi * i / n
-        local rad = R - 0.5 - bite(r, depth or 1.8)
+        local rad = R - 0.5 - bite(r, depth or theme.paper.disc_tear)
         c[#c + 1] = { op = i == 0 and "M" or "L", points = { R + rad * math.cos(a), R + rad * math.sin(a) } }
     end
     c[#c + 1] = { op = "Z", points = {} }
@@ -109,8 +99,8 @@ local function paper_fx(o)
                 mottle_amt = o.mottle or 0.12,
                 rim = o.rim or 0,
                 hatch = o.hatch or 0,
-                hatch_color = o.hatch_color or { 0.25, 0.45, 0.78, 0.85 },
-                hatch_spacing = o.hatch_spacing or 4,
+                hatch_color = o.hatch_color or theme.HATCH_DEFAULT,
+                hatch_spacing = o.hatch_spacing or theme.paper.hatch_wide,
             },
         },
     }
@@ -134,21 +124,19 @@ end
 
 local function tape(o)
     return rect {
-        width = o.width or 86,
-        height = o.height or 24,
+        width = o.width or theme.paper.tape_w,
+        height = o.height or theme.paper.tape_h,
         align_h = o.align_h or "center",
         align_v = o.align_v or "start",
-        translate = o.translate or { y = -12 },
+        translate = o.translate or { y = -theme.paper.tape_lift },
         rotate = o.rotate or -3,
         z = 2,
-        background = o.color or "#DDCDA5",
-        shape = tape_shape(o.width or 86, o.height or 24, o.seed or 3),
-        shadows = { { blur = 3, offset = { y = 1 }, color = "#00000030" } },
+        background = o.color or theme.TAPE,
+        shape = tape_shape(o.width or theme.paper.tape_w, o.height or theme.paper.tape_h, o.seed or 3),
+        shadows = theme.SHADOW.tape,
         effect = paper_fx { grain = 0.35, mottle = 0.2, rim = 0 },
     }
 end
-
-local SHEET_SHADOW = { { blur = 14, offset = { x = 2, y = 5 }, color = "#00000070" } }
 
 -- A sheet of paper: torn shape, paper finish, a soft drop shadow.
 local function sheet(o)
@@ -159,8 +147,8 @@ local function sheet(o)
         width = "fill",
         height = "fill",
         shape = shape,
-        background = o.color or PAPER,
-        shadows = o.shadows or SHEET_SHADOW,
+        background = o.color or theme.PAPER,
+        shadows = o.shadows or theme.SHADOW.card,
         animate = o.animate,
         effect = paper_fx(o.fx),
     })
@@ -177,7 +165,7 @@ local function card(o)
     local children = { sheet(o) }
     for _, t in ipairs(o.tapes or {}) do children[#children + 1] = tape(t) end
     return rect {
-        padding = { top = 6, bottom = 6, left = 6, right = 6 },
+        padding = theme.paper.card_pad,
         rotate = o.rotate or 0,
         align_h = o.align_h,
         children = children,
@@ -190,7 +178,7 @@ local function stroke_path(w, h, commands, color, width)
     return path {
         width = w,
         height = h,
-        stroke = color or INK,
+        stroke = color or theme.INK,
         stroke_width = width or 1.6,
         stroke_cap = "round",
         stroke_join = "round",
@@ -199,13 +187,13 @@ local function stroke_path(w, h, commands, color, width)
 end
 
 local function squiggle(w, color)
-    local c = { { op = "M", points = { 2, 5 } } }
-    local n = math.floor((w - 4) / 14)
+    local c = { { op = "M", points = { theme.spacing.hairline, theme.paper.squiggle_mid } } }
+    local n = math.floor((w - theme.spacing.xxs) / theme.paper.squiggle_step)
     for i = 0, n - 1 do
-        local x = 2 + i * 14
-        c[#c + 1] = { op = "Q", points = { x + 7, i % 2 == 0 and 1 or 9, x + 14, 5 } }
+        local x = theme.spacing.hairline + i * theme.paper.squiggle_step
+        c[#c + 1] = { op = "Q", points = { x + theme.paper.squiggle_half_step, i % 2 == 0 and theme.paper.squiggle_top or theme.paper.squiggle_bottom, x + theme.paper.squiggle_step, theme.paper.squiggle_mid } }
     end
-    return stroke_path(w, 10, c, color or RED, 2.2)
+    return stroke_path(w, theme.paper.squiggle_h, c, color or theme.RED, 2.2)
 end
 
 local function sprig(size)
@@ -224,7 +212,7 @@ local function sprig(size)
         c[#c + 1] = { op = "Q", points = p(x + side * 10, y + 2, tx, ty) }
         c[#c + 1] = { op = "Q", points = p(x + side * 2, y - 9, x, y) }
     end
-    return stroke_path(size, size, c, INK, 1.4)
+    return stroke_path(size, size, c, theme.INK, 1.4)
 end
 
 local function star(size, color, filled)
@@ -295,62 +283,42 @@ local function wobble_box(w, h, seed, color, fill)
 end
 
 local function checkbox(size, checked)
-    local children = { wobble_box(size, size, size * 7 + (checked and 1 or 0), INK) }
+    local children = { wobble_box(size, size, size * 7 + (checked and 1 or 0), theme.INK) }
     if checked then
         -- A marker tick that overshoots the box, as a quick hand does.
         children[2] = stroke_path(size, size, {
             { op = "M", points = { size * 0.18, size * 0.48 } },
             { op = "Q", points = { size * 0.32, size * 0.62, size * 0.42, size * 0.8 } },
             { op = "Q", points = { size * 0.7, size * 0.2, size * 1.08, -size * 0.12 } },
-        }, BLUE, math.max(2, size / 9))
+        }, theme.BLUE, math.max(2, size / 9))
     end
     return rect { width = size, height = size, align_v = "center", children = children }
 end
 
 local function hand(content, size, props)
     -- Caveat's last glyph inks past its advance and a text node cuts ink at its box: pad the right.
-    local t = { content = content, font = HAND, font_size = size, foreground = INK, padding = { right = math.ceil(size * 0.15) } }
+    local t = { content = content, font = theme.HAND, font_size = size, foreground = theme.INK, padding = { right = math.ceil(size * 0.15) } }
     for k, v in pairs(props or {}) do t[k] = v end
     return text(t)
 end
 
 local function body(content, size, props)
-    local t = { content = content, font = BODY, font_size = size, foreground = INK }
+    local t = { content = content, font = theme.BODY, font_size = size, foreground = theme.INK }
     for k, v in pairs(props or {}) do t[k] = v end
     return text(t)
 end
 
 local function glyph(name, size, color)
-    return icon { name = name, size = size or 20, foreground = color or INK, align_v = "center" }
+    return icon { name = name, size = size or theme.icon.md, foreground = color or theme.INK, align_v = "center" }
 end
 
 
--- Card stocks: the tint of the paper and the ink written on it.
-local STOCK = {
-    primary = { "#C5D7EE", DEEP_BLUE },
-    plain = { "#F4ECDA", INK }, -- CARD
-    danger = { "#F2CFC8", DEEP_RED },
-}
-
--- Light from the top left; a control rests low and lifts on hover.
-local SHADOW = {
-    card = SHEET_SHADOW,
-    rest = { { blur = 5, offset = { x = 1, y = 2 }, color = "#00000050" } },
-    lift = { { blur = 16, offset = { x = 3, y = 9 }, color = "#00000055" } },
-    tape = { { blur = 3, offset = { y = 1 }, color = "#00000030" } },
-}
-
 local function lift(hovered)
-    return hovered:map(function(v) return v and SHADOW.lift or SHADOW.rest end)
+    return hovered:map(function(v) return v and theme.SHADOW.lift or theme.SHADOW.rest end)
 end
 
 return {
-    DIR = DIR, PAPER = PAPER, INK = INK, INK_SOFT = INK_SOFT, BLUE = BLUE, DEEP_BLUE = DEEP_BLUE,
-    RED = RED, DEEP_RED = DEEP_RED, HAND = HAND, BODY = BODY,
-    STICKY = "#F3E3A0", STICKY_FOLD = "#DCC67A", GROOVE = "#E2D6BC", HIGHLIGHT = "#F2C94C80",
-    -- Card stock: CARD for controls and cards, CARD_LIGHT for photo cuts and the lightest slips.
-    CARD = "#F4ECDA", CARD_LIGHT = "#F6EFE0",
-    STOCK = STOCK, SHADOW = SHADOW, lift = lift,
+    DIR = DIR, lift = lift,
     rng = rng, bite = bite, torn = torn, torn_bottom = torn_bottom, torn_top = torn_top, torn_circle = torn_circle,
     paper_fx = paper_fx, tape = tape, tape_shape = tape_shape, sheet = sheet, card = card,
     stroke_path = stroke_path, squiggle = squiggle, sprig = sprig, star = star, heart = heart,

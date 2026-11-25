@@ -1,6 +1,7 @@
 -- Icons on paper: app icons cut out as die-cut stickers, and a hand-drawn pencil glyph set for
 -- symbolic icons. `sticker(name, size, opts)`, `doodle(name, size, color)`,
 -- `doodle_for(symbolic_name, size, color)`, `has(name)`, `names`.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 
@@ -14,7 +15,7 @@ end
 
 -- Stickers ---------------------------------------------------------------------------------------
 
-local CUT = k.CARD_LIGHT
+local CUT = theme.CARD_LIGHT
 
 -- The white margin of a die-cut sticker: sharp copies of the icon's silhouette pushed out in 8
 -- directions. A `spread` would scale the silhouette about the centre, not grow it evenly.
@@ -28,10 +29,6 @@ local function cut_layers(r)
 end
 
 -- Light from the top left: a tight contact shadow under a soft resting one.
-local STICKER_SHADOW = {
-    { blur = 1.5, offset = { x = 0.5, y = 1 }, color = "#00000038" },
-    { blur = 6, offset = { x = 1.5, y = 3 }, color = "#00000042" },
-}
 
 -- Stable per app: stickers turn up to 4 degrees either way.
 local function turn(name)
@@ -69,7 +66,7 @@ local function comic(name, size)
             source = COMIC,
             images = { grain = k.DIR .. "/img/grain.png" },
             params = { seed = hash(name or "") % 1000 / 10, levels = 5, line = line, wobble = wobble },
-            padding = math.ceil(line + wobble + 1),
+            padding = math.ceil(line + wobble + theme.icons.outline_pad),
         },
     }
 end
@@ -81,7 +78,7 @@ end
 --- about 8 px further right and down, so give a clipping parent that much room.
 function M.sticker(name, size, opts)
     opts = opts or {}
-    size = opts.size or size or 32
+    size = opts.size or size or theme.icon.xl
     local r = M.sticker_cut(size)
     -- Under 20 px the ink and flat tones blot out the art, so small stickers stay plain.
     local ink = opts.comic ~= false and size >= 20 and util.lift(name, function(n) return comic(n, size) end) or nil
@@ -90,7 +87,7 @@ function M.sticker(name, size, opts)
         height = size + 2 * M.sticker_pad(size),
         align_v = "center",
         shadow_mode = "content",
-        shadows = STICKER_SHADOW,
+        shadows = theme.SHADOW.sticker_rest,
         children = {
             rect {
                 padding = M.sticker_pad(size),
@@ -592,8 +589,8 @@ end
 --- A hand-drawn pencil glyph: `name` from `M.names` (plain or a signal), `size` px square,
 --- `color` (default ink; a signal works). An unknown name falls back to the theme icon.
 function M.doodle(name, size, color)
-    size = size or 20
-    color = color or k.INK
+    size = size or theme.icon.md
+    color = color or theme.INK
     return rect {
         width = size,
         height = size,

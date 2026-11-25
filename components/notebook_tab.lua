@@ -1,13 +1,14 @@
 -- A card-stock index tab down a notebook's left edge, as Settings and the start menu draw it: stock
 -- cut by `controls.tab_shape`, a doodle and a Caveat title, and the pencil loop while it has
 -- keyboard focus. Where it sits, how far it tucks and what it does on input stay with the caller.
+local theme = require("theme")
 local k = require("lib.paper")
 local controls = require("components.controls")
 
 local M = {}
 
 -- DESIGN.md's three tab stocks, cream, blue and pink, in turn down the edge.
-local TINTS = { "#E9DDBB", "#C9D8EA", "#EBCBC5" }
+local TINTS = { theme.TAB_CREAM, theme.TAB_BLUE, theme.TAB_PINK }
 
 function M.tint(i)
     return TINTS[(i - 1) % #TINTS + 1]
@@ -17,15 +18,15 @@ end
 -- doodle. `geometry` binds the row's laid-out box, for a caller that sizes tabs to their faces.
 function M.face(icon, title, chosen, geometry)
     return row {
-        spacing = chosen and 10 or 8,
+        spacing = chosen and theme.spacing.snug or theme.spacing.sm,
         align_v = "center",
-        padding = { left = chosen and 18 or 14 },
+        padding = { left = chosen and theme.spacing.roomy or theme.spacing.inset },
         geometry = geometry,
         children = {
-            icon(20, chosen and k.INK or k.INK_SOFT),
-            k.hand(title, chosen and 27 or 22, {
-                font_weight = chosen and 700 or 400,
-                foreground = chosen and k.INK or k.INK_SOFT,
+            icon(theme.icon.md, chosen and theme.INK or theme.INK_SOFT),
+            k.hand(title, chosen and theme.font.tab or theme.font.lg, {
+                font_weight = chosen and theme.BOLD or theme.REGULAR,
+                foreground = chosen and theme.INK or theme.INK_SOFT,
                 align_v = "center",
             }),
         },

@@ -1,5 +1,6 @@
 -- The right end of the taskbar: status icons (one button for quick settings), the date and time
 -- (the notification centre), and the show-desktop strip at the edge.
+local theme = require("theme")
 local k = require("lib.paper")
 local quick = require("modules.quick")
 local notifications = require("modules.notifications")
@@ -80,7 +81,7 @@ local function swipe(hovered, h, seed)
         width = "fill",
         height = h,
         align_v = "center",
-        background = k.HIGHLIGHT,
+        background = theme.HIGHLIGHT,
         blend = "multiply",
         shape = k.tape_shape(nil, nil, seed),
         opacity = hovered:map(function(v) return v and 1 or 0 end),
@@ -98,11 +99,11 @@ local function button(o)
         on_click = o.on_click,
         on_drag = press.track(o.name),
         children = {
-            swipe(hovered, 30, o.seed),
+            swipe(hovered, theme.bar.status_swipe_h, o.seed),
             row {
                 height = "fill",
-                spacing = o.spacing or 14,
-                padding = { left = o.pad or 10, right = o.pad or 10 },
+                spacing = o.spacing or theme.spacing.inset,
+                padding = { left = o.pad or theme.spacing.snug, right = o.pad or theme.spacing.snug },
                 translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
                 scale = press.scale(o.name),
                 animate = {
@@ -131,7 +132,7 @@ function M.icons(output)
             elseif button == "right" then
                 menus.open_settings(r)
             else
-                quick.open(r)
+                quick.open(r, nil, output)
             end
         end,
         tip = status_text,
@@ -145,12 +146,12 @@ function M.icons(output)
                 children = { icons.status_glyph(mantle.audio:map(M.volume_name, "volume-muted")) },
             },
             row {
-                spacing = 4,
+                spacing = theme.spacing.xxs,
                 align_v = "center",
                 visible = battery:map(function(b) return b ~= false end),
                 children = {
                     icons.status_glyph(battery:map(M.battery_name)),
-                    k.body(battery:map(function(b) return b and (b.percent .. "%") or "" end), 19,
+                    k.body(battery:map(function(b) return b and (b.percent .. "%") or "" end), theme.font.label,
                         { align_v = "center" }),
                 },
             },
@@ -164,16 +165,16 @@ function M.clock(output)
         name = "taskbar.clock." .. output,
         label = "Date, calendar and notifications",
         seed = 34,
-        spacing = 10,
+        spacing = theme.spacing.snug,
         on_click = function(r) notifications.open_center(r) end,
         tip = function() return (os.date("%A, %d %B %Y"):gsub(" 0(%d)", " %1")) end,
         children = {
-            k.body(now:map(function(t) return os.date("%a, %d %b", t) end), 19,
-                { foreground = k.INK_SOFT, align_v = "center" }),
-            k.body(now:map(function(t) return (os.date("%I:%M %p", t):gsub("^0", "")) end), 19,
-                { font_weight = 700, align_v = "center" }),
+            k.body(now:map(function(t) return os.date("%a, %d %b", t) end), theme.font.label,
+                { foreground = theme.INK_SOFT, align_v = "center" }),
+            k.body(now:map(function(t) return (os.date("%I:%M %p", t):gsub("^0", "")) end), theme.font.label,
+                { font_weight = theme.BOLD, align_v = "center" }),
             -- Unread notifications: a red marker bell.
-            rect { visible = unread, align_v = "center", children = { icons.doodle("bell", icons.STATUS, k.RED) } },
+            rect { visible = unread, align_v = "center", children = { icons.doodle("bell", icons.STATUS, theme.RED) } },
         },
     }
 end
@@ -211,7 +212,7 @@ end
 function M.desktop_strip(output)
     local hovered = hover("taskbar.desktop." .. output)
     return tips.wrap(rect {
-        width = 14,
+        width = theme.bar.desktop_strip_w,
         height = "fill",
         hover = hovered,
         accessible_name = "Show desktop",
@@ -219,14 +220,14 @@ function M.desktop_strip(output)
         on_click = function() show_desktop(output) end,
         children = {
             path {
-                width = 6,
-                height = 34,
+                width = theme.bar.desktop_rule_w,
+                height = theme.control.row,
                 align_h = "center",
                 align_v = "center",
-                stroke = hovered:map(function(v) return v and k.BLUE or "#3A363160" end),
+                stroke = hovered:map(function(v) return v and theme.BLUE or theme.INK_FADED end),
                 stroke_width = hovered:map(function(v) return v and 2.4 or 1.3 end),
                 stroke_cap = "round",
-                commands = { { op = "M", points = { 3, 2 } }, { op = "Q", points = { 4.5, 17, 3, 32 } } },
+                commands = { { op = "M", points = { 3, theme.bar.desktop_rule_start_y } }, { op = "Q", points = { theme.bar.desktop_rule_bend_x, theme.bar.desktop_rule_bend_y, 3, theme.bar.desktop_rule_end_y } } },
             },
         },
     }, "taskbar.desktop." .. output, "Show desktop")

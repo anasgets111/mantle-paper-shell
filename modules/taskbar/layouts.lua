@@ -1,6 +1,7 @@
 -- Keyboard layout: the active layout's short code ("EN", "AR") left of the status group, shown
 -- only with two or more layouts. Click or wheel cycles; right-click lists them by name. Names and
 -- codes come from `lib/layouts.lua`.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("modules.taskbar.icons")
 local status = require("modules.taskbar.status")
@@ -31,7 +32,7 @@ function M.widget(output)
         label = "Keyboard layout",
         seed = 47,
         -- Lettering carries its own side bearing, so less padding keeps its gaps equal to the doodles'.
-        pad = 5,
+        pad = theme.bar.layout_pad,
         on_click = function(r, button)
             if button == "right" then
                 menus.open_layouts(r, data.list())
@@ -44,7 +45,7 @@ function M.widget(output)
             return name ~= "" and ("Keyboard: " .. name) or "Keyboard layout"
         end,
         -- Caveat's capitals at this size stand as tall as the status doodles' ink.
-        children = { k.hand(code, icons.STATUS + 2, { font_weight = 700, align_v = "center" }) },
+        children = { k.hand(code, icons.STATUS + theme.bar.layout_label_extra, { font_weight = theme.BOLD, align_v = "center" }) },
     }
     node.visible = multi
     -- One layout per notch; up goes back, as on the workspace numerals.

@@ -1,6 +1,6 @@
 -- Every icon the taskbar draws goes through here: die-cut app stickers, hand-drawn doodles, tray
 -- icons. Swapping a set means editing this file only.
-local k = require("lib.paper")
+local theme = require("theme")
 local util = require("lib.util")
 local stickers = require("components.icons")
 
@@ -8,17 +8,7 @@ local M = {}
 
 -- The one size for every glyph on the bar's right side: status doodles, tray icons, privacy
 -- stickers, the updater. 24 matches the updater's package, which draws about 17 px of ink.
-M.STATUS = 24
-
--- components/icons.lua's resting sticker shadow, and the same light lifted as a hovered control is.
-local REST = {
-    { blur = 1.5, offset = { x = 0.5, y = 1 }, color = "#00000038" },
-    { blur = 6, offset = { x = 1.5, y = 3 }, color = "#00000042" },
-}
-local LIFT = {
-    { blur = 2.5, offset = { x = 1, y = 2 }, color = "#00000030" },
-    { blur = 14, offset = { x = 3, y = 8 }, color = "#00000050" },
-}
+M.STATUS = theme.bar.status_icon
 
 -- The box an app sticker of icon size `size` takes.
 function M.app_box(size)
@@ -34,7 +24,7 @@ function M.app(name, size, hovered)
     name = name or "application-x-executable"
     local node = stickers.sticker(APP_ICON[name] or name, size)
     if hovered then
-        node.shadows = hovered:map(function(v) return v and LIFT or REST end)
+        node.shadows = hovered:map(function(v) return v and theme.SHADOW.sticker_lift or theme.SHADOW.sticker_rest end)
         node.animate = { shadows = { duration = 160, easing = "out_cubic" } }
     end
     return node
@@ -84,7 +74,7 @@ end
 
 -- A tray item's theme icon, tinted with ink when it is symbolic.
 function M.tray(name, size)
-    return icon { name = name, size = size, foreground = k.INK, align_h = "center", align_v = "center" }
+    return icon { name = name, size = size, foreground = theme.INK, align_h = "center", align_v = "center" }
 end
 
 local INK_SHADER = mantle.config_dir .. "/modules/taskbar/ink.frag"

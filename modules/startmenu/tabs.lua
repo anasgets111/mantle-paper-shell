@@ -2,6 +2,7 @@
 -- Favourites, Frequent, Recent files, All, then one per category. The others tuck behind the page;
 -- the open one turns page paper, stands out furthest, and `bridge` covers the page's torn edge
 -- beside it so tab and page read as one sheet.
+local theme = require("theme")
 local k = require("lib.paper")
 local notebook_tab = require("components.notebook_tab")
 local categories = require("modules.startmenu.categories")
@@ -12,14 +13,14 @@ local power = require("modules.startmenu.power")
 local M = {}
 
 -- Tabs reach this far under the left page.
-M.OVERLAP = 22
-local H, GAP, TOP = 48, 4, 20
+M.OVERLAP = theme.startmenu.tab_overlap
+local H, GAP, TOP = theme.startmenu.tab_h, theme.startmenu.tab_gap, theme.startmenu.tab_top
 -- Room past a face before the page's torn edge.
-local PAD_R = 10
+local PAD_R = theme.startmenu.tab_pad_right
 -- How far a tab tucks further under the page, as in Settings; a held one is pushed a little further.
-local TUCK = { open = 0, hover = 6, rest = 16, held = 5 }
+local TUCK = { open = 0, hover = theme.startmenu.tab_tuck_hover, rest = theme.startmenu.tab_tuck_rest, held = theme.startmenu.tab_tuck_held }
 -- While a search is typed, every tab shows only this much past the page.
-local SEARCH_STUB = 32
+local SEARCH_STUB = theme.startmenu.search_stub
 
 local TABS = {
     { "favourites", "Favourites" },
@@ -106,14 +107,14 @@ local function tab(t, i)
                             width = w,
                             height = H,
                             seed = 70 + i,
-                            background = on and k.PAPER or notebook_tab.tint(i),
-                            shadows = on and k.SHADOW.rest or k.lift(lit),
+                            background = on and theme.PAPER or notebook_tab.tint(i),
+                            shadows = on and theme.SHADOW.rest or k.lift(lit),
                             icon = icon_of(key),
                             title = label,
                             chosen = on,
                             focus = focus,
-                            loop_width = w - (on and 30 or 40),
-                            loop_x = on and 6 or 4,
+                            loop_width = w - (on and theme.startmenu.tab_loop_trim or theme.startmenu.tab_loop_closed_trim),
+                            loop_x = on and theme.startmenu.tab_loop_x or theme.startmenu.tab_loop_closed_x,
                         },
                     }
                 end),
@@ -135,17 +136,17 @@ function M.bridge()
     local children = {}
     for i, t in ipairs(TABS) do
         children[i] = rect {
-            width = M.width:map(function(w) return w + 12 end),
+            width = M.width:map(function(w) return w + theme.startmenu.bridge_pad end),
             height = H,
             children = is_open(t[1]):map(function(on)
                 if not on then return {} end
                 return {
                     rect {
-                        width = 17,
-                        height = H - 6,
+                        width = theme.startmenu.bridge_w,
+                        height = H - theme.startmenu.bridge_trim,
                         align_v = "center",
-                        translate = M.width:map(function(w) return { x = w - M.OVERLAP - 12 } end),
-                        background = k.PAPER,
+                        translate = M.width:map(function(w) return { x = w - M.OVERLAP - theme.spacing.md } end),
+                        background = theme.PAPER,
                         effect = k.paper_fx { rim = 0 },
                     },
                 }

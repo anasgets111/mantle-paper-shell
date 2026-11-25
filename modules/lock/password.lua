@@ -5,6 +5,7 @@
 -- opts = { id, capability = "lock"|"polkit", source? (signal, default mantle[capability]),
 --          preview? (no secure field: a picture of one), width?, idle?, status? fn(state) -> text?,
 --          on_cancel?, submit_disc? (false: the caller has its own labelled submit) }
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("components.icons")
 local util = require("lib.util")
@@ -15,7 +16,7 @@ local G = require("modules.lock.glyphs")
 local SHAKE = {
     duration = 60,
     easing = "in_out_quad",
-    keyframes = { { x = 0 }, { x = -12 }, { x = 11 }, { x = -7 }, { x = 6 }, { x = -2 }, { x = 0 } },
+    keyframes = { { x = 0 }, { x = -theme.spacing.md }, { x = theme.lock.password_shake_right }, { x = -theme.lock.password_shake_left }, { x = theme.spacing.xs }, { x = -2 }, { x = 0 } },
 }
 local ERROR_TEXT = {
     ["authentication failed"] = "Wrong password, try again",
@@ -44,7 +45,7 @@ end
 
 return function(opts)
     local source = opts.source or mantle[opts.capability]
-    local W = opts.width or 360
+    local W = opts.width or theme.lock.password_w
     local busy = source:map(function(s) return s ~= nil and (s.authenticating or s.unlocking == true) end, false)
     local failed = source:map(function(s)
         return s ~= nil and s.active and not s.authenticating and not s.unlocking and (s.error or "") ~= ""
@@ -71,11 +72,11 @@ return function(opts)
     local field = controls.field {
         id = opts.id,
         -- Room for the submit disc beside it, when there is one.
-        width = opts.submit_disc == false and W or W - 52,
-        size = 32,
+        width = opts.submit_disc == false and W or W - theme.lock.password_submit_inset,
+        size = theme.font.banner,
         placeholder = placeholder,
         accessible_name = "Password",
-        placeholder_color = k.INK_SOFT,
+        placeholder_color = theme.INK_SOFT,
         mask_character = "\u{2022}",
         on_cancel = opts.on_cancel,
         secure_submit = not opts.preview and { capability = opts.capability, action = "authenticate" } or nil,
@@ -85,7 +86,7 @@ return function(opts)
     local submit = controls.disc_button {
         id = opts.id .. ".go",
         icon = G.submit,
-        size = 40,
+        size = theme.control.md,
         seed = 77,
         tooltip = "Unlock",
     }
@@ -98,13 +99,13 @@ return function(opts)
     local caps = rect {
         visible = mantle.keyboard:map(function(kb) return kb.caps_lock end, false),
         align_v = "center",
-        children = { controls.chip("Caps lock", "#F2CFC8", 2) },
+        children = { controls.chip("Caps lock", theme.CARD_PINK, 2) },
     }
 
     local lines = {
         row {
             width = W,
-            spacing = 12,
+            spacing = theme.spacing.md,
             translate = { x = 0, y = 0 },
             animate = fails:map(function(n)
                 return n > 0 and { translate = util.with(SHAKE, "run", n) } or {}
@@ -113,15 +114,15 @@ return function(opts)
         },
         row {
             width = W,
-            spacing = 10,
+            spacing = theme.spacing.snug,
             children = {
                 -- Deep red: bright red is kept for marks, not words.
-                k.hand(feedback, 26, {
-                    font_weight = 700,
+                k.hand(feedback, theme.font.heading, {
+                    font_weight = theme.BOLD,
                     width = "fill",
                     wrap = "word",
                     max_lines = 2,
-                    foreground = util.choose(failed, k.DEEP_RED, k.INK_SOFT),
+                    foreground = util.choose(failed, theme.DEEP_RED, theme.INK_SOFT),
                 }),
                 caps,
             },
@@ -131,17 +132,17 @@ return function(opts)
     if opts.capability == "lock" then
         -- pam_fprintd's lines ("Place your finger", "Failed to match") while its conversation runs.
         lines[#lines + 1] = row {
-            spacing = 8,
+            spacing = theme.spacing.sm,
             visible = source:map(function(s) return s.fingerprint ~= nil end, false),
             children = {
-                icons.doodle(G.fingerprint, 20, k.INK_SOFT),
+                icons.doodle(G.fingerprint, theme.icon.md, theme.INK_SOFT),
                 k.body(source:map(function(s)
                     local notes = s.fingerprint and s.fingerprint.messages or {}
                     return #notes > 0 and notes[#notes].text or "Or touch the fingerprint reader"
-                end, ""), 19, { foreground = k.INK_SOFT, align_v = "center", width = W - 28, elide = "end" }),
+                end, ""), theme.font.label, { foreground = theme.INK_SOFT, align_v = "center", width = W - theme.lock.message_inset, elide = "end" }),
             },
         }
     end
 
-    return column { spacing = 6, children = lines }
+    return column { spacing = theme.spacing.xs, children = lines }
 end

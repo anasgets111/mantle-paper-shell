@@ -1,5 +1,6 @@
 -- The "Night light" section of Settings › Displays: on/off, warmth, and the schedule. Called by the
 -- Displays page; returns one column of ruled rows.
+local theme = require("theme")
 local k = require("lib.paper")
 local c = require("components.controls")
 local icons = require("components.icons")
@@ -23,18 +24,18 @@ local function time_picker(key, name)
     end
     local function disc(dir, icon, tip)
         local id = "settings.nightlight." .. key .. "." .. dir
-        return tips.wrap(c.disc_button { id = id, icon = icon, size = 30, seed = dir > 0 and 7 or 5, tooltip = tip,
+        return tips.wrap(c.disc_button { id = id, icon = icon, size = theme.control.chip, seed = dir > 0 and 7 or 5, tooltip = tip,
             on_click = function() step(dir) end }, "paper.disc." .. id, tip)
     end
     return row {
-        spacing = 4,
+        spacing = theme.spacing.xxs,
         align_v = "center",
         accessible_name = name,
         on_wheel = function(_, steps) step(steps > 0 and 1 or -1) end,
         children = {
             disc(-1, "chevron-left", "Earlier"),
-            k.hand(store[key]:map(nightlight.format_time), 26, {
-                font_weight = 700, foreground = k.DEEP_BLUE, width = 70, text_align = "center", align_v = "center",
+            k.hand(store[key]:map(nightlight.format_time), theme.font.heading, {
+                font_weight = theme.BOLD, foreground = theme.DEEP_BLUE, width = theme.nightlight.time_value_w, text_align = "center", align_v = "center",
             }),
             disc(1, "chevron-right", "Later"),
         },
@@ -70,12 +71,12 @@ return function()
                         },
                     }),
                     rows.line({
-                        icons.doodle("night", 22),
+                        icons.doodle("night", theme.icon.control),
                         c.slider {
                             id = "settings.nightlight.warmth",
                             accessible_name = "Warmth",
                             show_value = false,
-                            width = 420,
+                            width = theme.nightlight.slider_w,
                             value = nightlight.warmth,
                             on_change = function(v) nightlight.set_warmth(v) end,
                             on_wheel = nudge_warmth,
@@ -95,9 +96,9 @@ return function()
                         visible = store.schedule:map(function(s) return s == "times" end, false),
                         children = {
                             rows.line({
-                                rows.label("From", { width = 56 }),
+                                rows.label("From", { width = theme.nightlight.minutes_w }),
                                 time_picker("from", "Start time"),
-                                rows.label("to", { width = 30 }),
+                                rows.label("to", { width = theme.nightlight.percent_w }),
                                 time_picker("to", "End time"),
                                 rect { width = "fill" },
                             }),

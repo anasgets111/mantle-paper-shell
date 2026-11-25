@@ -2,6 +2,7 @@
 -- scraps and an inline reply line. Critical notes are pink stock, ruled down the margin in red marker.
 -- Hover, focus and button names come from `slot` (stack position 1..4), never the notification id,
 -- so live notifications never grow the signal registry.
+local theme = require("theme")
 local k = require("lib.paper")
 local controls = require("components.controls")
 local apps = require("lib.apps")
@@ -14,8 +15,8 @@ local menu_mod = require("components.menu")
 
 local tips = tips_mod.popups
 
-local WIDTH = 380
-local PINK, PINK_FOLD = k.STOCK.danger[1], "#D9A9A0"
+local WIDTH = theme.notifications.width
+local PINK, PINK_FOLD = theme.STOCK.danger[1], theme.STICKY_PINK_FOLD
 -- Cards alternate their turn; one holding a text field turns at most 1 degree.
 local TURN = { -1.4, 1.1, -0.7, 1.5 }
 
@@ -25,8 +26,6 @@ local M = { WIDTH = WIDTH }
 local menu = menu_mod.new { id = "paper-notifications-menu", parent = tips_mod.POPUPS_ID }
 M.menu_surfaces = menu.surfaces
 
-local REST = { { blur = 10, offset = { x = 2, y = 6 }, color = "#00000055" } }
-local LIFT = { { blur = 16, offset = { x = 3, y = 10 }, color = "#00000055" } }
 
 -- The installed entry's name and icon when the sender names its desktop id.
 local function app_of(n)
@@ -40,16 +39,16 @@ local function photo(path, slot)
     return rect {
         rotate = slot % 2 == 0 and -3 or 3,
         align_v = "start",
-        padding = { top = 4 },
+        padding = { top = theme.spacing.xxs },
         children = {
             rect {
-                padding = 4,
-                background = k.CARD_LIGHT,
-                shadows = k.SHADOW.rest,
-                children = { image { source = path, fit = "cover", width = 72, height = 72 } },
+                padding = theme.spacing.xxs,
+                background = theme.CARD_LIGHT,
+                shadows = theme.SHADOW.rest,
+                children = { image { source = path, fit = "cover", width = theme.notifications.photo_size, height = theme.notifications.photo_size } },
             },
             k.tape {
-                width = 34, height = 14, translate = { x = -10, y = -6 }, rotate = -28, align_h = "start", seed = slot,
+                width = theme.notifications.photo_tape_w, height = theme.notifications.photo_tape_h, translate = { x = -theme.spacing.snug, y = -theme.spacing.xs }, rotate = -28, align_h = "start", seed = slot,
             },
         },
     }
@@ -59,19 +58,19 @@ local function header(n, slot, ink_soft)
     local name, icon_name = app_of(n)
     return row {
         width = "fill",
-        spacing = 8,
+        spacing = theme.spacing.sm,
         children = {
-            glyphs.app(icon_name, 22),
-            tips_mod.elided(tips, k.body(name, 17, {
+            glyphs.app(icon_name, theme.icon.control),
+            tips_mod.elided(tips, k.body(name, theme.font.caption, {
                 foreground = ink_soft, width = "fill", elide = "end", align_v = "center",
             }), "notifications.pop." .. slot .. ".app", name),
-            tips.wrap(k.body(mantle.clock:map(function(clock) return feed.age(clock.time, n.timestamp) end), 16, {
+            tips.wrap(k.body(mantle.clock:map(function(clock) return feed.age(clock.time, n.timestamp) end), theme.font.xs, {
                 foreground = ink_soft, align_v = "center",
             }), "notifications.pop." .. slot .. ".age", tips_mod.exact(n.timestamp)),
             tips.wrap(glyphs.disc {
                 id = "notifications.pop." .. slot .. ".close",
                 icon = glyphs.close,
-                size = 30,
+                size = theme.icon.task,
                 seed = slot + 40,
                 tooltip = "Dismiss",
                 on_click = function() mantle.notifications:dismiss(n.id) end,
@@ -81,15 +80,15 @@ local function header(n, slot, ink_soft)
 end
 
 local function title_and_body(n, slot, ink)
-    local runs, images = feed.body(n.body, k.DEEP_BLUE)
+    local runs, images = feed.body(n.body, theme.DEEP_BLUE)
     local title = n.summary ~= "" and n.summary or n.app_name
     local children = {
-        tips_mod.elided(tips, k.hand(title, 28, {
-            font_weight = 700, foreground = ink, width = "fill", wrap = "word", max_lines = 2, elide = "end",
+        tips_mod.elided(tips, k.hand(title, theme.font.title, {
+            font_weight = theme.BOLD, foreground = ink, width = "fill", wrap = "word", max_lines = 2, elide = "end",
         }), "notifications.pop." .. slot .. ".title", title),
     }
     if #runs > 0 then
-        children[#children + 1] = tips_mod.elided(tips, k.body(runs, 19, {
+        children[#children + 1] = tips_mod.elided(tips, k.body(runs, theme.font.label, {
             foreground = ink,
             width = "fill",
             wrap = "word",
@@ -98,13 +97,13 @@ local function title_and_body(n, slot, ink)
             on_link = function(href) mantle.applications:open_url(href) end,
         }), "notifications.pop." .. slot .. ".body", feed.record(n).body)
     end
-    return column { width = "fill", spacing = 2, children = children }, images
+    return column { width = "fill", spacing = theme.spacing.hairline, children = children }, images
 end
 
 -- The primary action: a card-stock scrap sized to its label, torn at both ends; it peels up on hover.
 -- `controls.button` takes a fixed width, and an action label can be anything.
 local function scrap(id, label, kind, on_click, seed)
-    local stock = k.STOCK[kind]
+    local stock = theme.STOCK[kind]
     local hovered = hover(id)
     return rect {
         hover = hovered,
@@ -127,8 +126,8 @@ local function scrap(id, label, kind, on_click, seed)
                 animate = { shadows = { duration = 160, easing = "out_cubic" } },
                 effect = k.paper_fx { rim = 0 },
             },
-            k.hand(label, 24, {
-                font_weight = 700, foreground = stock[2], padding = { top = 2, bottom = 4, left = 16, right = 20 },
+            k.hand(label, theme.font.xl, {
+                font_weight = theme.BOLD, foreground = stock[2], padding = { top = theme.spacing.hairline, bottom = theme.spacing.xxs, left = theme.spacing.lg, right = theme.spacing.xl },
             }),
         },
     }
@@ -143,10 +142,10 @@ local function actions(n, slot, critical)
         local label = action.label ~= "" and action.label or action.key
         local function run() mantle.notifications:invoke_action(n.id, action.key) end
         items[i] = i == 1 and scrap(id, label, critical and "danger" or "primary", run, slot * 7)
-            or controls.link { id = id, label = label, size = 24, on_click = run }
+            or controls.link { id = id, label = label, size = theme.font.xl, on_click = run }
     end
     return row {
-        spacing = 18, wrap = true, line_spacing = 8, align_v = "center", padding = { top = 2 }, children = items,
+        spacing = theme.spacing.roomy, wrap = true, line_spacing = theme.spacing.sm, align_v = "center", padding = { top = theme.spacing.hairline }, children = items,
     }
 end
 
@@ -154,12 +153,12 @@ local function reply(n, slot)
     local key = feed.key(n)
     return row {
         width = "fill",
-        spacing = 8,
+        spacing = theme.spacing.sm,
         children = {
             controls.field {
                 id = "notifications.reply." .. slot,
-                width = 270,
-                size = 24,
+                width = theme.notifications.reply_w,
+                size = theme.font.xl,
                 placeholder = n.reply_placeholder or "Reply…",
                 on_change = function(t) st.draft:set({ key = key, text = t }) end,
                 on_submit = function(t) st.send_reply(n, t) end,
@@ -167,7 +166,7 @@ local function reply(n, slot)
             tips.wrap(glyphs.disc {
                 id = "notifications.pop." .. slot .. ".send",
                 icon = glyphs.send,
-                size = 32,
+                size = theme.icon.xl,
                 seed = slot + 50,
                 tooltip = "Send",
                 on_click = function()
@@ -180,17 +179,17 @@ local function reply(n, slot)
 end
 
 -- A swipe past this many px, or a flick this fast, throws the note away.
-local THROW_PX, THROW_SPEED = 110, 900
+local THROW_PX, THROW_SPEED = theme.notifications.throw_distance, 900
 -- The note under a drag that moved: its release must not also click it.
 local dragged = nil
 
 function M.build(n, slot)
     local key = feed.key(n)
     local critical = n.urgency == "critical"
-    local ink, ink_soft = critical and k.DEEP_RED or k.INK, critical and k.DEEP_RED or k.INK_SOFT
+    local ink, ink_soft = critical and theme.DEEP_RED or theme.INK, critical and theme.DEEP_RED or theme.INK_SOFT
     local content, images = title_and_body(n, slot, ink)
     local picture = n.image_path or images[1]
-    local main = picture and row { width = "fill", spacing = 12, children = { photo(picture, slot), content } }
+    local main = picture and row { width = "fill", spacing = theme.spacing.md, children = { photo(picture, slot), content } }
         or content
     local rows = { header(n, slot, ink_soft), main }
     if #(n.actions or {}) > 0 then rows[#rows + 1] = actions(n, slot, critical) end
@@ -211,7 +210,7 @@ function M.build(n, slot)
         animate = {
             move = { duration = 220, easing = "out_cubic" },
             -- Drops away: falls and turns while it fades, gone before the surface's bottom edge.
-            exit = { duration = 240, easing = "in_cubic", translate = { x = 10, y = 34 }, rotate = 10, opacity = 0 },
+            exit = { duration = 240, easing = "in_cubic", translate = { x = theme.spacing.snug, y = theme.spacing.binding }, rotate = 10, opacity = 0 },
         },
         on_drag = function(_, p, phase, _, velocity)
             if phase == "start" then
@@ -220,7 +219,7 @@ function M.build(n, slot)
             end
             local moved = p.x - start_x
             if phase == "move" then
-                if math.abs(moved) > 6 then dragged = key end
+                if math.abs(moved) > theme.notifications.drag_threshold then dragged = key end
                 st.swipe:set({ key = key, dx = moved })
                 return
             end
@@ -256,14 +255,14 @@ function M.build(n, slot)
         end,
         children = {
             rect {
-                rotate = dx:map(function(x) return turn + x / 40 end),
+                rotate = dx:map(function(x) return turn + x / theme.notifications.turn_distance end),
                 -- Hover peels the note up off the stack; a drag carries it sideways.
                 translate = computed({ dx, hovered }, function(x, up) return { x = x, y = up and -3 or 0 } end),
-                opacity = dx:map(function(x) return math.max(0.25, 1 - math.abs(x) / 260) end),
+                opacity = dx:map(function(x) return math.max(0.25, 1 - math.abs(x) / theme.notifications.fade_distance) end),
                 animate = {
                     rotate = { spring = { stiffness = 260, damping = 18 }, from = turn + 9 },
                     -- Peels in from just above and right, within the surface's padding so nothing is cut.
-                    translate = { spring = { stiffness = 420, damping = 30 }, from = { x = 18, y = -16 } },
+                    translate = { spring = { stiffness = 420, damping = 30 }, from = { x = theme.spacing.roomy, y = -theme.spacing.lg } },
                     opacity = { duration = 160, easing = "out_cubic", from = 0 },
                 },
                 children = {
@@ -273,20 +272,20 @@ function M.build(n, slot)
                         color = critical and PINK or nil,
                         fold_color = critical and PINK_FOLD or nil,
                         tape_rotate = -turn * 2.5,
-                        shadows = hovered:map(function(up) return up and LIFT or REST end),
+                        shadows = hovered:map(function(up) return up and theme.SHADOW.notes_lift or theme.SHADOW.notes_rest end),
                         child = rect {
                             width = "fill",
                             children = {
                                 column {
                                     width = "fill",
-                                    spacing = 8,
-                                    padding = { top = 16, left = 18, right = 16, bottom = 18 },
+                                    spacing = theme.spacing.sm,
+                                    padding = { top = theme.spacing.lg, left = theme.spacing.roomy, right = theme.spacing.lg, bottom = theme.spacing.roomy },
                                     children = rows,
                                 },
                                 critical and rect {
                                     height = "fill",
-                                    padding = { top = 18, bottom = 20, left = 7 },
-                                    children = { glyphs.margin_rule(k.RED, n.id) },
+                                    padding = { top = theme.spacing.roomy, bottom = theme.spacing.xl, left = theme.notifications.body_inset },
+                                    children = { glyphs.margin_rule(theme.RED, n.id) },
                                 } or nil,
                             },
                         },

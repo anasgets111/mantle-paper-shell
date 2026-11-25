@@ -1,5 +1,6 @@
 -- The recorder's paper card, hung above the quick-settings icons: what to capture, audio and
 -- quality, then Start; while recording, the elapsed time with Stop and Pause.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local controls = require("components.controls")
@@ -13,7 +14,7 @@ local M = {}
 
 local KIND = "recorder"
 local MS = 160
-local W = 560
+local W = theme.recorder.width
 
 -- A click opens the grab popup, so an outside click closes it; the action has no press to grab with,
 -- so it opens the same card on a keyboard catcher instead.
@@ -42,7 +43,7 @@ action("recorder.toggle_popup", function()
     local rect = ui_state.popup_anchor:get()
     if rect.x == 0 then
         local screen = mantle.screens:get()[1]
-        rect = { x = (screen and screen.width or 1920) - 300, y = 12, width = 120, height = 40 }
+        rect = { x = (screen and screen.width or 1920) - theme.recorder.anchor_inset, y = theme.spacing.md, width = theme.recorder.anchor_w, height = theme.control.md }
     end
     open(rect, false)
 end)
@@ -53,9 +54,9 @@ local AUDIO_WORD = { off = "no audio", desktop = "desktop audio", mic = "desktop
 
 local function choice(key, title, options)
     return column {
-        spacing = 8,
+        spacing = theme.spacing.sm,
         children = {
-            k.hand(title, 26, { font_weight = 700, foreground = k.BLUE }),
+            k.hand(title, theme.font.heading, { font_weight = theme.BOLD, foreground = theme.BLUE }),
             controls.radio_group {
                 id = "recorder." .. key,
                 vertical = true,
@@ -75,7 +76,7 @@ local capture = svc.has_slurp:map(function(has)
 end, {})
 
 local function folder_link()
-    return controls.link { id = "recorder.folder", label = "Recordings folder", size = 24, on_click = function()
+    return controls.link { id = "recorder.folder", label = "Recordings folder", size = theme.font.xl, on_click = function()
         close()
         svc.open_directory()
     end }
@@ -84,24 +85,24 @@ end
 local function setup()
     return column {
         width = "fill",
-        spacing = 16,
+        spacing = theme.spacing.lg,
         children = {
             row {
-                spacing = 10,
+                spacing = theme.spacing.snug,
                 children = {
-                    rect { align_v = "center", children = { icons.doodle("video", 28, k.INK) } },
-                    k.hand("Record screen", 36, { font_weight = 700 }),
+                    rect { align_v = "center", children = { icons.doodle("video", theme.icon.sticker, theme.INK) } },
+                    k.hand("Record screen", theme.font.section, { font_weight = theme.BOLD }),
                 },
             },
             row {
-                spacing = 34,
+                spacing = theme.spacing.binding,
                 children = {
                     column { children = capture },
                     choice("audio", "Audio", AUDIO),
                     choice("quality", "Quality", QUALITY),
                 },
             },
-            controls.divider(W - 56, false, 17),
+            controls.divider(W - theme.recorder.setup_icon, false, 17),
             row {
                 width = "fill",
                 align_v = "center",
@@ -127,23 +128,23 @@ end
 local function live()
     return column {
         width = "fill",
-        spacing = 14,
+        spacing = theme.spacing.inset,
         children = {
             row {
                 width = "fill",
-                spacing = 12,
+                spacing = theme.spacing.md,
                 children = {
-                    rect { width = 18, align_v = "center", children = marks.state(svc.paused) },
-                    k.hand(util.choose(svc.paused, "Paused", "Recording"), 36, { font_weight = 700, width = "fill" }),
-                    k.hand(svc.elapsed, 36, { font_weight = 700, foreground = k.DEEP_RED }),
+                    rect { width = theme.recorder.live_badge, align_v = "center", children = marks.state(svc.paused) },
+                    k.hand(util.choose(svc.paused, "Paused", "Recording"), theme.font.section, { font_weight = theme.BOLD, width = "fill" }),
+                    k.hand(svc.elapsed, theme.font.section, { font_weight = theme.BOLD, foreground = theme.DEEP_RED }),
                 },
             },
             k.body(computed({ svc.label, svc.settings.audio }, function(label, audio)
                 return string.format("%s \u{00B7} %s", label, AUDIO_WORD[audio] or "")
-            end, ""), 19, { foreground = k.INK_SOFT, width = "fill", elide = "end" }),
+            end, ""), theme.font.label, { foreground = theme.INK_SOFT, width = "fill", elide = "end" }),
             row {
                 width = "fill",
-                spacing = 14,
+                spacing = theme.spacing.inset,
                 align_v = "center",
                 children = {
                     controls.button { id = "recorder.stop", label = "Stop", kind = "danger", on_click = function()
@@ -154,7 +155,7 @@ local function live()
                     rect {
                         children = svc.paused:map(function(p)
                             return { controls.button {
-                                id = "recorder.pause", label = p and "Resume" or "Pause", width = 124,
+                                id = "recorder.pause", label = p and "Resume" or "Pause", width = theme.recorder.live_button_w,
                                 on_click = svc.toggle_pause,
                             } }
                         end),
@@ -171,15 +172,15 @@ end
 local function card(up)
     return k.card {
         width = W,
-        height = up and 214 or 330,
+        height = up and theme.recorder.setup_h or theme.recorder.live_h,
         seed = up and 907 or 905,
         rotate = -0.5,
-        color = k.CARD,
-        tapes = { { width = 84, height = 22, rotate = 3, seed = 31 } },
+        color = theme.CARD,
+        tapes = { { width = theme.recorder.tape_w, height = theme.control.check, rotate = 3, seed = 31 } },
         child = rect {
             width = "fill",
             height = "fill",
-            padding = { top = 26, left = 28, right = 28, bottom = 24 },
+            padding = { top = theme.spacing.tab, left = theme.spacing.panel, right = theme.spacing.panel, bottom = theme.spacing.xxl },
             children = { up and live() or setup() },
         },
     }
@@ -196,7 +197,7 @@ M.surface = popup {
     anchor_rect = ui_state.popup_anchor,
     anchor = "top_right",
     gravity = "top_left",
-    offset = { y = -6 },
+    offset = { y = -theme.spacing.xs },
     constraint_adjustment = { "slide_x", "flip_y" },
     grab = true,
     visible = computed({ util.linger(showing, MS), dismissed, grab }, function(v, gone, g) return v and g and not gone end),
@@ -206,12 +207,12 @@ M.surface = popup {
     end,
     on_escape = close,
     child = rect {
-        padding = 18,
+        padding = theme.spacing.roomy,
         opacity = util.choose(showing, 1, 0),
-        translate = showing:map(function(v) return { y = v and 0 or 12 } end),
+        translate = showing:map(function(v) return { y = v and 0 or theme.spacing.md } end),
         animate = {
             opacity = { duration = MS, easing = "out_cubic", from = 0 },
-            translate = { duration = MS, easing = "out_cubic", from = { y = 12 } },
+            translate = { duration = MS, easing = "out_cubic", from = { y = theme.spacing.md } },
         },
         children = cards(),
     },
@@ -221,7 +222,7 @@ M.keyboard_surface = catcher {
     id = "paper-recorder-keys",
     visible = computed({ showing, grab }, function(v, g) return v and not g end),
     close = close,
-    card = function() return rect { padding = 18, children = cards() } end,
+    card = function() return rect { padding = theme.spacing.roomy, children = cards() } end,
 }
 
 return M

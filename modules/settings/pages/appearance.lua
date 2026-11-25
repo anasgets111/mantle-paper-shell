@@ -2,6 +2,7 @@
 -- (`pages/background.lua`).
 -- `lib/scheme.lua` switches apps' light/dark pair (GTK, libadwaita, Qt, the portal). The paper shell
 -- stays light.
+local theme = require("theme")
 local k = require("lib.paper")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
@@ -11,8 +12,8 @@ local icons = require("components.icons")
 local background = require("modules.settings.pages.background")
 
 local SCHEMES = {
-    { "light", "Light", k.CARD, k.INK },
-    { "dark", "Dark", "#3B3732", "#E9E1CF" },
+    { "light", "Light", theme.CARD, theme.INK },
+    { "dark", "Dark", theme.SWATCH_DARK, theme.SWATCH_LIGHT },
 }
 
 local current = scheme.current
@@ -25,8 +26,8 @@ local function swatch(s, i)
     local keyed = focus_visible("settings.appearance." .. key)
     local lines = {}
     for n = 0, 3 do
-        lines[#lines + 1] = { op = "M", points = { 18, 44 + n * 14 } }
-        lines[#lines + 1] = { op = "L", points = { 18 + (n % 2 == 0 and 110 or 80), 44 + n * 14 } }
+        lines[#lines + 1] = { op = "M", points = { theme.settings.swatch_line_x, theme.settings.swatch_lines_top + n * theme.settings.swatch_line_pitch } }
+        lines[#lines + 1] = { op = "L", points = { theme.settings.swatch_line_x + (n % 2 == 0 and theme.settings.swatch_line_long or theme.settings.swatch_line_short), theme.settings.swatch_lines_top + n * theme.settings.swatch_line_pitch } }
     end
     return rect {
         hover = hovered,
@@ -35,7 +36,7 @@ local function swatch(s, i)
         accessible_name = name,
         cursor = "pointer",
         on_click = function() choose(key) end,
-        padding = 10,
+        padding = theme.spacing.snug,
         translate = hovered:map(function(v) return { y = v and -3 or 0 } end),
         animate = { translate = { duration = 140, easing = "out_cubic" } },
         children = {
@@ -43,19 +44,19 @@ local function swatch(s, i)
                 rotate = i == 1 and -1.2 or 1,
                 children = {
                     k.sheet {
-                        width = 170,
-                        height = 112,
+                        width = theme.settings.swatch_w,
+                        height = theme.settings.swatch_h,
                         seed = 60 + i,
-                        depth = 3,
+                        depth = theme.paper.control_tear,
                         color = paper,
                         shadows = k.lift(hovered),
                         child = rect {
                             children = {
-                                k.stroke_path(170, 112, {
-                                    { op = "M", points = { 10, 26 } }, { op = "L", points = { 160, 26 } },
+                                k.stroke_path(theme.settings.swatch_w, theme.settings.swatch_h, {
+                                    { op = "M", points = { theme.settings.swatch_rule_end_inset, theme.settings.swatch_first_rule } }, { op = "L", points = { theme.settings.swatch_rule_end, theme.settings.swatch_first_rule } },
                                 }, ink, 1.3),
-                                k.stroke_path(170, 112, lines, ink, 2),
-                                rect { padding = { left = 12, top = 3 }, children = { k.hand(name, 24, { foreground = ink }) } },
+                                k.stroke_path(theme.settings.swatch_w, theme.settings.swatch_h, lines, ink, 2),
+                                rect { padding = { left = theme.spacing.md, top = theme.settings.swatch_title_top }, children = { k.hand(name, theme.font.xl, { foreground = ink }) } },
                             },
                         },
                     },
@@ -69,19 +70,19 @@ local function swatch(s, i)
                 translate = { x = 4, y = -4 },
                 children = {
                     k.sheet {
-                        width = 26,
-                        height = 26,
-                        shape = k.torn_circle(26, i),
-                        color = k.CARD,
-                        shadows = k.SHADOW.rest,
-                        child = util.with(icons.doodle("check", 18, k.BLUE), "align_h", "center"),
+                        width = theme.settings.swatch_first_rule,
+                        height = theme.control.knob,
+                        shape = k.torn_circle(theme.settings.swatch_first_rule, i),
+                        color = theme.CARD,
+                        shadows = theme.SHADOW.rest,
+                        child = util.with(icons.doodle("check", theme.icon.label, theme.BLUE), "align_h", "center"),
                     },
                 },
             },
             rect {
                 visible = keyed,
-                translate = { x = -12, y = -12 },
-                children = { c.pencil_loop(194, 136, 20 + i) },
+                translate = { x = -theme.spacing.md, y = -theme.spacing.md },
+                children = { c.pencil_loop(theme.settings.swatch_loop_w, theme.settings.swatch_loop_h, 20 + i) },
             },
         },
     }
@@ -96,7 +97,7 @@ return {
         local strip, tab = rows.tabs("appearance", { "Style", "Background" })
         local style = {
             rows.heading("Style for apps"),
-            row { height = rows.PITCH * 5, spacing = 40, padding = { top = 10, left = 6 }, children = { swatch(SCHEMES[1], 1), swatch(SCHEMES[2], 2) } },
+            row { height = rows.PITCH * 5, spacing = theme.spacing.section, padding = { top = theme.spacing.snug, left = theme.spacing.xs }, children = { swatch(SCHEMES[1], 1), swatch(SCHEMES[2], 2) } },
             rows.line({
                 c.radio_group {
                     id = "settings.appearance.scheme",

@@ -1,6 +1,7 @@
 -- The idle settings page body (timers, profiles, inhibit), shown by the settings builder on its
 -- Power page. Call it to build the page's node; `.surface` is its tooltip popup. Ported from
 -- ~/.config/mantle/modules/global/idle_settings.lua with paper controls.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("components.icons")
 local util = require("lib.util")
@@ -13,7 +14,7 @@ local rows = require("modules.settings.rows")
 -- One ruled pitch per stage, so the rules run under the text and all four stages fit the tab.
 local ROW_H = rows.PITCH
 -- The page body: the notebook's content width less its 12 px right padding.
-local BODY_W = rows.WIDTH - 12
+local BODY_W = rows.WIDTH - theme.spacing.md
 
 -- The page is drawn inside the settings modal, so its notes hang from that surface.
 local tips = tooltip.new { id = "paper-idle-tip", parent = "paper-modal-host", side = "top" }
@@ -60,19 +61,19 @@ local function stepper(stage)
         idle.write({ [profile] = held })
     end
     return row {
-        spacing = 6,
+        spacing = theme.spacing.xs,
         align_v = "center",
         -- A press here is a click, never the start of a row drag.
         on_drag = function() end,
         on_wheel = function(_, steps) step(steps > 0 and 1 or -1) end,
         children = {
-            tips.wrap(controls.disc_button { id = "lock.idle.less." .. stage.key, icon = G.less, size = 28, seed = 3,
+            tips.wrap(controls.disc_button { id = "lock.idle.less." .. stage.key, icon = G.less, size = theme.control.sm, seed = 3,
                 tooltip = "Shorter", on_click = function() step(-1) end }, "paper.disc.lock.idle.less." .. stage.key, "Shorter"),
-            k.hand(current:map(idle.format), 26, {
-                font_weight = 700, width = 66, text_align = "center", align_v = "center",
-                foreground = current:map(function(sec) return sec > 0 and k.DEEP_BLUE or k.INK_SOFT end),
+            k.hand(current:map(idle.format), theme.font.heading, {
+                font_weight = theme.BOLD, width = theme.lock.duration_w, text_align = "center", align_v = "center",
+                foreground = current:map(function(sec) return sec > 0 and theme.DEEP_BLUE or theme.INK_SOFT end),
             }),
-            tips.wrap(controls.disc_button { id = "lock.idle.more." .. stage.key, icon = G.more, size = 28, seed = 5,
+            tips.wrap(controls.disc_button { id = "lock.idle.more." .. stage.key, icon = G.more, size = theme.control.sm, seed = 5,
                 tooltip = "Longer", on_click = function() step(1) end }, "paper.disc.lock.idle.more." .. stage.key, "Longer"),
         },
     }
@@ -125,17 +126,17 @@ local function stage_row(item)
                 width = "fill",
                 height = ROW_H - 2,
                 align_v = "center",
-                shape = k.torn(BODY_W, ROW_H - 2, 70 + item.index, 2),
-                background = k.CARD,
+                shape = k.torn(BODY_W, ROW_H - theme.lock.stage_highlight_inset, 70 + item.index, theme.paper.light_tear),
+                background = theme.CARD,
                 opacity = util.choose(mine, 1, 0),
-                shadows = k.SHADOW.lift,
+                shadows = theme.SHADOW.lift,
             },
             rows.line({
-                icons.doodle(G.drag, 18, k.INK_SOFT),
-                k.hand(tostring(item.index), 28, { font_weight = 700, foreground = k.BLUE, width = 18 }),
-                icons.doodle(stage.icon, 20, k.INK),
-                k.body(stage.title, 21, { foreground = util.choose(enabled, k.INK, k.INK_SOFT) }),
-                tips.wrap(k.body(stage.detail, 16, { foreground = k.INK_SOFT, width = "fill", elide = "end", elided = cut }),
+                icons.doodle(G.drag, theme.icon.label, theme.INK_SOFT),
+                k.hand(tostring(item.index), theme.font.title, { font_weight = theme.BOLD, foreground = theme.BLUE, width = theme.lock.stage_title_inset }),
+                icons.doodle(stage.icon, theme.icon.md, theme.INK),
+                k.body(stage.title, theme.font.control, { foreground = util.choose(enabled, theme.INK, theme.INK_SOFT) }),
+                tips.wrap(k.body(stage.detail, theme.font.xs, { foreground = theme.INK_SOFT, width = "fill", elide = "end", elided = cut }),
                     "lock.idle.detail." .. item.key, function() return cut:get() and stage.detail or "" end),
             }, { stepper(stage) }),
         },
@@ -187,20 +188,20 @@ local function build(part)
             add(rect {
                 width = "fill",
                 height = rows.PITCH * 2,
-                padding = { left = 8, top = 2 },
+                padding = { left = theme.spacing.sm, top = theme.spacing.hairline },
                 children = {
                     controls.sticky {
-                        width = BODY_W - 40,
+                        width = BODY_W - theme.lock.disabled_note_inset,
                         seed = 13,
                         rotate = -0.6,
                         tape = false,
                         child = row {
                             width = "fill",
-                            spacing = 10,
-                            padding = { left = 16, right = 16, top = 12, bottom = 12 },
+                            spacing = theme.spacing.snug,
+                            padding = { left = theme.spacing.lg, right = theme.spacing.lg, top = theme.spacing.md, bottom = theme.spacing.md },
                             children = {
-                                icons.doodle(G.info, 20),
-                                k.body("Idle actions are switched off in this build. Timers are saved for later.", 18, {
+                                icons.doodle(G.info, theme.icon.md),
+                                k.body("Idle actions are switched off in this build. Timers are saved for later.", theme.font.sm, {
                                     align_v = "center", width = "fill", elide = "end",
                                 }),
                             },

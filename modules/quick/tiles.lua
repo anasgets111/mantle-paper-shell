@@ -1,5 +1,6 @@
 -- Quick-settings toggle tiles: card-stock scraps with a paper disc, a Caveat name and a status
 -- line. On, a tile turns to blue stock and is hatched in pencil, so state never rests on colour.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local controls = require("components.controls")
@@ -9,13 +10,13 @@ local idle = require("modules.lock.idle")
 local scheme = require("lib.scheme")
 local nightlight = require("modules.nightlight")
 
-local TW, TH = 218, 78
+local TW, TH = theme.quick.tile_w, theme.quick.tile_h
 
 local function tile(o)
     local hovered = hover("quick.tile." .. o.id)
     local keyed = focus_visible("quick.tile." .. o.id)
     local on = o.on
-    local ink = on:map(function(v) return v and k.DEEP_BLUE or k.INK end)
+    local ink = on:map(function(v) return v and theme.DEEP_BLUE or theme.INK end)
     return rect {
         width = TW,
         height = TH,
@@ -36,32 +37,32 @@ local function tile(o)
             rect {
                 width = "fill",
                 height = "fill",
-                shape = k.torn(TW, TH, o.seed, 3),
-                background = on:map(function(v) return v and k.STOCK.primary[1] or k.STOCK.plain[1] end),
+                shape = k.torn(TW, TH, o.seed, theme.paper.control_tear),
+                background = on:map(function(v) return v and theme.STOCK.primary[1] or theme.STOCK.plain[1] end),
                 shadows = k.lift(hovered),
                 animate = { shadows = { duration = 160, easing = "out_cubic" }, background = { duration = 140 } },
                 effect = on:map(function(v)
-                    return k.paper_fx { rim = 0, hatch = v and 1 or 0, hatch_color = { 0.2, 0.38, 0.7, 0.22 }, hatch_spacing = 5 }
+                    return k.paper_fx { rim = 0, hatch = v and 1 or 0, hatch_color = theme.HATCH_FAINT, hatch_spacing = theme.paper.hatch_broad }
                 end),
             },
             row {
                 width = "fill",
                 height = "fill",
-                spacing = 14,
-                padding = { left = 18, right = 10 },
+                spacing = theme.spacing.inset,
+                padding = { left = theme.spacing.roomy, right = theme.spacing.snug },
                 children = {
                     -- Drawn straight on the stock: raised discs are kept for standalone actions.
-                    icons.doodle(o.icon, 26, on:map(function(v) return v and k.DEEP_BLUE or k.INK end)),
+                    icons.doodle(o.icon, theme.icon.badge, on:map(function(v) return v and theme.DEEP_BLUE or theme.INK end)),
                     column {
                         width = "fill",
                         align_v = "center",
-                        spacing = -2,
+                        spacing = -theme.spacing.hairline,
                         children = {
                             -- 150 px of text: "Do not disturb" fits only a size down. Titles are
                             -- ours, so a length rule keeps every built-in one whole.
-                            k.hand(o.label, #o.label > 12 and 21 or 25,
-                                { font_weight = 700, foreground = ink, elide = "end", width = "fill" }),
-                            k.body(o.status, 17, { foreground = ink, elide = "end", width = "fill" }),
+                            k.hand(o.label, #o.label > 12 and theme.font.control or theme.font.button,
+                                { font_weight = theme.BOLD, foreground = ink, elide = "end", width = "fill" }),
+                            k.body(o.status, theme.font.caption, { foreground = ink, elide = "end", width = "fill" }),
                         },
                     },
                 },
@@ -70,7 +71,7 @@ local function tile(o)
             rect {
                 opacity = util.choose(keyed, 1, 0),
                 translate = { x = -4, y = -4 },
-                children = { controls.pencil_loop(TW + 8, TH + 8, o.seed) },
+                children = { controls.pencil_loop(TW + theme.quick.tile_loop_inset, TH + theme.quick.tile_loop_inset, o.seed) },
             },
         },
     }

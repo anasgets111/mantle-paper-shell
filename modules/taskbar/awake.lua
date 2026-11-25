@@ -2,7 +2,7 @@
 -- A coffee cup for the quick-settings "Keep awake" hold, which a click releases; an open eye when
 -- only other apps hold it (a video, a game), named in the tooltip. Nothing shows, and nothing takes
 -- space, while nothing holds it.
-local k = require("lib.paper")
+local theme = require("theme")
 local util = require("lib.util")
 local controls = require("components.controls")
 local idle = require("modules.lock.idle")
@@ -30,14 +30,14 @@ local function sticker(output, manual)
     local hovered = hover(slot)
     return tips.wrap(rect {
         -- The loop's ink sits 10 px in from each side, as the privacy stickers' do.
-        width = 56,
+        width = theme.bar.indicator_w,
         height = "fill",
         hover = hovered,
         accessible_name = manual and "Keep awake is on" or "Kept awake by another app",
         cursor = manual and "pointer" or nil,
         on_click = manual and function() idle.set_manual(false) end or nil,
         on_drag = manual and press.track(slot) or nil,
-        animate = { exit = { duration = 160, easing = "in_cubic", opacity = 0, translate = { y = -10 }, scale = 1.1 } },
+        animate = { exit = { duration = 160, easing = "in_cubic", opacity = 0, translate = { y = -theme.spacing.snug }, scale = 1.1 } },
         children = {
             rect {
                 align_h = "center",
@@ -51,15 +51,15 @@ local function sticker(output, manual)
                     translate = { duration = 140, easing = "out_cubic" },
                 },
                 children = {
-                    controls.pencil_loop(38, 36, 29),
+                    controls.pencil_loop(theme.bar.indicator_loop_w, theme.bar.indicator_loop_h, 29),
                     rect {
-                        width = 38,
-                        height = 36,
+                        width = theme.bar.indicator_loop_w,
+                        height = theme.control.tab,
                         children = {
                             rect {
                                 align_h = "center",
                                 align_v = "center",
-                                children = { icons.doodle(manual and "coffee" or "eye", icons.STATUS, k.DEEP_BLUE) },
+                                children = { icons.doodle(manual and "coffee" or "eye", icons.STATUS, theme.DEEP_BLUE) },
                             },
                         },
                     },

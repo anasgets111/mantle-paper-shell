@@ -1,12 +1,13 @@
 -- Displays page, read only: Mantle can't write output settings (gap 18). Screens are drawn as paper
 -- rectangles arranged by position; under "More", each has the Hyprland `hl.monitor` line that would
 -- set it. Night light has its own tab.
+local theme = require("theme")
 local k = require("lib.paper")
 local rows = require("modules.settings.rows")
 local nightlight_page = require("modules.nightlight.page")
 local ui_state = require("lib.ui_state")
 
-local MAP_W, MAP_H = rows.WIDTH - 20, rows.PITCH * 6 - 16
+local MAP_W, MAP_H = rows.WIDTH - theme.settings.display_map_inset, rows.PITCH * 6 - theme.settings.display_map_trim
 
 local function mode_of(s)
     local scale = s.fractional_scale or s.scale or 1
@@ -30,7 +31,7 @@ local function arrangement(screens)
         x0, y0 = math.min(x0, s.x), math.min(y0, s.y)
         x1, y1 = math.max(x1, s.x + s.width), math.max(y1, s.y + s.height)
     end
-    local f = math.min((MAP_W - 40) / (x1 - x0), (MAP_H - 30) / (y1 - y0))
+    local f = math.min((MAP_W - theme.settings.display_min_size) / (x1 - x0), (MAP_H - theme.settings.display_scale_inset) / (y1 - y0))
     local ox = (MAP_W - (x1 - x0) * f) / 2
     local oy = (MAP_H - (y1 - y0) * f) / 2
     local sheets = {}
@@ -46,26 +47,26 @@ local function arrangement(screens)
                             width = w,
                             height = h,
                             seed = 300 + i,
-                            depth = 3,
-                            color = i % 2 == 1 and "#C5D7EE" or k.CARD,
-                            shadows = k.SHADOW.rest,
+                            depth = theme.paper.control_tear,
+                            color = i % 2 == 1 and theme.CARD_BLUE or theme.CARD,
+                            shadows = theme.SHADOW.rest,
                             child = column {
                                 align_h = "center",
                                 align_v = "center",
                                 spacing = 0,
                                 children = {
-                                    k.hand(s.name, 34, { font_weight = 700, foreground = k.DEEP_BLUE, align_h = "center" }),
-                                    k.body(s.width .. " × " .. s.height, 18, { foreground = k.INK, align_h = "center" }),
+                                    k.hand(s.name, theme.font.display, { font_weight = theme.BOLD, foreground = theme.DEEP_BLUE, align_h = "center" }),
+                                    k.body(s.width .. " × " .. s.height, theme.font.sm, { foreground = theme.INK, align_h = "center" }),
                                 },
                             },
                         },
-                        k.tape { width = 74, height = 22, rotate = i % 2 == 0 and -3 or 2.5, seed = 40 + i },
+                        k.tape { width = theme.settings.display_tape_w, height = theme.control.check, rotate = i % 2 == 0 and -3 or 2.5, seed = 40 + i },
                     },
                 },
             },
         }
     end
-    return rect { width = MAP_W, height = MAP_H, padding = { top = 8 }, children = sheets }
+    return rect { width = MAP_W, height = MAP_H, padding = { top = theme.spacing.sm }, children = sheets }
 end
 
 local function details(s)
@@ -93,9 +94,9 @@ return {
                             width = "fill",
                             height = rows.PITCH * 2,
                             children = {
-                                k.body(monitor_line(s), 16, {
-                                    font = "monospace", foreground = k.DEEP_BLUE, width = "fill", wrap = "word",
-                                    line_height = rows.PITCH / 16, padding = { top = 2 },
+                                k.body(monitor_line(s), theme.font.xs, {
+                                    font = "monospace", foreground = theme.DEEP_BLUE, width = "fill", wrap = "word",
+                                    line_height = rows.PITCH / theme.settings.display_hint_line_h, padding = { top = theme.spacing.hairline },
                                 }),
                             },
                         }
@@ -115,7 +116,7 @@ return {
             rows.heading("Arrangement"),
             rect {
                 width = "fill",
-                height = MAP_H + 16,
+                height = MAP_H + theme.settings.display_footer_h,
                 children = mantle.screens:map(function(screens)
                     if #screens == 0 then return { rows.note("No screens reported yet.") } end
                     return { arrangement(screens) }

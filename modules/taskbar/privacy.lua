@@ -2,6 +2,7 @@
 -- status icons, each ringed by a quick red loop, and a strip of red tape reading LIVE across every
 -- output's top-right corner while the screen is shared. Nothing shows, and nothing takes space,
 -- while no sensor is in use.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local controls = require("components.controls")
@@ -57,21 +58,21 @@ end
 
 local function sticker(output, s)
     local slot = "taskbar.privacy." .. output .. "." .. s.key
-    local loop = controls.pencil_loop(38, 36, #s.key * 7)
-    loop.stroke = k.RED
+    local loop = controls.pencil_loop(theme.bar.indicator_loop_w, theme.bar.indicator_loop_h, #s.key * 7)
+    loop.stroke = theme.RED
     loop.stroke_width = 1.6
     local hovered = hover(slot)
     return tips.wrap(rect {
         -- The loop's ink sits 10 px in from each side, as the updater's and the status group's do.
-        width = 56,
+        width = theme.bar.indicator_w,
         height = "fill",
         hover = hovered,
         accessible_name = s.label .. " in use",
         cursor = "pointer",
-        on_click = function(r) quick.open(r, "privacy") end,
+        on_click = function(r) quick.open(r, "privacy", output) end,
         on_drag = press.track(slot),
         -- A quick lift away when the sensor goes quiet.
-        animate = { exit = { duration = 160, easing = "in_cubic", opacity = 0, translate = { y = -10 }, scale = 1.1 } },
+        animate = { exit = { duration = 160, easing = "in_cubic", opacity = 0, translate = { y = -theme.spacing.snug }, scale = 1.1 } },
         children = {
             rect {
                 align_h = "center",
@@ -88,13 +89,13 @@ local function sticker(output, s)
                 children = {
                     loop,
                     rect {
-                        width = 38,
-                        height = 36,
+                        width = theme.bar.indicator_loop_w,
+                        height = theme.control.tab,
                         children = {
                             rect {
                                 align_h = "center",
                                 align_v = "center",
-                                children = { icons.doodle(s.glyph, icons.STATUS, k.RED) },
+                                children = { icons.doodle(s.glyph, icons.STATUS, theme.RED) },
                             },
                         },
                     },
@@ -108,7 +109,7 @@ function M.indicators(output)
     return list {
         direction = "horizontal",
         height = "fill",
-        spacing = 10,
+        spacing = theme.spacing.snug,
         -- Held past the last sensor going quiet so its exit can play; hidden it takes no gap.
         visible = util.linger(any, 200),
         items = active,
@@ -118,7 +119,7 @@ function M.indicators(output)
 end
 
 -- The LIVE strip: opaque red washi tape across the corner, Caveat in deep red ink.
-local TAPE_W, TAPE_H = 220, 42
+local TAPE_W, TAPE_H = theme.bar.live_tape_w, theme.bar.live_tape_h
 
 local function live_tape()
     return rect {
@@ -126,18 +127,18 @@ local function live_tape()
         height = TAPE_H,
         align_h = "end",
         align_v = "start",
-        translate = { x = 46, y = 36 },
+        translate = { x = theme.bar.live_tape_x, y = theme.bar.live_tape_y },
         rotate = 38,
-        background = "#E5877C",
+        background = theme.RECORDING_TAPE,
         shape = k.tape_shape(TAPE_W, TAPE_H, 61),
-        shadows = k.SHADOW.tape,
+        shadows = theme.SHADOW.tape,
         effect = k.paper_fx { grain = 0.35, mottle = 0.2, rim = 0 },
         animate = {
-            translate = { duration = 260, easing = "out_back", from = { x = 46, y = -70 } },
-            exit = { duration = 220, easing = "in_cubic", opacity = 0, translate = { x = 110, y = -60 }, rotate = 52 },
+            translate = { duration = 260, easing = "out_back", from = { x = theme.bar.live_tape_x, y = -theme.bar.live_enter_y } },
+            exit = { duration = 220, easing = "in_cubic", opacity = 0, translate = { x = theme.bar.live_exit_x, y = -theme.bar.live_exit_y }, rotate = 52 },
         },
         children = {
-            k.hand("LIVE", 30, { font_weight = 700, foreground = k.DEEP_RED, align_h = "center", align_v = "center" }),
+            k.hand("LIVE", theme.font.xxl, { font_weight = theme.BOLD, foreground = theme.DEEP_RED, align_h = "center", align_v = "center" }),
         },
     }
 end
@@ -147,8 +148,8 @@ M.live_surface = panel {
     namespace = "paper-privacy-live",
     layer = "overlay",
     anchor = { top = true, right = true },
-    width = 230,
-    height = 170,
+    width = theme.bar.live_surface_w,
+    height = theme.bar.live_surface_h,
     exclusive_zone = false,
     keyboard_interactivity = "none",
     visible = util.linger(sharing, 260),

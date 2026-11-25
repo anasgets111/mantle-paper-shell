@@ -1,5 +1,6 @@
 -- The date menu (GNOME's clock menu), hung above the taskbar clock: the history notepad on the left;
 -- today's date, the month and the now-playing card on the right.
+local theme = require("theme")
 local util = require("lib.util")
 local ui_state = require("lib.ui_state")
 local st = require("modules.notifications.state")
@@ -51,7 +52,7 @@ action("notifications.toggle_center", function()
     local rect = ui_state.popup_anchor:get()
     if rect.x == 0 then
         local screen = mantle.screens:get()[1]
-        rect = { x = (screen and screen.width or 1920) - 140, y = 12, width = 120, height = 40 }
+        rect = { x = (screen and screen.width or 1920) - theme.notifications.anchor_inset, y = theme.spacing.md, width = theme.notifications.anchor_w, height = theme.control.md }
     end
     open(rect, false)
 end)
@@ -61,21 +62,21 @@ local showing = st.center_open
 -- Built per surface: a node belongs to one.
 local function menu()
     return column {
-        padding = { top = 18, left = 18, right = 26, bottom = 30 },
+        padding = { top = theme.spacing.roomy, left = theme.spacing.roomy, right = theme.spacing.tab, bottom = theme.spacing.page },
         opacity = util.choose(showing, 1, 0),
-        translate = showing:map(function(open_now) return { y = open_now and 0 or 12 } end),
+        translate = showing:map(function(open_now) return { y = open_now and 0 or theme.spacing.md } end),
         animate = {
             opacity = { duration = MS, easing = "out_cubic", from = 0 },
-            translate = { duration = MS, easing = "out_cubic", from = { y = 12 } },
+            translate = { duration = MS, easing = "out_cubic", from = { y = theme.spacing.md } },
         },
         children = {
             row {
-                spacing = 18,
+                spacing = theme.spacing.roomy,
                 children = {
                     notepad.page(opened_at),
                     column {
-                        spacing = 14,
-                        padding = { top = 4 },
+                        spacing = theme.spacing.inset,
+                        padding = { top = theme.spacing.xxs },
                         children = { calendar.card(opened_at), media.card() },
                     },
                 },
@@ -90,7 +91,7 @@ M.popup = popup {
     anchor_rect = ui_state.popup_anchor,
     anchor = "top",
     gravity = "top",
-    offset = { y = 4 },
+    offset = { y = theme.spacing.xxs },
     constraint_adjustment = { "slide_x", "flip_y" },
     grab = true,
     reset_on_close = { notepad.scroll },

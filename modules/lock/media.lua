@@ -4,13 +4,14 @@
 -- controls), which would stop typing reaching the password field and turn Enter into play/pause.
 -- An empty `accessible_name` keeps them out of focus, at the cost of screen-reader access.
 -- No tooltips: a lock surface cannot parent a popup.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("components.icons")
 local controls = require("components.controls")
 local util = require("lib.util")
 local G = require("modules.lock.glyphs")
 
-local W, H, ART = 460, 104, 66
+local W, H, ART = theme.lock.media_w, theme.lock.media_h, theme.lock.media_art
 
 local M = {}
 
@@ -27,15 +28,15 @@ local function art(p)
     local path = p.album_art_path ~= "" and p.album_art_path or p.art_url:match("^file://(.+)")
     local picture = path and image { source = path, fit = "cover", width = ART, height = ART, async = true }
         or rect {
-            width = ART, height = ART, background = k.CARD,
-            children = { util.with(icons.doodle(G.music, 30, k.INK_SOFT), "align_h", "center") },
+            width = ART, height = ART, background = theme.CARD,
+            children = { util.with(icons.doodle(G.music, theme.icon.task, theme.INK_SOFT), "align_h", "center") },
         }
     return rect {
         rotate = -3,
         align_v = "center",
         children = {
-            rect { padding = 4, background = k.CARD_LIGHT, shadows = k.SHADOW.rest, children = { picture } },
-            k.tape { width = 34, height = 13, translate = { x = 22, y = -6 }, rotate = 8, seed = 6 },
+            rect { padding = theme.spacing.xxs, background = theme.CARD_LIGHT, shadows = theme.SHADOW.rest, children = { picture } },
+            k.tape { width = theme.lock.media_tape_w, height = theme.lock.media_tape_h, translate = { x = theme.spacing.wide, y = -theme.spacing.xs }, rotate = 8, seed = 6 },
         },
     }
 end
@@ -47,7 +48,7 @@ local function disc(p, name, icon, cmd, enabled, size)
         size = size,
         seed = #name + 80,
         tooltip = name,
-        ink = enabled and k.INK or k.INK_SOFT,
+        ink = enabled and theme.INK or theme.INK_SOFT,
         on_click = function() if enabled then mantle.mpris:control(p.id, cmd) end end,
     }, "accessible_name", "")
 end
@@ -61,36 +62,36 @@ local function scrap(p)
         width = W,
         height = H,
         seed = 961,
-        depth = 2,
-        color = k.CARD,
-        shadows = k.SHADOW.rest,
+        depth = theme.paper.light_tear,
+        color = theme.CARD,
+        shadows = theme.SHADOW.rest,
         fx = { rim = 1.2 },
         child = row {
             width = "fill",
             height = "fill",
-            spacing = 16,
-            padding = { left = 22, right = 18 },
+            spacing = theme.spacing.lg,
+            padding = { left = theme.spacing.wide, right = theme.spacing.roomy },
             children = {
                 art(p),
                 column {
                     width = "fill",
                     align_v = "center",
-                    spacing = -2,
+                    spacing = -theme.spacing.hairline,
                     children = {
-                        k.hand(title, 28, { font_weight = 700, elide = "end", width = "fill" }),
-                        k.body(byline, 17, {
-                            foreground = k.INK_SOFT, elide = "end", width = "fill", visible = byline ~= "",
+                        k.hand(title, theme.font.title, { font_weight = theme.BOLD, elide = "end", width = "fill" }),
+                        k.body(byline, theme.font.caption, {
+                            foreground = theme.INK_SOFT, elide = "end", width = "fill", visible = byline ~= "",
                         }),
                     },
                 },
                 row {
-                    spacing = 8,
+                    spacing = theme.spacing.sm,
                     align_v = "center",
                     children = {
-                        disc(p, "Previous track", G.previous, "previous", p.can_go_previous, 32),
+                        disc(p, "Previous track", G.previous, "previous", p.can_go_previous, theme.lock.media_skip_disc),
                         disc(p, playing and "Pause" or "Play", playing and G.pause or G.play, "play_pause",
-                            playing and p.can_pause or p.can_play, 40),
-                        disc(p, "Next track", G.next, "next", p.can_go_next, 32),
+                            playing and p.can_pause or p.can_play, theme.lock.media_play_disc),
+                        disc(p, "Next track", G.next, "next", p.can_go_next, theme.lock.media_skip_disc),
                     },
                 },
             },

@@ -1,6 +1,7 @@
 -- One app on the task list: a die-cut sticker of the app icon (on a hatched blue patch while
 -- focused), ink ticks for its windows, an urgent dot and an unread badge. The slot never moves, so
 -- hover and drag stay steady; an inner node slides during a drag and a further one peels up on hover.
+local theme = require("theme")
 local k = require("lib.paper")
 local apps = require("lib.apps")
 local tasks = require("modules.taskbar.tasks")
@@ -10,12 +11,12 @@ local start = require("modules.taskbar.start")
 
 local M = {}
 
-M.SLOT_W, M.SPACING = 50, 4
+M.SLOT_W, M.SPACING = theme.bar.slot_w, theme.bar.slot_gap
 M.PITCH = M.SLOT_W + M.SPACING
-M.DIV = 22 -- the pencil divider's width plus its spacing
-local ICON = 30
+M.DIV = theme.bar.divider_w -- the pencil divider's width plus its spacing
+local ICON = theme.bar.task_icon
 local BOX = icons.app_box(ICON)
-local THRESHOLD = 6
+local THRESHOLD = theme.bar.task_drag
 
 -- Where a dragged item lands and how far every other item moves to make room.
 -- d = { key, kind = "pinned"|"running", from (pin index or slot), to, dx, crossed, settle }
@@ -58,8 +59,8 @@ end
 
 local function ticks(item)
     local n = math.min(#item.wins, 4)
-    if n == 0 then return rect { width = 1, height = 6 } end
-    local w, gap = 7, 3
+    if n == 0 then return rect { width = 1, height = theme.bar.tick_h } end
+    local w, gap = theme.bar.tick_w, theme.bar.tick_gap
     local total = n * w + (n - 1) * gap
     local marks = {}
     local r = k.rng(#item.key * 13 + n)
@@ -68,9 +69,9 @@ local function ticks(item)
         local focused = item.focused and math.min(item.focused, 4) == i
         marks[i] = path {
             width = w + 2,
-            height = 6,
+            height = theme.bar.tick_h,
             translate = { x = x },
-            stroke = focused and k.BLUE or k.INK,
+            stroke = focused and theme.BLUE or theme.INK,
             stroke_width = focused and 2.8 or 1.7,
             stroke_cap = "round",
             commands = {
@@ -79,36 +80,36 @@ local function ticks(item)
             },
         }
     end
-    return rect { width = total + 2, height = 6, align_h = "center", children = marks }
+    return rect { width = total + 2, height = theme.bar.tick_h, align_h = "center", children = marks }
 end
 
 local function badge(count)
     local label = count > 9 and "9+" or tostring(count)
     return rect {
-        width = 18,
-        height = 18,
+        width = theme.bar.badge_size,
+        height = theme.bar.badge_size,
         align_h = "end",
         align_v = "start",
-        translate = { x = 5, y = -4 },
-        background = k.STOCK.danger[1],
-        shape = k.torn_circle(18, count + 5, 1),
-        shadows = { { blur = 3, offset = { x = 1, y = 1 }, color = "#00000050" } },
+        translate = { x = theme.bar.badge_offset, y = -4 },
+        background = theme.STOCK.danger[1],
+        shape = k.torn_circle(theme.bar.badge_size, count + 5, theme.paper.fine_tear),
+        shadows = theme.SHADOW.tiny,
         effect = k.paper_fx { rim = 0 },
-        children = { k.body(label, count > 9 and 11 or 13, {
-            font_weight = 700, foreground = k.DEEP_RED, align_h = "center", align_v = "center",
+        children = { k.body(label, count > 9 and theme.bar.badge_font_small or theme.font.mono_small, {
+            font_weight = theme.BOLD, foreground = theme.DEEP_RED, align_h = "center", align_v = "center",
         }) },
     }
 end
 
 local function urgent_dot()
     return rect {
-        width = 10,
-        height = 10,
+        width = theme.bar.urgent_dot,
+        height = theme.bar.urgent_dot,
         align_h = "start",
         align_v = "start",
         translate = { x = -3, y = -2 },
-        background = k.RED,
-        shape = k.torn_circle(10, 77, 0.8),
+        background = theme.RED,
+        shape = k.torn_circle(theme.bar.urgent_dot, 77, theme.paper.pip_tear),
     }
 end
 
@@ -129,10 +130,10 @@ function M.new(item, ctx)
                     width = BOX,
                     height = BOX,
                     seed = #item.key * 7 + 3,
-                    depth = 2,
-                    color = "#C9D8EA",
-                    shadows = { { blur = 4, offset = { x = 1, y = 2 }, color = "#00000045" } },
-                    fx = { rim = 1.5, hatch = 0.35, hatch_spacing = 3.5 },
+                    depth = theme.paper.light_tear,
+                    color = theme.TAB_BLUE,
+                    shadows = theme.SHADOW.light_disc,
+                    fx = { rim = 1.5, hatch = 0.35, hatch_spacing = theme.paper.hatch },
                 },
             },
         }
@@ -220,7 +221,7 @@ function M.new(item, ctx)
                 children = {
                     column {
                         align_h = "center",
-                        spacing = 3,
+                        spacing = theme.bar.slot_stack_gap,
                         children = {
                             rect {
                                 width = BOX,

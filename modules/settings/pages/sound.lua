@@ -1,6 +1,6 @@
 -- Sound page under four tabs: the default output and the default input (a dropdown each, with
 -- volume and mute), every app's stream with its own level, and each sound card's profile and ports.
-local k = require("lib.paper")
+local theme = require("theme")
 local c = require("components.controls")
 local util = require("lib.util")
 local rows = require("modules.settings.rows")
@@ -31,8 +31,8 @@ local function level_row(kind, icon)
         tips.wrap(c.disc_button {
             id = "settings.sound.mute." .. kind,
             icon = icon,
-            size = 32,
-            ink = k.INK,
+            size = theme.control.slider,
+            ink = theme.INK,
             tooltip = "Mute",
             on_click = function()
                 local d = current()
@@ -44,7 +44,7 @@ local function level_row(kind, icon)
         end),
         c.slider {
             id = "settings.sound.level." .. kind,
-            width = 420,
+            width = theme.settings.sound_level_w,
             value = audio:map(function(a)
                 local d = active(a, kind)
                 return d and math.min(1, (d.volume or 0) / 100) or 0
@@ -62,7 +62,7 @@ local function level_row(kind, icon)
         rows.caption(audio:map(function(a)
             local d = active(a, kind)
             return d and d.muted and "muted" or ""
-        end, ""), { foreground = k.DEEP_RED }),
+        end, ""), { foreground = theme.DEEP_RED }),
     })
 end
 
@@ -83,7 +83,7 @@ local function device_row(kind, label, set_default, empty)
                     rows.dropdown {
                         id = "sound." .. kind,
                         label = label,
-                        width = 440,
+                        width = theme.settings.sound_device_w,
                         options = options,
                         value = audio:map(function(now)
                             local d = active(now, kind)
@@ -102,7 +102,7 @@ end
 -- wheel never steps these: scrolling past would cut the sound.
 local function card_rows(card)
     local list = {
-        rows.line({ icons.glyph("sound", 20), rows.label(card.name, { tip = "sound.card." .. card.device, font_weight = 700 }) }),
+        rows.line({ icons.glyph("sound", theme.icon.md), rows.label(card.name, { tip = "sound.card." .. card.device, font_weight = theme.BOLD }) }),
     }
     local profiles = {}
     for _, p in ipairs(card.profiles) do
@@ -111,11 +111,11 @@ local function card_rows(card)
         end
     end
     if #profiles > 1 then
-        list[#list + 1] = rows.line({ rows.label("Profile", { width = 150 }) }, {
+        list[#list + 1] = rows.line({ rows.label("Profile", { width = theme.settings.sound_profile_label_w }) }, {
             rows.dropdown {
                 id = "sound.profile." .. card.device,
                 label = card.name .. " profile",
-                width = 440,
+                width = theme.settings.sound_device_w,
                 wheel = false,
                 options = profiles,
                 value = audio:map(function(a)
@@ -135,11 +135,11 @@ local function card_rows(card)
     for _, dir in ipairs({ "output", "input" }) do
         local options = util.filter(ports, function(p) return p[3] == dir end)
         if #options > 1 then
-            list[#list + 1] = rows.line({ rows.label(dir == "output" and "Plays through" or "Listens on", { width = 150 }) }, {
+            list[#list + 1] = rows.line({ rows.label(dir == "output" and "Plays through" or "Listens on", { width = theme.settings.sound_profile_label_w }) }, {
                 rows.dropdown {
                     id = "sound.port." .. card.device .. "." .. dir,
                     label = dir == "output" and "Plays through" or "Listens on",
-                    width = 440,
+                    width = theme.settings.sound_device_w,
                     wheel = false,
                     options = options,
                     value = audio:map(function(a)
@@ -197,11 +197,11 @@ local function app_rows()
                 if not app.recording then
                     local live = device("apps", app.id)
                     list[#list + 1] = rows.line({
-                        app.icon and icons.app(app.icon) or icons.glyph("sound", 22),
-                        rows.label(app_name(app), { width = 230, tip = "sound.app." .. app.id }),
+                        app.icon and icons.app(app.icon) or icons.glyph("sound", theme.icon.control),
+                        rows.label(app_name(app), { width = theme.settings.sound_app_name_w, tip = "sound.app." .. app.id }),
                         c.slider {
                             id = "settings.sound.app." .. app.id,
-                            width = 200,
+                            width = theme.settings.sound_app_level_w,
                             value = live:map(function(s) return s and (s.volume or 0) / 100 or 0 end),
                             on_change = function(v) audio:set_app_volume(app.id, math.floor(v * 100 + 0.5)) end,
                             on_wheel = function(_, steps)
@@ -229,7 +229,7 @@ return {
     key = "sound",
     title = "Sound",
     build = function()
-        local strip, tab = rows.tabs("sound", { "Output", "Input", "Apps", "Cards" }, 130)
+        local strip, tab = rows.tabs("sound", { "Output", "Input", "Apps", "Cards" }, theme.settings.sound_tab_w)
         return {
             strip,
             rows.pane(tab, 1, {

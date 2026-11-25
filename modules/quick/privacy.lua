@@ -1,13 +1,14 @@
 -- Quick settings' "In use" strip: which apps hold the microphone, camera or screen right now.
 -- A card-stock strip headed in red marker, one row per sensor in use; shown only while something
 -- is. The taskbar's privacy stickers open quick settings on it with `open(rect, "privacy")`.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local controls = require("components.controls")
 local icons = require("components.icons")
 local G = require("modules.quick.glyphs")
 
-local ROW_H, HEAD_H, PAD = 40, 38, 14
+local ROW_H, HEAD_H, PAD = theme.quick.privacy_row_h, theme.quick.privacy_head_h, theme.quick.privacy_pad
 
 local SENSORS = {
     { key = "microphone_users", kind = "mic", icon = G.mic },
@@ -68,7 +69,7 @@ local function action(kind)
     end
     -- No engine action stops someone else's screen capture.
     if kind == "screen" then
-        return k.body("stop it in the app", 16, { foreground = k.INK_SOFT, align_v = "center" })
+        return k.body("stop it in the app", theme.font.xs, { foreground = theme.INK_SOFT, align_v = "center" })
     end
     return rect {}
 end
@@ -81,10 +82,10 @@ function M.build(list, width, tips, flagged)
         rows[i] = row {
             width = "fill",
             height = ROW_H,
-            spacing = 12,
+            spacing = theme.spacing.md,
             children = {
-                icons.doodle(sensor.icon, 22, k.RED),
-                tips.wrap(k.body(sensor.apps, 19, { width = "fill", elide = "end", align_v = "center" }),
+                icons.doodle(sensor.icon, theme.icon.control, theme.RED),
+                tips.wrap(k.body(sensor.apps, theme.font.label, { width = "fill", elide = "end", align_v = "center" }),
                     "quick.privacy." .. sensor.kind, sensor.apps),
                 action(sensor.kind),
             },
@@ -95,24 +96,24 @@ function M.build(list, width, tips, flagged)
         width = width,
         height = height,
         seed = 905,
-        depth = 2,
-        color = k.STOCK.danger[1],
-        shadows = k.SHADOW.rest,
+        depth = theme.paper.light_tear,
+        color = theme.STOCK.danger[1],
+        shadows = theme.SHADOW.rest,
         fx = { rim = 0 },
         child = column {
             width = "fill",
             height = "fill",
-            padding = { left = 16, right = 14, top = PAD - 4, bottom = PAD },
+            padding = { left = theme.spacing.lg, right = theme.spacing.inset, top = PAD - theme.spacing.xxs, bottom = PAD },
             children = util.concat({
                 rect {
                     height = HEAD_H,
                     children = {
-                        k.hand("In use", 28, { font_weight = 700, foreground = k.RED, align_v = "center" }),
+                        k.hand("In use", theme.font.title, { font_weight = theme.BOLD, foreground = theme.RED, align_v = "center" }),
                         rect {
-                            translate = { x = -10, y = -2 },
+                            translate = { x = -theme.spacing.snug, y = -2 },
                             opacity = util.choose(flagged, 1, 0),
                             animate = { opacity = { duration = 160, easing = "out_cubic" } },
-                            children = { controls.pencil_loop(96, HEAD_H + 2, 41) },
+                            children = { controls.pencil_loop(theme.quick.privacy_loop_w, HEAD_H + theme.quick.privacy_loop_inset, 41) },
                         },
                     },
                 },

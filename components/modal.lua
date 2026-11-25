@@ -2,6 +2,7 @@
 -- The card slides up 12 px and fades in, out_cubic in and in_cubic out, like a sheet laid down.
 --
 -- opts = { kind, card, align_h?, align_v?, margin? }
+local theme = require("theme")
 local ui_state = require("lib.ui_state")
 local util = require("lib.util")
 
@@ -23,12 +24,12 @@ return function(opts)
     local showing = ui_state.modal_showing(opts.kind)
     local box = swallow_presses(opts.card, opts)
     box.opacity = util.choose(showing, 1, 0)
-    box.translate = showing:map(function(open) return { y = open and 0 or 12 } end)
+    box.translate = showing:map(function(open) return { y = open and 0 or theme.spacing.md } end)
     box.animate = showing:map(function(open)
         local easing = open and "out_cubic" or "in_cubic"
         return {
             opacity = { duration = MS, easing = easing, from = 0 },
-            translate = { duration = MS, easing = easing, from = { y = 12 } },
+            translate = { duration = MS, easing = easing, from = { y = theme.spacing.md } },
         }
     end)
     return {

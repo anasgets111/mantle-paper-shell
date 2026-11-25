@@ -1,6 +1,6 @@
 -- Wi-Fi page: radio power, wired link, visible networks (join, disconnect, forget), the password
 -- line for a secured join, a hidden network, and VPN profiles with their secret prompts.
-local k = require("lib.paper")
+local theme = require("theme")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
 local tips = require("modules.settings.tips")
@@ -33,7 +33,7 @@ local function radio_rows()
     return {
         rows.heading("Wireless", {
             tips.wrap(c.disc_button {
-                id = "settings.wifi.scan", icon = "restart", size = 34, tooltip = "Scan for networks",
+                id = "settings.wifi.scan", icon = "restart", size = theme.control.row, tooltip = "Scan for networks",
                 on_click = function() net:scan() end,
             }, "paper.disc.settings.wifi.scan", "Scan for networks"),
         }),
@@ -81,7 +81,7 @@ local function password_rows()
         visible = net:map(function(n) return n.password_ssid ~= nil end, false),
         children = {
             rows.line({
-                icons.glyph("password", 20),
+                icons.glyph("password", theme.icon.md),
                 rows.label(net:map(function(n)
                     return n.password_ssid and ("Key for " .. n.password_ssid) or ""
                 end, "")),
@@ -91,8 +91,8 @@ local function password_rows()
             rows.line({
                 c.field {
                     id = "settings.wifi.key",
-                    width = 420,
-                    size = 22,
+                    width = theme.settings.wifi_passphrase_w,
+                    size = theme.font.lg,
                     placeholder = "Password, then Enter",
                     autofocus = true,
                     secure_submit = { capability = "network", action = "connect" },
@@ -109,11 +109,11 @@ local function error_row()
         visible = net:map(function(n) return n.connect_error ~= nil end, false),
         children = {
             rows.line({
-                icons.glyph("warning", 20, k.DEEP_RED),
+                icons.glyph("warning", theme.icon.md, theme.DEEP_RED),
                 rows.label(net:map(function(n)
                     local e = n.connect_error
                     return e and string.format("Couldn't join %s: %s", e.ssid, e.message) or ""
-                end, ""), { foreground = k.DEEP_RED }),
+                end, ""), { foreground = theme.DEEP_RED }),
             }),
         },
     }
@@ -141,11 +141,11 @@ local function network_row(ap, busy)
             end
             return 0
         end, ap.strength), "wifi.bars." .. ap.ssid),
-        rows.label(ap.ssid, { font_weight = ap.active and 700 or 400, tip = "wifi.ssid." .. ap.ssid }),
+        rows.label(ap.ssid, { font_weight = ap.active and theme.BOLD or theme.REGULAR, tip = "wifi.ssid." .. ap.ssid }),
         -- Fixed slots keep the lock and band in columns down the list.
-        ap.secure and icons.glyph("secure", 16, k.INK_SOFT) or rect { width = 16 },
-        rows.caption(ap.band, { width = 58, text_align = "end" }),
-        ap.saved and c.chip("saved", "#C9D8EA", #ap.ssid) or false,
+        ap.secure and icons.glyph("secure", theme.icon.sm, theme.INK_SOFT) or rect { width = theme.settings.wifi_lock_slot_w },
+        rows.caption(ap.band, { width = theme.settings.wifi_strength_w, text_align = "end" }),
+        ap.saved and c.chip("saved", theme.TAB_BLUE, #ap.ssid) or false,
     }
     return rows.line(left, right)
 end
@@ -193,11 +193,11 @@ end
 
 local function hidden_row()
     return rows.line({
-        rows.label("Hidden network", { width = 170 }),
+        rows.label("Hidden network", { width = theme.settings.wifi_hidden_label_w }),
         c.field {
             id = "settings.wifi.hidden",
-            width = 300,
-            size = 22,
+            width = theme.settings.wifi_ssid_w,
+            size = theme.font.lg,
             placeholder = "Network name, then Enter",
             on_submit = function(ssid)
                 if ssid ~= "" then net:connect(ssid, true) end
@@ -215,7 +215,7 @@ local function vpn_rows()
             local list = {}
             for _, vpn in ipairs(n and n.vpns or {}) do
                 list[#list + 1] = rows.line({
-                    icons.glyph("vpn", 20),
+                    icons.glyph("vpn", theme.icon.md),
                     rows.label(vpn.id, { tip = "wifi.vpn." .. vpn.uuid }),
                     rows.caption(vpn.kind),
                 }, {
@@ -258,7 +258,7 @@ local function vpn_secret_rows()
             local s = net:get().vpn_secret
             local list = {
                 rows.line({
-                    icons.glyph("password", 20),
+                    icons.glyph("password", theme.icon.md),
                     rows.label((s.retry and "Try again: " or "") .. s.vpn_id .. " needs a secret"),
                 }, {
                     rows.button("vpn.cancel", "Cancel", "plain", function() net:cancel_vpn_secret() end),
@@ -266,11 +266,11 @@ local function vpn_secret_rows()
             }
             for _, field in ipairs(s.fields) do
                 list[#list + 1] = rows.line({
-                    rows.label(field, { width = 140 }),
+                    rows.label(field, { width = theme.settings.vpn_label_w }),
                     c.field {
                         id = "settings.vpn.secret." .. field,
-                        width = 360,
-                        size = 22,
+                        width = theme.settings.vpn_field_w,
+                        size = theme.font.lg,
                         placeholder = "Then Enter",
                         secure_submit = { capability = "network", action = "vpn_secret", name = s.id .. "/" .. field },
                         on_cancel = function() net:cancel_vpn_secret() end,
@@ -288,10 +288,10 @@ local function vpn_error_row()
         visible = net:map(function(n) return n.vpn_error ~= nil end, false),
         children = {
             rows.line({
-                icons.glyph("warning", 20, k.DEEP_RED),
+                icons.glyph("warning", theme.icon.md, theme.DEEP_RED),
                 rows.label(net:map(function(n)
                     return n.vpn_error and ("VPN failed: " .. n.vpn_error.message) or ""
-                end, ""), { foreground = k.DEEP_RED }),
+                end, ""), { foreground = theme.DEEP_RED }),
             }),
         },
     }

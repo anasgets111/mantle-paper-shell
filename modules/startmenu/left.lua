@@ -1,6 +1,7 @@
 -- The left page: the search line at the top, the page title with its "All apps" link, then the
 -- pinned grid, an app list, the apps by category, or recent-file cards. Arrow keys move the
 -- selection from the search field; Enter opens it; Escape clears, then closes.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("modules.startmenu.icons")
 local controls = require("components.controls")
@@ -11,9 +12,9 @@ local power = require("modules.startmenu.power")
 
 local M = {}
 
-local W, H = 560, 660
-local PAD_L, PAD_R = 74, 30
-local CONTENT_H = H - 150
+local W, H = theme.startmenu.left_w, theme.startmenu.height
+local PAD_L, PAD_R = theme.startmenu.left_pad_left, theme.startmenu.left_pad_right
+local CONTENT_H = H - theme.startmenu.content_trim
 M.WIDTH, M.HEIGHT = W, H
 
 -- Where each item sits among the scroll column's children: `row` for `scroll:reveal` (headings
@@ -21,11 +22,11 @@ M.WIDTH, M.HEIGHT = W, H
 local placed = {}
 
 local function note(text)
-    return k.body(text, 18, {
-        foreground = k.INK_SOFT,
+    return k.body(text, theme.font.sm, {
+        foreground = theme.INK_SOFT,
         wrap = "word",
         width = "fill",
-        padding = { left = 8, right = 8, top = 10, bottom = 10 },
+        padding = { left = theme.spacing.sm, right = theme.spacing.sm, top = theme.spacing.snug, bottom = theme.spacing.snug },
     })
 end
 
@@ -61,14 +62,14 @@ local function build(page)
             i = i + 1
         end
         children[#children + 1] = per == 1 and cells[1]
-            or row { spacing = first.kind == "file" and 4 or 0, children = cells }
+            or row { spacing = first.kind == "file" and theme.spacing.xxs or 0, children = cells }
     end
     return column {
         width = "fill",
         height = CONTENT_H,
         spacing = 0,
         scroll = model.scroll,
-        padding = { bottom = 24 },
+        padding = { bottom = theme.spacing.xxl },
         -- Rows fade out above the page's torn foot instead of being cut by it.
         mask = { gradient = "linear", stops = { { 0, "#000000FF" }, { 0.9, "#000000FF" }, { 1, "#00000000" } } },
         children = children,
@@ -112,15 +113,15 @@ end
 
 local function search_line()
     return row {
-        spacing = 10,
+        spacing = theme.spacing.snug,
         children = {
-            rect { padding = { top = 8 }, children = { icons.glyph("search", 22, k.INK_SOFT) } },
+            rect { padding = { top = theme.spacing.sm }, children = { icons.glyph("search", theme.icon.control, theme.INK_SOFT) } },
             controls.field {
                 id = "startmenu.search",
                 placeholder = "Type to search apps, or sums…",
                 -- The content width less the glyph and gap, so the line ends at the right margin.
-                width = W - PAD_L - PAD_R - 32,
-                size = 28,
+                width = W - PAD_L - PAD_R - theme.startmenu.search_icon_w,
+                size = theme.font.title,
                 autofocus = true,
                 focus_target = model.search_focus,
                 on_change = function(text)
@@ -155,22 +156,22 @@ local function header()
     local browsing_all = model.view:map(function(v) return v ~= "favourites" end)
     return row {
         width = "fill",
-        height = 48,
+        height = theme.control.lg,
         children = {
             -- Bottom-aligned so the title and the link share a baseline.
-            k.hand(model.page:map(function(p) return p.title end), 36, {
-                font_weight = 700, foreground = k.BLUE, align_v = "end",
+            k.hand(model.page:map(function(p) return p.title end), theme.font.section, {
+                font_weight = theme.BOLD, foreground = theme.BLUE, align_v = "end",
             }),
             rect { width = "fill" },
             rect {
                 align_v = "end",
-                padding = { right = 6, bottom = 4 },
+                padding = { right = theme.spacing.xs, bottom = theme.spacing.xxs },
                 children = browsing_all:map(function(all)
                     return {
                         controls.link {
                             id = all and "startmenu.back" or "startmenu.all",
                             label = all and "‹ Pinned" or "All apps ›",
-                            size = 26,
+                            size = theme.font.heading,
                             on_click = function()
                                 power.disarm()
                                 model.show(all and "favourites" or "all")
@@ -187,8 +188,8 @@ function M.page()
     return column {
         width = W,
         height = H,
-        padding = { left = PAD_L, right = PAD_R, top = 26 },
-        spacing = 10,
+        padding = { left = PAD_L, right = PAD_R, top = theme.spacing.tab },
+        spacing = theme.spacing.snug,
         children = {
             search_line(),
             header(),

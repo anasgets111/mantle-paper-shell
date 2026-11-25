@@ -1,5 +1,6 @@
 -- Taskbar (Dash to Panel): a torn strip of notebook paper along the bottom of every output. Start
 -- button, workspaces, pinned and running apps, tray, status icons, clock and a show-desktop strip.
+local theme = require("theme")
 local k = require("lib.paper")
 local apps = require("lib.apps")
 local store = require("lib.store")
@@ -17,14 +18,15 @@ local awake = require("modules.taskbar.awake")
 local recorder = require("modules.recorder")
 local layouts = require("modules.taskbar.layouts")
 local tips = require("modules.taskbar.tips")
+local ui_state = require("lib.ui_state")
 
 -- The updater widget lives in another module that may not exist yet; without it, nothing shows.
 local has_updates, updates = pcall(require, "modules.updates")
 if not has_updates or type(updates) ~= "table" or not updates.widget then updates = nil end
 
-local BAR_H = 56
+local BAR_H = ui_state.BAR_H
 -- Room above the strip for the torn edge's shadow and for an icon peeling up.
-local HEADROOM = 16
+local HEADROOM = ui_state.BAR_HEADROOM
 
 -- Per output: the drag in flight, and `snap` to drop the slide tween for the pass that commits it.
 local drags = {}
@@ -71,7 +73,7 @@ local function divider_node(d)
         animate = d.snap:map(function(s)
             return s and {} or { translate = { duration = 160, easing = "out_cubic" } }
         end),
-        children = { rect { align_h = "center", align_v = "center", children = { controls.divider(34, true, 7) } } },
+        children = { rect { align_h = "center", align_v = "center", children = { controls.divider(theme.bar.divider_h, true, 7) } } },
     }
 end
 
@@ -118,7 +120,7 @@ end
 local function pencil_divider(seed)
     return rect {
         height = "fill",
-        children = { rect { align_v = "center", children = { controls.divider(34, true, seed) } } },
+        children = { rect { align_v = "center", children = { controls.divider(theme.bar.divider_h, true, seed) } } },
     }
 end
 
@@ -159,8 +161,8 @@ local function bar(output)
                 child = row {
                     width = "fill",
                     height = "fill",
-                    padding = { left = 10, top = 6 },
-                    spacing = 10,
+                    padding = { left = theme.spacing.snug, top = theme.spacing.xs },
+                    spacing = theme.spacing.snug,
                     children = {
                         start.button(output),
                         start.workspaces(output),
@@ -169,7 +171,7 @@ local function bar(output)
                         rect { width = "fill" },
                         tray.new(output),
                         pencil_divider(5),
-                        row { height = "fill", spacing = 10, children = right },
+                        row { height = "fill", spacing = theme.spacing.snug, children = right },
                     },
                 },
             },

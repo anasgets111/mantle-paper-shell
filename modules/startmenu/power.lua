@@ -6,6 +6,7 @@
 -- with one change: there the deadline runs the action, here it only disarms, so nothing runs
 -- without a second click. `run` has one call site, behind a live `mantle.clock:now()` check, so a
 -- stale `pending` left by a reload is harmless.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("modules.startmenu.icons")
 local controls = require("components.controls")
@@ -17,7 +18,7 @@ local ui_state = require("lib.ui_state")
 local M = {}
 
 local COUNTDOWN = 10
-local W, H = 52, 50
+local W, H = theme.startmenu.power_w, theme.startmenu.power_h
 
 local pending = state("startmenu.power_pending", "")
 local deadline = state("startmenu.power_deadline", 0)
@@ -78,7 +79,7 @@ local function stub(a, i)
     local hovered = hover(slot)
     local focus = focus_visible(slot .. ".focus")
     local lit = computed({ hovered, focus }, function(h, f) return h or f end)
-    local stock = k.STOCK[a.stock]
+    local stock = theme.STOCK[a.stock]
     local face = left:map(function(l) return l.key == a.key and l.seconds or 0 end)
     return tips.wrap(rect {
         width = W,
@@ -103,7 +104,7 @@ local function stub(a, i)
                 width = W,
                 height = H,
                 seed = 200 + i * 13,
-                depth = 3,
+                depth = theme.paper.control_tear,
                 color = stock[1],
                 shadows = k.lift(lit),
                 animate = { shadows = { duration = 160, easing = "out_cubic" } },
@@ -113,18 +114,18 @@ local function stub(a, i)
                     height = "fill",
                     children = face:map(function(n)
                         if n > 0 then
-                            return { k.hand(tostring(n), 34, {
-                                font_weight = 700, foreground = k.DEEP_RED, align_h = "center", align_v = "center",
+                            return { k.hand(tostring(n), theme.font.display, {
+                                font_weight = theme.BOLD, foreground = theme.DEEP_RED, align_h = "center", align_v = "center",
                             }) }
                         end
-                        return { icons.glyph(a.icon, 24, stock[2]) }
+                        return { icons.glyph(a.icon, theme.icon.lg, stock[2]) }
                     end),
                 },
             },
             rect {
                 translate = { x = -3, y = -3 },
                 children = focus:map(function(f)
-                    return f and { controls.pencil_loop(W + 6, H + 6, 30 + i) } or {}
+                    return f and { controls.pencil_loop(W + theme.startmenu.power_loop_pad, H + theme.startmenu.power_loop_pad, 30 + i) } or {}
                 end),
             },
         },
@@ -135,8 +136,8 @@ end
 local function caption()
     return left:map(function(l)
         if l.key == "" then return {} end
-        return { k.hand(string.format("%s in %d… click again", ACTIONS[l.key].label, l.seconds), 26, {
-            font_weight = 700, foreground = k.DEEP_RED, align_h = "center",
+        return { k.hand(string.format("%s in %d… click again", ACTIONS[l.key].label, l.seconds), theme.font.heading, {
+            font_weight = theme.BOLD, foreground = theme.DEEP_RED, align_h = "center",
         }) }
     end)
 end
@@ -146,11 +147,11 @@ function M.row()
     for i, a in ipairs(ACTIONS) do stubs[i] = stub(a, i) end
     return column {
         width = "fill",
-        spacing = 6,
+        spacing = theme.spacing.xs,
         children = {
             -- Five 52 px stubs and four 6 px gaps span the right page's 284 px content width.
-            row { spacing = 6, children = stubs },
-            rect { width = "fill", height = 36, children = caption() },
+            row { spacing = theme.spacing.xs, children = stubs },
+            rect { width = "fill", height = theme.control.tab, children = caption() },
         },
     }
 end

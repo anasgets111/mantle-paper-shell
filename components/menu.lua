@@ -9,14 +9,15 @@
 --
 -- An item's on_click runs and the menu closes; an item with `children` opens the submenu instead.
 -- Up and Down move the keyboard between rows; Down with no row focused starts at the ticked one.
+local theme = require("theme")
 local k = require("lib.paper")
 local controls = require("components.controls")
 
 local M = {}
 
-local ROW_H, WIDTH = 34, 250
+local ROW_H, WIDTH = theme.menu.row_h, theme.menu.width
 -- Room for the sticky note's shadow (blur 10, offset y 6) inside the popup.
-local PAD = { top = 14, left = 14, right = 14, bottom = 22 }
+local PAD = { top = theme.spacing.inset, left = theme.spacing.inset, right = theme.spacing.inset, bottom = theme.spacing.wide }
 
 local function row_target(id, i) return focus_target(id .. ".row." .. i) end
 
@@ -29,25 +30,25 @@ end
 
 local function item_row(id, i, item, on_pick, width, items)
     if item.separator then
-        return rect { height = 10, width = "fill", padding = { left = 14, right = 14 }, children = { controls.divider(width - 28) } }
+        return rect { height = theme.menu.separator_h, width = "fill", padding = { left = theme.spacing.inset, right = theme.spacing.inset }, children = { controls.divider(width - theme.menu.divider_trim) } }
     end
     local hovered = hover(id .. ".row." .. i)
     local keyed = focus_visible(id .. ".row." .. i)
     local lit = computed({ hovered, keyed }, function(h, f) return h or f end)
-    local ink = item.disabled and k.INK_SOFT or k.INK
+    local ink = item.disabled and theme.INK_SOFT or theme.INK
     local lead
     if item.checked ~= nil then
-        lead = k.checkbox(18, item.checked)
+        lead = k.checkbox(theme.icon.label, item.checked)
     elseif item.icon then
-        lead = k.glyph(item.icon, 18, ink)
+        lead = k.glyph(item.icon, theme.icon.label, ink)
     else
-        lead = rect { width = 18, height = 18 }
+        lead = rect { width = theme.menu.lead_size, height = theme.menu.lead_size }
     end
     local children = {
         lead,
-        k.body(item.label, 19, { foreground = ink, align_v = "center", elide = "end", width = "fill" }),
+        k.body(item.label, theme.font.label, { foreground = ink, align_v = "center", elide = "end", width = "fill" }),
     }
-    if item.children then children[#children + 1] = k.glyph("go-next-symbolic", 14, k.INK_SOFT) end
+    if item.children then children[#children + 1] = k.glyph("go-next-symbolic", theme.icon.xs, theme.INK_SOFT) end
     return rect {
         width = "fill",
         height = ROW_H,
@@ -70,15 +71,15 @@ local function item_row(id, i, item, on_pick, width, items)
             -- A highlighter swipe under the hovered or keyboard-focused row.
             rect {
                 width = "fill",
-                height = ROW_H - 8,
+                height = ROW_H - theme.menu.highlight_trim_y,
                 align_v = "center",
-                background = k.HIGHLIGHT,
+                background = theme.HIGHLIGHT,
                 blend = "multiply",
-                shape = k.tape_shape(width - 16, ROW_H - 8, i + 3),
+                shape = k.tape_shape(width - theme.menu.highlight_trim_x, ROW_H - theme.menu.highlight_trim_y, i + 3),
                 opacity = lit:map(function(v) return (v and not item.disabled) and 1 or 0 end),
                 animate = { opacity = { duration = 100 } },
             },
-            row { width = "fill", height = "fill", spacing = 10, padding = { left = 14, right = 14 }, children = children },
+            row { width = "fill", height = "fill", spacing = theme.spacing.snug, padding = { left = theme.spacing.inset, right = theme.spacing.inset }, children = children },
         },
     }
 end
@@ -87,18 +88,18 @@ local function note(id, items, on_pick, title, width)
     width = width or WIDTH
     local rows = {}
     if title then
-        rows[1] = k.hand(title, 24, { font_weight = 700, padding = { left = 14, bottom = 2, right = 4 }, elide = "end", max_width = width - 20 })
+        rows[1] = k.hand(title, theme.font.xl, { font_weight = theme.BOLD, padding = { left = theme.spacing.inset, bottom = theme.spacing.hairline, right = theme.spacing.xxs }, elide = "end", max_width = width - theme.menu.title_trim })
     end
     for i, item in ipairs(items or {}) do rows[#rows + 1] = item_row(id, i, item, on_pick, width, items) end
     local h = 0
-    for _, item in ipairs(items or {}) do h = h + (item.separator and 10 or ROW_H) end
-    h = h + 26 + (title and 34 or 0)
+    for _, item in ipairs(items or {}) do h = h + (item.separator and theme.menu.separator_h or ROW_H) end
+    h = h + theme.menu.body_extra + (title and theme.menu.title_h or 0)
     return controls.sticky {
         width = width,
         height = h,
         seed = #id + #(items or {}),
         rotate = -0.8,
-        child = column { width = "fill", padding = { top = 14, bottom = 10 }, children = rows },
+        child = column { width = "fill", padding = { top = theme.spacing.inset, bottom = theme.spacing.snug }, children = rows },
     }
 end
 

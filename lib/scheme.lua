@@ -6,6 +6,7 @@
 --
 -- An app reloads a GTK3 theme or KDE scheme only when its name changes, so each switch fills the
 -- copy not in use and points at it. Writes skip unchanged bytes.
+local theme = require("theme")
 local store = require("lib.store")
 
 local scheme = {}

@@ -1,8 +1,9 @@
 -- Quick settings (GNOME system menu): a card-stock sheet that pops up from the taskbar's status
 -- icons. Interface the taskbar relies on:
 --   surfaces      list of popups to add to the shell
---   open(rect, section?)  toggle the quick-settings popup anchored to the clicked status icons;
+--   open(rect, section, output)  toggle the quick-settings popup anchored to the clicked status icons;
 --                         section "privacy" circles the "In use" strip (the privacy stickers)
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local icons = require("components.icons")
@@ -17,8 +18,11 @@ local recorder = require("modules.recorder")
 
 local M = {}
 
-local W = 500
+local W = theme.quick.width
 local MAX_VOLUME = 150
+local POPUP_PAD, PAD, GAP = theme.quick.popup_pad, theme.quick.pad, theme.quick.gap
+local sheet_scroll = scroll("quick.sheet")
+local anchor_output = state("quick.output", "")
 
 local open = state("quick.open", false)
 -- True while the popup is shown, so the notification toasts can stay clear of it.
@@ -33,12 +37,13 @@ local chooser = state("quick.chooser", "")
 -- `open`, it must close rather than reopen.
 local dismissed_at = -1
 
-function M.open(r, wanted)
+function M.open(r, wanted, output)
     if open:get() or mantle.clock:now() - dismissed_at < 0.3 then
         open:set(false)
         return
     end
     section:set(wanted or "")
+    anchor_output:set(output or "")
     -- One surface at a time: a modal left open would sit under the sheet holding the keyboard.
     ui_state.active_modal:set("")
     anchor:set({ x = r.x or 0, y = r.y or 0, width = math.max(1, r.width or 1), height = math.max(1, r.height or 1) })
@@ -95,7 +100,7 @@ end
 
 local function action_disc(id, icon_name, tooltip, fn)
     return tips.wrap(controls.disc_button {
-        id = "quick." .. id, icon = icon_name, size = 46, tooltip = tooltip,
+        id = "quick." .. id, icon = icon_name, size = theme.control.button, tooltip = tooltip,
         on_click = function()
             close()
             fn()
@@ -105,10 +110,10 @@ end
 
 local header = row {
     width = "fill",
-    spacing = 12,
+    spacing = theme.spacing.md,
     children = {
-        icons.doodle_for(mantle.battery:map(function(b) return b.present and battery_icon(b) or G.ac end, G.ac), 22),
-        k.body(mantle.battery:map(battery_line, ""), 21, { align_v = "center", width = "fill" }),
+        icons.doodle_for(mantle.battery:map(function(b) return b.present and battery_icon(b) or G.ac end, G.ac), theme.icon.control),
+        k.body(mantle.battery:map(battery_line, ""), theme.font.control, { align_v = "center", width = "fill" }),
         action_disc("settings", G.settings, "Settings", function() ui_state.toggle_modal("settings") end),
         action_disc("lock", G.lock, "Lock", function() mantle.lock:lock() end),
         action_disc("record", "video", "Record screen", function() recorder.open(anchor:get()) end),
@@ -119,10 +124,10 @@ local header = row {
 -- Sliders ---------------------------------------------------------------------------------------
 
 local function percent_label(value)
-    return k.body(value, 20, { align_v = "center", width = 50 })
+    return k.body(value, theme.font.md, { align_v = "center", width = theme.quick.percent_w })
 end
 
-local SLIDER_W = 276
+local SLIDER_W = theme.quick.slider_w
 
 -- The chevron that opens `kind`'s device list under its row, GNOME-style.
 local function chooser_disc(kind, tip)
@@ -130,7 +135,7 @@ local function chooser_disc(kind, tip)
     return tips.wrap(controls.disc_button {
         id = id,
         seed = kind == "sinks" and 63 or 67,
-        size = 30,
+        size = theme.control.chip,
         tooltip = tip,
         icon = chooser:map(function(v) return v == kind and "chevron-up" or "chevron-down" end),
         on_click = function() chooser:set(chooser:get() == kind and "" or kind) end,
@@ -144,13 +149,13 @@ end
 
 local volume = row {
     width = "fill",
-    spacing = 12,
+    spacing = theme.spacing.md,
     visible = mantle.audio:map(function(a) return sink_of(a) ~= nil end, false),
     children = {
         util.with(tips.wrap(controls.disc_button {
             id = "quick.mute",
             seed = 61,
-            size = 38,
+            size = theme.control.option,
             tooltip = "Mute",
             icon = mantle.audio:map(function(a)
                 local s = sink_of(a)
@@ -192,13 +197,13 @@ local has_source = mantle.audio:map(function(a) return source_of(a) ~= nil end, 
 
 local mic = row {
     width = "fill",
-    spacing = 12,
+    spacing = theme.spacing.md,
     visible = has_source,
     children = {
         util.with(tips.wrap(controls.disc_button {
             id = "quick.mic",
             seed = 65,
-            size = 38,
+            size = theme.control.option,
             tooltip = "Mute microphone",
             icon = mantle.audio:map(function(a)
                 local s = source_of(a)
@@ -237,10 +242,10 @@ local mic = row {
 
 local brightness = row {
     width = "fill",
-    spacing = 12,
+    spacing = theme.spacing.md,
     visible = mantle.brightness:map(function(b) return b ~= nil end, false),
     children = {
-        rect { width = 38, height = 38, children = { icons.doodle(G.brightness, 20) } },
+        rect { width = theme.control.option, height = theme.control.option, children = { icons.doodle(G.brightness, theme.icon.md) } },
         controls.slider {
             id = "quick.brightness",
             width = SLIDER_W,
@@ -251,7 +256,7 @@ local brightness = row {
             on_wheel = nudge_brightness,
         },
         percent_label(mantle.brightness:map(function(b) return b.percent .. "%" end, "")),
-        rect { width = 30 },
+        rect { width = theme.quick.brightness_step_w },
     },
 }
 
@@ -271,40 +276,46 @@ local listed = computed({ chooser, mantle.audio }, function(kind, a)
     return table.concat(parts, "\n")
 end, "")
 
-local sheet = computed({ tiles.count, has_brightness, privacy.in_use, has_source, listed },
-    function(count, lit, in_use, mic_shown, key)
+local function build_sheet(count, lit, in_use, mic_shown, key, output)
     local rows = (count + 1) // 2
     local strip = privacy.height(#in_use)
     local kind = key:match("^[^\n]*")
-    local list = kind ~= "" and devices.build(kind, mantle.audio:get(), W - 56, tips) or nil
-    local list_h = list and devices.height(#(mantle.audio:get()[kind] or {})) + 18 or 0
-    local height = 28 + 46 + 18 + (strip > 0 and strip + 18 or 0) + 6 + 18 + 38 + (mic_shown and 56 or 0)
-        + list_h + (lit and 56 or 0) + 18 + rows * tiles.HEIGHT + (rows - 1) * 10 + 28
+    local list = kind ~= "" and devices.build(kind, mantle.audio:get(), W - 2 * PAD, tips) or nil
+    local list_h = list and devices.height(#(mantle.audio:get()[kind] or {})) + GAP or 0
+    local slider_row = theme.control.option + GAP
+    local height = 2 * PAD + theme.control.button + GAP + theme.controls.divider_thickness + GAP + slider_row
+        + (strip > 0 and strip + GAP or 0) + (mic_shown and slider_row or 0) + list_h + (lit and slider_row or 0)
+        + rows * tiles.HEIGHT + (rows - 1) * theme.spacing.snug
+    local max_height = math.max(1, ui_state.screen_height(output) - ui_state.BAR_H - ui_state.BAR_HEADROOM
+        - 2 * (POPUP_PAD + theme.paper.card_pad))
     local body = { header }
-    if #in_use > 0 then body[#body + 1] = privacy.build(in_use, W - 56, tips, flagged) end
-    body[#body + 1] = controls.divider(W - 56, false, 7)
+    if #in_use > 0 then body[#body + 1] = privacy.build(in_use, W - 2 * PAD, tips, flagged) end
+    body[#body + 1] = controls.divider(W - 2 * PAD, false, 7)
     body[#body + 1] = volume
     if kind == "sinks" then body[#body + 1] = list end
     body[#body + 1] = mic
     if kind == "sources" then body[#body + 1] = list end
     body[#body + 1] = brightness
-    body[#body + 1] = row { width = "fill", wrap = true, spacing = 8, line_spacing = 10, children = tiles.build(tips) }
+    body[#body + 1] = row { width = "fill", wrap = true, spacing = theme.spacing.sm, line_spacing = theme.spacing.snug, children = tiles.build(tips) }
     return k.card {
         width = W,
-        height = height,
+        height = math.min(height, max_height),
         seed = 811,
         rotate = 0.4,
-        color = k.STOCK.plain[1],
-        tapes = { { width = 96, height = 22, translate = { y = -10 }, rotate = -3, seed = 23, color = "#B4CBE6" } },
+        color = theme.STOCK.plain[1],
+        tapes = { { width = theme.quick.tape_w, height = theme.control.check, translate = { y = -theme.spacing.snug }, rotate = -3, seed = 23, color = theme.QUICK_TAPE } },
         child = column {
             width = "fill",
             height = "fill",
-            spacing = 18,
-            padding = { left = 28, right = 28, top = 28, bottom = 28 },
+            spacing = GAP,
+            padding = PAD,
+            scroll = height > max_height and sheet_scroll or nil,
             children = body,
         },
     }
-end)
+end
+
+local sheet = computed({ tiles.count, has_brightness, privacy.in_use, has_source, listed, anchor_output }, build_sheet)
 
 M.surfaces = {
     popup {
@@ -314,17 +325,17 @@ M.surfaces = {
         anchor_rect = anchor,
         anchor = "top_right",
         gravity = "top_left",
-        offset = { y = -6 },
+        offset = { y = -theme.spacing.xs },
         constraint_adjustment = { "slide_x", "flip_y" },
         grab = true,
         on_escape = close,
-        reset_on_close = { section, chooser },
+        reset_on_close = { section, chooser, sheet_scroll },
         on_dismiss = function()
             dismissed_at = mantle.clock:now()
             close()
         end,
         child = rect {
-            padding = 18,
+            padding = POPUP_PAD,
             children = sheet:map(function(card) return { card } end),
         },
     },

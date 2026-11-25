@@ -1,13 +1,15 @@
 -- The desk: the wallpaper and the cards pinned to it (clock, quote, to-do, sticky note, music). Cards drag
 -- anywhere and remember where they were dropped; double-click puts one back. Right-click on the
 -- wallpaper offers "Change background…".
+local theme = require("theme")
 local k = require("lib.paper")
 local menu_component = require("components.menu")
 local controls = require("components.controls")
 local util = require("lib.util")
 local settings = require("modules.settings")
 local wallpaper = require("lib.wallpaper")
-local DIR, INK, INK_SOFT, RED = k.DIR, k.INK, k.INK_SOFT, k.RED
+local ui_state = require("lib.ui_state")
+local DIR, INK, INK_SOFT, RED = k.DIR, theme.INK, theme.INK_SOFT, theme.RED
 local hand, body, glyph, card, tape = k.hand, k.body, k.glyph, k.card, k.tape
 local squiggle, sprig, star, heart, checkbox = k.squiggle, k.sprig, k.star, k.heart, k.checkbox
 
@@ -25,45 +27,68 @@ local has_player = player:map(function(p) return p ~= nil and p.title ~= "" end,
 
 -- Right-hand cards ------------------------------------------------------------------------------
 
-local CARD_W = 370
+local CARD_W = theme.desk.card_w
+local CLOCK_H, QUOTE_H, NOTE_H, MUSIC_H = theme.desk.clock_h, theme.desk.quote_h, theme.desk.note_h, theme.desk.music_h
+local TODO_H = theme.desk.todo_h
+local TOP, BOTTOM, GAP = theme.desk.top, theme.desk.bottom, theme.desk.gap
 
 local clock_card = card {
     width = CARD_W,
-    height = 210,
+    height = CLOCK_H,
     seed = 101,
     rotate = 0.6,
-    tapes = { { color = "#A9C3E3B8", width = 300, height = 20, align_v = "end", translate = { y = 10 }, rotate = -1.5, seed = 9 } },
+    tapes = { { color = theme.DESK_TAPE, width = theme.desk.clock_tape_w, height = theme.desk.clock_tape_h, align_v = "end", translate = { y = theme.spacing.snug }, rotate = -1.5, seed = 9 } },
     child = rect {
         width = "fill",
         height = "fill",
-        padding = { left = 30, right = 22, top = 14, bottom = 26 },
+        padding = { left = theme.spacing.page, right = theme.spacing.wide, top = theme.spacing.inset, bottom = theme.spacing.tab },
         children = {
             column {
                 spacing = 0,
                 children = {
                     row {
-                        spacing = 6,
+                        spacing = theme.spacing.xs,
                         children = {
-                            hand(now:map(clock12), 104, { font_weight = 400, line_height = 1.0 }),
-                            hand(now:map(function(t) return os.date("%p", t) end), 30,
-                                { align_v = "end", padding = { bottom = 18 } }),
+                            hand(now:map(clock12), theme.desk.clock_font, { font_weight = theme.REGULAR, line_height = 1.0 }),
+                            hand(now:map(function(t) return os.date("%p", t) end), theme.font.xxl,
+                                { align_v = "end", padding = { bottom = theme.spacing.roomy } }),
                         },
                     },
                     rect {
                         children = {
-                            body(now:map(function(t) return os.date("%a, %d %b %Y", t) end), 24),
-                            rect { align_v = "end", translate = { y = 9 }, children = { squiggle(210) } },
+                            body(now:map(function(t) return os.date("%a, %d %b %Y", t) end), theme.font.xl),
+                            rect { align_v = "end", translate = { y = theme.desk.clock_underline_y }, children = { squiggle(theme.desk.clock_underline_w) } },
                         },
                     },
                 },
             },
-            rect { align_h = "end", align_v = "end", translate = { x = 4, y = 6 }, rotate = 12, children = { sprig(58) } },
+            rect { align_h = "end", align_v = "end", translate = { x = 4, y = theme.spacing.xs }, rotate = 12, children = { sprig(theme.desk.clock_sprig) } },
         },
     },
 }
 
 -- What the desk remembers between restarts: the to-do list and the sticky note.
 local desk = persistent_table { path = DIR .. "/state-desk.json", defaults = { todo = {}, note = "" } }
+
+-- Typing on the desk: niri's focus-follows-mouse moves focus off a surface the pointer leaves, so
+-- while a desk field is focused the panel claims the whole output; a click on bare desk ends it.
+local note_focus = focused("desk.note")
+local editing = computed({ note_focus, focused("paper.field.desk.todo.add") }, function(a, b) return a or b end)
+-- For one pass: both fields disabled (a disabled field drops focus) and the panel off the keyboard,
+-- so the compositor hands it back to a window.
+local release = state("desk.release", false)
+local function release_keyboard()
+    release:set(true)
+    timer(50, function() release:set(false) end)
+end
+-- A workspace switch while typing would otherwise leave the keyboard on the desk.
+mantle.workspaces:map(function(w)
+    local active = {}
+    for _, o in ipairs(w and w.outputs or {}) do active[#active + 1] = o.active_workspace end
+    return table.concat(active, ",")
+end, ""):on_change(function()
+    if editing:get() then release_keyboard() end
+end)
 
 -- One line a day, chosen by the date, so it changes at midnight and stays put through restarts.
 local QUOTES = {
@@ -105,15 +130,15 @@ end, QUOTES[1])
 
 local quote_card = card {
     width = CARD_W,
-    height = 136,
+    height = QUOTE_H,
     seed = 202,
     rotate = -0.8,
     child = rect {
         width = "fill",
         height = "fill",
-        padding = { left = 30, right = 44, top = 22, bottom = 18 },
+        padding = { left = theme.spacing.page, right = theme.desk.quote_pad_right, top = theme.spacing.wide, bottom = theme.spacing.roomy },
         children = {
-            body(quote:map(function(q) return "\u{201C}" .. q .. "\u{201D}" end), 24, {
+            body(quote:map(function(q) return "\u{201C}" .. q .. "\u{201D}" end), theme.font.xl, {
                 width = "fill",
                 wrap = "word",
                 max_lines = 4,
@@ -121,7 +146,7 @@ local quote_card = card {
                 foreground = INK_SOFT,
                 line_height = 1.25,
             }),
-            rect { align_h = "end", align_v = "end", translate = { x = 30 }, children = { star(24, INK) } },
+            rect { align_h = "end", align_v = "end", translate = { x = theme.spacing.page }, children = { star(theme.icon.lg, INK) } },
         },
     },
 }
@@ -137,22 +162,22 @@ end
 local function todo_row(i, item)
     local name = "paper.todo.row." .. i
     local hovered = hover(name)
-    local label = body(item.text, 21, {
-        max_width = CARD_W - 130,
+    local label = body(item.text, theme.font.control, {
+        max_width = CARD_W - theme.desk.task_text_w,
         elide = "end",
         foreground = item.done and INK_SOFT or INK,
         align_v = "center",
     })
     return row {
         width = "fill",
-        spacing = 10,
+        spacing = theme.spacing.snug,
         hover = hovered,
         children = {
             rect {
                 cursor = "pointer",
                 accessible_name = (item.done and "Mark not done: " or "Mark done: ") .. item.text,
                 on_click = function() edit_todo(function(l) l[i].done = not l[i].done end) end,
-                children = { checkbox(18, item.done) },
+                children = { checkbox(theme.icon.label, item.done) },
             },
             item.done and rect {
                 align_v = "center",
@@ -167,73 +192,95 @@ local function todo_row(i, item)
                 accessible_name = "Remove " .. item.text,
                 opacity = hovered:map(function(v) return v and 1 or 0 end),
                 animate = { opacity = { duration = 120, easing = "out_cubic" } },
-                padding = { left = 4, right = 4 },
+                padding = { left = theme.spacing.xxs, right = theme.spacing.xxs },
                 on_click = function() edit_todo(function(l) table.remove(l, i) end) end,
-                children = { body("\u{00D7}", 24, { foreground = INK_SOFT, align_v = "center" }) },
+                children = { body("\u{00D7}", theme.font.xl, { foreground = INK_SOFT, align_v = "center" }) },
             },
         },
     }
 end
 
--- ponytail: the card grows with the list (32 px a task) and the desk wraps it; past about 12 tasks
--- it outgrows a 864 px screen. Upgrade: a scrolling `list` capped at the screen's height.
-local todo_card = rect {
-    children = desk.todo:map(function(items)
-        items = items or {}
-        local rows = {}
-        for i, item in ipairs(items) do rows[i] = todo_row(i, item) end
-        -- The field keeps one place in the tree, so it holds focus while the list above it grows.
-        local add = controls.field {
-            id = "desk.todo.add",
-            placeholder = "Add a task\u{2026}",
-            width = CARD_W - 60,
-            size = 22,
-            on_submit = function(text)
-                text = util.trim(text)
-                if text ~= "" then edit_todo(function(l) l[#l + 1] = { text = text, done = false } end) end
-            end,
-        }
-        return {
-            card {
+-- The sheet is sized from the measured header, list and field, so rows of any height fit; past
+-- `max_height` the list scrolls and the field stays on the card.
+local function todo_card(output, max_height)
+    local id = "desk.todo." .. output
+    local header_g, rows_g, add_g = geometry(id .. ".header"), geometry(id .. ".rows"), geometry(id .. ".add")
+    local pad = { left = theme.spacing.tab, right = theme.spacing.wide, top = theme.spacing.lg, bottom = theme.spacing.inset }
+    local gap = theme.spacing.xs
+    local chrome = computed({ header_g, add_g }, function(h, a)
+        return pad.top + pad.bottom + h.height + a.height + 2 * gap
+    end, 0)
+    local view_h = computed({ chrome, rows_g }, function(c, r)
+        return math.max(1, math.min(r.height, max_height - c))
+    end, 1)
+    local rows = desk.todo:map(function(items)
+        local out = {}
+        for i, item in ipairs(items or {}) do out[i] = todo_row(i, item) end
+        return out
+    end, {})
+    -- Built once, outside the mapped rows, so it holds focus while the list grows.
+    local add = controls.field {
+        id = "desk.todo.add",
+        disabled = release,
+        placeholder = "Add a task\u{2026}",
+        width = CARD_W - theme.desk.todo_field_inset,
+        size = theme.font.lg,
+        on_submit = function(text)
+            text = util.trim(text)
+            if text ~= "" then edit_todo(function(l) l[#l + 1] = { text = text, done = false } end) end
+        end,
+    }
+    return rect {
+        padding = theme.paper.card_pad,
+        rotate = 0.4,
+        children = {
+            rect {
+                children = computed({ chrome, view_h }, function(c, v)
+                    return { k.sheet { width = CARD_W, height = math.ceil(c + v), seed = 303, fx = { rim = 2.2 } } }
+                end),
+            },
+            column {
                 width = CARD_W,
-                height = 116 + #items * 32,
-                seed = 303,
-                rotate = 0.4,
-                child = rect {
-                    width = "fill",
-                    height = "fill",
-                    padding = { left = 26, right = 22, top = 16, bottom = 14 },
-                    children = {
-                        column {
-                            width = "fill",
-                            spacing = 6,
-                            children = {
-                                row {
-                                    spacing = 12,
-                                    children = { checkbox(26, true), hand("To do", 36, { font_weight = 700, align_v = "center" }) },
-                                },
-                                column { width = "fill", spacing = 6, padding = { left = 4 }, children = rows },
-                                add,
+                padding = pad,
+                spacing = gap,
+                children = {
+                    row {
+                        geometry = header_g,
+                        spacing = theme.spacing.md,
+                        children = { checkbox(theme.icon.badge, true), hand("To do", theme.font.section, { font_weight = theme.BOLD, align_v = "center" }) },
+                    },
+                    column {
+                        width = "fill",
+                        height = view_h,
+                        scroll = scroll(id .. ".scroll"),
+                        children = {
+                            column {
+                                geometry = rows_g,
+                                width = "fill",
+                                spacing = gap,
+                                padding = { left = theme.spacing.xxs },
+                                children = rows,
                             },
                         },
                     },
+                    rect { geometry = add_g, children = { add } },
                 },
             },
-        }
-    end, {}),
-}
+        },
+    }
+end
 
 -- A yellow sticky note she types straight onto; saved a second after the last key.
 local note_card = card {
     width = CARD_W,
-    height = 190,
+    height = NOTE_H,
     seed = 404,
     rotate = -0.5,
-    color = "#F0DDB8",
+    color = theme.TAB_PEACH,
     child = rect {
         width = "fill",
         height = "fill",
-        padding = { left = 26, right = 22, top = 18, bottom = 16 },
+        padding = { left = theme.spacing.tab, right = theme.spacing.wide, top = theme.spacing.roomy, bottom = theme.spacing.lg },
         children = {
             textfield {
                 width = "fill",
@@ -241,13 +288,15 @@ local note_card = card {
                 multiline = true,
                 initial_text = desk.note,
                 placeholder = "Write a note\u{2026}",
-                placeholder_color = "#3A363170",
-                font = k.HAND,
-                font_size = 24,
+                placeholder_color = theme.PENCIL,
+                font = theme.HAND,
+                font_size = theme.font.xl,
                 foreground = INK,
-                caret = { color = k.BLUE, width = 2 },
-                selection = { background = "#F2C94C90" },
+                caret = { color = theme.BLUE, width = 2 },
+                selection = { background = theme.SELECTION },
                 accessible_name = "Sticky note",
+                focused = note_focus,
+                disabled = release,
                 focus_ring = false,
                 escape = "blur",
                 on_change = function(text) desk:set("note", text) end,
@@ -272,60 +321,60 @@ local progress = computed({ player, mantle.clock }, function(p, _)
     return { at = pos / p.length, pos = pos, len = p.length }
 end, { at = 0 })
 
-local TRACK_W = 196
+local TRACK_W = theme.desk.track_w
 
 local music_card = card {
     width = CARD_W,
-    height = 200,
+    height = MUSIC_H,
     seed = 404,
     rotate = -0.6,
     child = column {
         width = "fill",
         height = "fill",
-        padding = { left = 22, right = 22, top = 20, bottom = 14 },
-        spacing = 10,
+        padding = { left = theme.spacing.wide, right = theme.spacing.wide, top = theme.spacing.xl, bottom = theme.spacing.inset },
+        spacing = theme.spacing.snug,
         children = {
             row {
-                spacing = 16,
+                spacing = theme.spacing.lg,
                 width = "fill",
                 children = {
                     image {
-                        width = 92,
-                        height = 92,
-                        radius = 4,
-                        shadows = { { blur = 6, offset = { x = 1, y = 3 }, color = "#00000060" } },
+                        width = theme.desk.music_art,
+                        height = theme.desk.music_art,
+                        radius = theme.radius.sm,
+                        shadows = theme.SHADOW.deep_note,
                         opacity = has_player:map(function(v) return v and 1 or 0.45 end),
                         source = player:map(function(p)
                             return p and p.album_art_path ~= "" and p.album_art_path or DIR .. "/img/cover.png"
                         end, DIR .. "/img/cover.png"),
                     },
                     column {
-                        spacing = 2,
+                        spacing = theme.spacing.hairline,
                         width = "fill",
-                        padding = { top = 6 },
+                        padding = { top = theme.spacing.xs },
                         children = {
                             hand(player:map(function(p)
                                 return p and p.title ~= "" and p.title or "Nothing playing"
                             end, "Nothing playing"),
-                                34, { font_weight = 700, elide = "end", width = "fill" }),
+                                theme.font.display, { font_weight = theme.BOLD, elide = "end", width = "fill" }),
                             body(player:map(function(p) return p and p.title ~= "" and p.artist or "" end, ""),
-                                20, { foreground = INK_SOFT, elide = "end", width = "fill" }),
+                                theme.font.md, { foreground = INK_SOFT, elide = "end", width = "fill" }),
                         },
                     },
                 },
             },
             row {
-                spacing = 10,
+                spacing = theme.spacing.snug,
                 width = "fill",
                 children = {
-                    body(progress:map(function(p) return p.len and fmt_us(p.pos) or "" end), 17,
-                        { align_v = "center", width = 44 }),
+                    body(progress:map(function(p) return p.len and fmt_us(p.pos) or "" end), theme.font.caption,
+                        { align_v = "center", width = theme.desk.music_value_w }),
                     rect {
                         width = TRACK_W,
-                        height = 14,
+                        height = theme.desk.meter_h,
                         align_v = "center",
                         children = {
-                            rect { width = "fill", height = 2, align_v = "center", background = "#3A363160" },
+                            rect { width = "fill", height = 2, align_v = "center", background = theme.INK_FADED },
                             rect {
                                 width = progress:map(function(p) return math.floor(p.at * TRACK_W) end),
                                 height = 3,
@@ -333,29 +382,29 @@ local music_card = card {
                                 background = RED,
                             },
                             rect {
-                                width = 10,
-                                height = 10,
-                                radius = 5,
+                                width = theme.desk.meter_pin,
+                                height = theme.desk.meter_pin,
+                                radius = theme.radius.inset,
                                 align_v = "center",
                                 background = RED,
                                 visible = progress:map(function(p) return p.len ~= nil end),
-                                translate = progress:map(function(p) return { x = math.floor(p.at * TRACK_W) - 5 } end),
+                                translate = progress:map(function(p) return { x = math.floor(p.at * TRACK_W) - theme.desk.meter_pin_center } end),
                             },
                         },
                     },
-                    body(progress:map(function(p) return p.len and fmt_us(p.len) or "" end), 17, { align_v = "center" }),
+                    body(progress:map(function(p) return p.len and fmt_us(p.len) or "" end), theme.font.caption, { align_v = "center" }),
                 },
             },
             row {
                 width = "fill",
-                spacing = 34,
-                padding = { left = 40 },
+                spacing = theme.spacing.binding,
+                padding = { left = theme.spacing.section },
                 hittable = has_player,
                 opacity = has_player:map(function(v) return v and 1 or 0.35 end),
                 children = {
                     rect {
                         on_click = function() local p = player:get(); if p then mantle.mpris:control(p.id, "previous") end end,
-                        children = { glyph("media-skip-backward-symbolic", 24) },
+                        children = { glyph("media-skip-backward-symbolic", theme.icon.lg) },
                     },
                     rect {
                         on_click = function() local p = player:get(); if p then mantle.mpris:control(p.id, "play_pause") end end,
@@ -363,15 +412,15 @@ local music_card = card {
                             glyph(player:map(function(p)
                                 return p and p.play_state == "playing" and "media-playback-pause-symbolic"
                                     or "media-playback-start-symbolic"
-                            end, "media-playback-pause-symbolic"), 26),
+                            end, "media-playback-pause-symbolic"), theme.icon.badge),
                         },
                     },
                     rect {
                         on_click = function() local p = player:get(); if p then mantle.mpris:control(p.id, "next") end end,
-                        children = { glyph("media-skip-forward-symbolic", 24) },
+                        children = { glyph("media-skip-forward-symbolic", theme.icon.lg) },
                     },
                     rect { width = "fill" },
-                    rect { align_v = "center", children = { heart(22, RED) } },
+                    rect { align_v = "center", children = { heart(theme.icon.control, RED) } },
                 },
             },
         },
@@ -470,7 +519,7 @@ M.wallpaper = panel {
             width = "fill",
             height = "fill",
             -- Fit leaves bars on a screen of another shape: dark desk, opaque.
-            background = "#1E1B18",
+            background = theme.DESK_BACKDROP,
             on_click = function(r, button, p)
                 if button == "right" then open_menu(r.x + p.x, r.y + p.y) end
             end,
@@ -497,29 +546,47 @@ M.cards = panel {
     namespace = "paper-cards",
     layer = "bottom",
     -- On demand: a click in the to-do field or the sticky note takes the keyboard, nothing else does.
-    keyboard_interactivity = "on_demand",
+    keyboard_interactivity = release:map(function(r) return r and "none" or "on_demand" end),
     -- The panel covers the output so a card can be dropped anywhere; only the cards take input.
     anchor = { top = true, bottom = true, left = true, right = true },
     width = "fill",
     height = "fill",
-    -- A screen too short for the stack (1920x1080 at 125% is 864 px) wraps it into a second column.
-    child = column {
-        width = "fill",
-        height = "fill",
-        padding = { left = 24, right = 24, top = 18, bottom = 24 },
-        spacing = 4,
-        wrap = true,
-        line_spacing = 8,
-        align_h = "end",
-        children = {
-            draggable("clock", clock_card),
-            draggable("quote", quote_card),
-            draggable("note", note_card),
-            draggable("music", music_card),
-            -- Last: the only card that grows, so a new task never pushes another card to a new column.
-            draggable("todo", todo_card),
-        },
-    },
+    child = function(output)
+        local available = ui_state.screen_height(output) - ui_state.BAR_H - TOP - BOTTOM
+        local max_height = math.max(TODO_H, available - 2 * theme.paper.card_pad)
+        -- The to-do card grows into the room left in the stack, wraps to a new column when it no
+        -- longer fits there, and scrolls only past a full column.
+        local stack = column {
+            width = "fill",
+            height = "fill",
+            padding = { left = theme.spacing.xxl, right = theme.spacing.xxl, top = TOP, bottom = BOTTOM },
+            spacing = GAP,
+            wrap = true,
+            line_spacing = theme.spacing.sm,
+            align_h = "end",
+            children = {
+                draggable("clock", clock_card),
+                draggable("quote", quote_card),
+                draggable("note", note_card),
+                draggable("music", music_card),
+                draggable("todo", todo_card(output, max_height)),
+            },
+        }
+        return rect {
+            width = "fill",
+            height = "fill",
+            children = {
+                rect {
+                    width = "fill",
+                    height = "fill",
+                    background = "#00000000",
+                    visible = editing,
+                    on_click = release_keyboard,
+                },
+                stack,
+            },
+        }
+    end,
 }
 
 return M

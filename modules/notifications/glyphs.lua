@@ -1,5 +1,6 @@
 -- Every icon and pencil mark this module draws, in one place: app stickers, doodles, doodled paper
 -- discs, and marker strokes that fit whatever box holds them.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("components.icons")
 local controls = require("components.controls")
@@ -35,7 +36,7 @@ end
 -- A punched paper disc carrying a doodle: `controls.disc_button` with its theme icon swapped.
 function M.disc(o)
     local node = controls.disc_button(o)
-    local mark = icons.doodle_for(o.icon, math.floor((o.size or 44) * 0.5), o.ink)
+    local mark = icons.doodle_for(o.icon, math.floor((o.size or theme.icon.tile) * 0.5), o.ink)
     mark.align_h = "center"
     node.children[2] = mark
     return node
@@ -47,14 +48,14 @@ function M.underline(color, seed)
     local n, top, bottom = 24, {}, {}
     for i = 0, n do
         local x = string.format("%.2f%%", i * 100 / n)
-        local y = 5 + 2 * math.sin(i * math.pi / 5) + (r() - 0.5) * 0.4
+        local y = theme.notifications.underline_base_y + theme.notifications.underline_drift * math.sin(i * math.pi / 5) + (r() - 0.5) * 0.4
         top[#top + 1] = { op = i == 0 and "M" or "L", points = { x, y - 1.1 } }
         bottom[#bottom + 1] = { op = "L", points = { x, y + 1.1 } }
     end
     local c = top
     for i = #bottom, 1, -1 do c[#c + 1] = bottom[i] end
     c[#c + 1] = { op = "Z", points = {} }
-    return rect { width = "fill", height = 10, background = color, shape = { commands = c } }
+    return rect { width = "fill", height = theme.notifications.underline_h, background = color, shape = { commands = c } }
 end
 
 -- A marker line down the left margin of whatever it sits beside, wobbling a little.
@@ -70,7 +71,7 @@ function M.margin_rule(color, seed)
     local c = left
     for i = #right, 1, -1 do c[#c + 1] = right[i] end
     c[#c + 1] = { op = "Z", points = {} }
-    return rect { width = 6, height = "fill", background = color, shape = { commands = c } }
+    return rect { width = theme.notifications.margin_rule_w, height = "fill", background = color, shape = { commands = c } }
 end
 
 return M

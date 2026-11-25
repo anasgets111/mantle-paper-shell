@@ -1,5 +1,6 @@
 -- The updater's marks: a pencil "package" doodle in the style of components/icons.lua, a pink stock
 -- count badge, a red exclamation, a pencil arrow for version changes and a progress ring.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 
@@ -45,7 +46,7 @@ local function pencil(strokes, size, color, seed)
 end
 
 function M.package(size, color)
-    return pencil(PACKAGE, size or 22, color or k.INK, 4417)
+    return pencil(PACKAGE, size or theme.updates.package_sticker, color or theme.INK, 4417)
 end
 
 -- A red marker exclamation: a stroke that thins as the marker lifts, and a dot.
@@ -59,9 +60,9 @@ function M.exclamation(size)
             util.with(k.stroke_path(size, size, {
                 { op = "M", points = { 12.6 * s, 3.5 * s } },
                 { op = "Q", points = { 11.6 * s, 9 * s, 12 * s, 15 * s } },
-            }, k.RED, 3.6 * s), "taper_end", 8 * s),
+            }, theme.RED, 3.6 * s), "taper_end", 8 * s),
             path {
-                width = size, height = size, fill = k.RED,
+                width = size, height = size, fill = theme.RED,
                 commands = { { op = "A", points = { 12 * s, 19.8 * s, 1.9 * s, 0, 360 } } },
             },
         },
@@ -72,28 +73,29 @@ end
 -- digits.
 function M.badge(count)
     return rect {
-        min_width = 18,
-        height = 18,
-        radius = 9,
-        padding = { left = 4, right = 4 },
-        background = k.STOCK.danger[1],
-        shadows = { { blur = 3, offset = { x = 1, y = 1 }, color = "#00000050" } },
+        min_width = theme.updates.badge_size,
+        height = theme.updates.badge_size,
+        radius = theme.radius.spine,
+        padding = { left = theme.spacing.xxs, right = theme.spacing.xxs },
+        background = theme.STOCK.danger[1],
+        shadows = theme.SHADOW.tiny,
         effect = k.paper_fx { rim = 0 },
         children = {
-            k.body(util.lift(count, function(n) return n > 99 and "99+" or tostring(n) end), 13, {
-                font_weight = 700, foreground = k.DEEP_RED, align_h = "center", align_v = "center",
+            k.body(util.lift(count, function(n) return n > 99 and "99+" or tostring(n) end), theme.font.mono_small, {
+                font_weight = theme.BOLD, foreground = theme.DEEP_RED, align_h = "center", align_v = "center",
             }),
         },
     }
 end
 
 -- old → new: an arrow in pencil.
+local arrow_points = theme.updates.arrow_points
 function M.arrow()
-    return k.stroke_path(22, 12, {
-        { op = "M", points = { 2, 6.5 } }, { op = "Q", points = { 10, 5, 19, 6 } },
-        { op = "M", points = { 15, 2.5 } }, { op = "Q", points = { 17.5, 4.5, 19.5, 6 } },
-        { op = "Q", points = { 17, 8, 15.5, 9.8 } },
-    }, k.INK_SOFT, 1.3)
+    return k.stroke_path(theme.updates.arrow_w, theme.updates.arrow_h, {
+        { op = "M", points = { arrow_points[1], arrow_points[2] } }, { op = "Q", points = { arrow_points[3], arrow_points[4], arrow_points[5], arrow_points[6] } },
+        { op = "M", points = { arrow_points[7], arrow_points[8] } }, { op = "Q", points = { arrow_points[9], arrow_points[10], arrow_points[11], arrow_points[6] } },
+        { op = "Q", points = { arrow_points[12], arrow_points[13], arrow_points[14], arrow_points[15] } },
+    }, theme.INK_SOFT, 1.3)
 end
 
 -- A pencil circle with a blue marker arc over `fraction` (0..1, a signal) of it; `nil` spins a
@@ -108,14 +110,14 @@ function M.ring(size, fraction, spinning)
         align_v = "center",
         children = {
             path {
-                width = size, height = size, stroke = "#3A363140", stroke_width = 1.3, commands = {
+                width = size, height = size, stroke = theme.INK_FAINT, stroke_width = 1.3, commands = {
                     { op = "A", points = { c + 0.4, c - 0.3, c - 2.2, -100, 375 } },
                 },
             },
             path {
                 width = size,
                 height = size,
-                stroke = k.BLUE,
+                stroke = theme.BLUE,
                 stroke_width = 2.6,
                 stroke_cap = "round",
                 commands = circle,

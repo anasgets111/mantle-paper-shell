@@ -1,6 +1,7 @@
 -- Keyboard page: the configured layouts, by name, and the lock keys. Names come from
 -- `mantle.keyboard`, which names only the active layout, so the taskbar's list fills in as each
 -- layout becomes active. Layouts are added in the compositor's input config.
+local theme = require("theme")
 local k = require("lib.paper")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
@@ -34,11 +35,11 @@ end
 -- Read only, so a plain ticked box with no pointer: lock keys change on the keyboard.
 local function lock_key(name, field)
     return row {
-        spacing = 10,
-        padding = { right = 24 },
+        spacing = theme.spacing.snug,
+        padding = { right = theme.spacing.xxl },
         children = kbd:map(function(s)
-            return { k.checkbox(22, s[field] == true), k.body(name, 21, { align_v = "center" }) }
-        end, { k.checkbox(22, false), k.body(name, 21, { align_v = "center" }) }),
+            return { k.checkbox(theme.icon.control, s[field] == true), k.body(name, theme.font.control, { align_v = "center" }) }
+        end, { k.checkbox(theme.icon.control, false), k.body(name, theme.font.control, { align_v = "center" }) }),
     }
 end
 
@@ -48,10 +49,10 @@ local function backlight_rows()
         visible = kbd:map(function(s) return s.backlight_percent ~= nil end, false),
         children = {
             rows.line({
-                rows.label("Backlight", { width = 120 }),
+                rows.label("Backlight", { width = theme.settings.backlight_label_w }),
                 c.slider {
                     id = "settings.keyboard.backlight",
-                    width = 380,
+                    width = theme.settings.backlight_slider_w,
                     value = kbd:map(function(s) return (s.backlight_percent or 0) / 100 end, 0),
                     on_change = function(v) kbd:set_backlight(v * 100) end,
                     on_wheel = function(_, steps)

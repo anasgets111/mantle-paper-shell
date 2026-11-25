@@ -1,5 +1,6 @@
 -- Bluetooth page: adapter power and visibility, the pairing question, connected and paired
 -- devices, and a search for new ones. A search this page starts stops when the notebook closes.
+local theme = require("theme")
 local k = require("lib.paper")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
@@ -34,7 +35,7 @@ end
 
 local function device_row(d, actions, detail)
     local left = {
-        icons.glyph(d.category or "generic", 20),
+        icons.glyph(d.category or "generic", theme.icon.md),
         rows.label(name_of(d), { tip = "bluetooth.name." .. d.mac }),
         detail and rows.caption(detail) or false,
     }
@@ -72,8 +73,8 @@ local function pairing_card(r)
         controls = {
             c.field {
                 id = "settings.bluetooth.pin",
-                width = 260,
-                size = 24,
+                width = theme.settings.pair_code_w,
+                size = theme.font.xl,
                 placeholder = r.kind == "pin_entry" and "PIN" or "Passkey",
                 autofocus = true,
                 secure_submit = { capability = "bluetooth", action = "pair", name = r.id .. "/" .. r.mac },
@@ -88,10 +89,10 @@ local function pairing_card(r)
         }
     end
     return rows.sticky(column {
-        spacing = 10,
+        spacing = theme.spacing.snug,
         children = {
-            k.hand(question, 28, { font_weight = 700, max_width = 560, wrap = "word" }),
-            row { spacing = 12, children = controls },
+            k.hand(question, theme.font.title, { font_weight = theme.BOLD, max_width = theme.settings.pair_title_w, wrap = "word" }),
+            row { spacing = theme.spacing.md, children = controls },
         },
     }, 7)
 end

@@ -5,6 +5,7 @@
 --       reset_on_close? }
 -- ponytail: the card sits at the active output's bottom-right, not under its opener, and tooltips
 -- parented to the click path's popup don't show here. Upgrade: a popup `parent` that can change.
+local theme = require("theme")
 return function(o)
     return panel {
         id = o.id,
@@ -29,7 +30,7 @@ return function(o)
                 rect {
                     align_h = "end",
                     align_v = "end",
-                    padding = { right = 8, bottom = o.bottom or 56 },
+                    padding = { right = theme.spacing.sm, bottom = o.bottom or theme.catcher.bottom_pad },
                     -- Clicks on the card's bare paper stop here instead of closing it.
                     children = { rect { cursor = "default", on_click = function() end, children = { o.card() } } },
                 },

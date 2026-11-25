@@ -1,6 +1,7 @@
 -- What the left page lists: pinned tiles, app rows, the calculator answer, recent-file index cards
 -- and category headings. Ink on the page and a highlighter, no paper shader per row: each shader
 -- costs two offscreen passes.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("modules.startmenu.icons")
 local controls = require("components.controls")
@@ -13,10 +14,10 @@ local tips = require("modules.startmenu.tips")
 
 local M = {}
 
-M.CELL_W, M.CELL_H = 112, 112
-M.ROW_H = 40
+M.CELL_W, M.CELL_H = theme.startmenu.cell_w, theme.startmenu.cell_h
+M.ROW_H = theme.startmenu.row_h
 -- Two cards and their 8 px slots plus a 4 px gap span the left page's 456 px content width.
-M.CARD_W, M.CARD_H = 218, 66
+M.CARD_W, M.CARD_H = theme.startmenu.recent_w, theme.startmenu.recent_h
 
 local function is_selected(i)
     return model.selected:map(function(s) return s == i end)
@@ -38,7 +39,7 @@ local function swipe(h, seed, visible)
         width = "fill",
         height = h,
         align_v = "center",
-        background = k.HIGHLIGHT,
+        background = theme.HIGHLIGHT,
         blend = "multiply",
         shape = k.tape_shape(nil, nil, seed),
         opacity = visible:map(function(v) return v and 1 or 0 end),
@@ -98,7 +99,7 @@ function M.tile(item, i, items)
             end
             local dx, dy = p.x - press.x, p.y - press.y
             if phase == "move" then
-                if dragged or dx * dx + dy * dy > 64 then
+                if dragged or dx * dx + dy * dy > theme.startmenu.tile_loop_inset_x ^ 2 then
                     dragged = true
                     model.drag:set { id = app.id, x = dx, y = dy }
                 end
@@ -124,13 +125,13 @@ function M.tile(item, i, items)
                     rect {
                         align_h = "center",
                         children = looped:map(function(s)
-                            return s and { controls.pencil_loop(M.CELL_W - 8, M.CELL_H - 6, 40 + i) } or {}
+                            return s and { controls.pencil_loop(M.CELL_W - theme.startmenu.tile_loop_inset_x, M.CELL_H - theme.startmenu.tile_loop_inset_y, 40 + i) } or {}
                         end),
                     },
                     column {
                         width = "fill",
-                        spacing = 6,
-                        padding = { top = 12 },
+                        spacing = theme.spacing.xs,
+                        padding = { top = theme.spacing.md },
                         children = {
                             -- The lift sits on a parent: the sticker's shadow layers redraw on each move.
                             rect {
@@ -141,19 +142,19 @@ function M.tile(item, i, items)
                                     translate = { duration = 140, easing = "out_cubic" },
                                     scale = { duration = 90, easing = "out_cubic" },
                                 },
-                                children = { icons.app(app, 44) },
+                                children = { icons.app(app, theme.icon.tile) },
                             },
                             -- Sized by the name, so the swipe covers the ink and no more.
                             rect {
                                 align_h = "center",
                                 children = {
-                                    swipe(24, i, hovered),
-                                    k.body(app.name, 18, {
+                                    swipe(theme.startmenu.tile_swipe_h, i, hovered),
+                                    k.body(app.name, theme.font.sm, {
                                         align_h = "center",
                                         elide = "end",
                                         max_width = M.CELL_W,
                                         elided = cut,
-                                        padding = { left = 5, right = 5 },
+                                        padding = { left = theme.spacing.compact, right = theme.spacing.compact },
                                     }),
                                 },
                             },
@@ -173,12 +174,12 @@ function M.app_row(item, i)
     local focus = focus_visible(slot .. ".focus")
     local lit = lit_by(hovered, i, focus)
     local children = {
-        icons.app(app, 24),
-        k.body(app.name, 20, { align_v = "center", elide = "end", max_width = 300, elided = cut }),
+        icons.app(app, theme.icon.lg),
+        k.body(app.name, theme.font.md, { align_v = "center", elide = "end", max_width = theme.startmenu.app_name_w, elided = cut }),
     }
     if app.generic_name and app.generic_name ~= "" and app.generic_name ~= app.name then
-        children[3] = k.body(app.generic_name, 16, {
-            foreground = k.INK_SOFT, align_v = "center", elide = "end", width = "fill", text_align = "end",
+        children[3] = k.body(app.generic_name, theme.font.xs, {
+            foreground = theme.INK_SOFT, align_v = "center", elide = "end", width = "fill", text_align = "end",
         })
     end
     return tips.wrap(rect {
@@ -194,9 +195,9 @@ function M.app_row(item, i)
         scale = model.sink(slot, 0.98),
         animate = { scale = { duration = 90, easing = "out_cubic" } },
         children = {
-            swipe(M.ROW_H - 10, i + 7, lit),
+            swipe(M.ROW_H - theme.startmenu.app_swipe_trim, i + 7, lit),
             row {
-                width = "fill", height = "fill", spacing = 12, padding = { left = 8, right = 12 }, children = children,
+                width = "fill", height = "fill", spacing = theme.spacing.md, padding = { left = theme.spacing.sm, right = theme.spacing.md }, children = children,
             },
         },
     }, slot, function() return cut:get() and app.name or "" end)
@@ -209,7 +210,7 @@ function M.calc_row(item, i)
     local lit = lit_by(hovered, i, focus)
     return rect {
         width = "fill",
-        height = 52,
+        height = theme.control.tile,
         hover = hovered,
         focus_visible = focus,
         focus_ring = false,
@@ -220,19 +221,19 @@ function M.calc_row(item, i)
         scale = model.sink("startmenu.calc", 0.98),
         animate = { scale = { duration = 90, easing = "out_cubic" } },
         children = {
-            swipe(38, 5, lit),
+            swipe(theme.startmenu.calc_swipe_h, 5, lit),
             row {
                 width = "fill",
                 height = "fill",
-                spacing = 12,
-                padding = { left = 8, right = 12 },
+                spacing = theme.spacing.md,
+                padding = { left = theme.spacing.sm, right = theme.spacing.md },
                 children = {
-                    icons.glyph("calc", 24),
-                    k.hand("= " .. item.value, 34, {
-                        font_weight = 700, foreground = k.BLUE, align_v = "center", elide = "end",
+                    icons.glyph("calc", theme.icon.lg),
+                    k.hand("= " .. item.value, theme.font.display, {
+                        font_weight = theme.BOLD, foreground = theme.BLUE, align_v = "center", elide = "end",
                     }),
-                    k.body("Enter copies", 16, {
-                        foreground = k.INK_SOFT, align_v = "center", width = "fill", text_align = "end",
+                    k.body("Enter copies", theme.font.xs, {
+                        foreground = theme.INK_SOFT, align_v = "center", width = "fill", text_align = "end",
                     }),
                 },
             },
@@ -249,8 +250,8 @@ function M.file_card(item, i)
     local lit = lit_by(hovered, i, focus)
     local w, h = M.CARD_W, M.CARD_H
     return tips.wrap(rect {
-        width = w + 8,
-        height = h + 8,
+        width = w + theme.startmenu.recent_shadow_pad,
+        height = h + theme.startmenu.recent_shadow_pad,
         hover = hovered,
         focus_visible = focus,
         focus_ring = false,
@@ -270,31 +271,31 @@ function M.file_card(item, i)
                     scale = { duration = 90, easing = "out_cubic" },
                     shadows = { duration = 160, easing = "out_cubic" },
                 },
-                background = k.CARD_LIGHT,
-                shape = k.torn(w, h, 70 + i, 2),
+                background = theme.CARD_LIGHT,
+                shape = k.torn(w, h, 70 + i, theme.paper.light_tear),
                 shadows = k.lift(lit),
                 children = {
                     path {
-                        width = w, height = h, stroke = "#D9534F80", stroke_width = 1.2,
-                        commands = { { op = "M", points = { 4, 15 } }, { op = "L", points = { w - 4, 15 } } },
+                        width = w, height = h, stroke = theme.FILE_RULE, stroke_width = 1.2,
+                        commands = { { op = "M", points = { 4, theme.startmenu.recent_margin_y } }, { op = "L", points = { w - 4, theme.startmenu.recent_margin_y } } },
                     },
                     path {
-                        width = w, height = h, stroke = "#7FA3D040", stroke_width = 1,
-                        commands = { { op = "M", points = { 4, 42 } }, { op = "L", points = { w - 4, 42 } } },
+                        width = w, height = h, stroke = theme.RULE_BLUE, stroke_width = 1,
+                        commands = { { op = "M", points = { 4, theme.startmenu.recent_rule_y } }, { op = "L", points = { w - 4, theme.startmenu.recent_rule_y } } },
                     },
                     row {
                         width = "fill",
                         height = "fill",
-                        spacing = 10,
-                        padding = { left = 12, right = 10, top = 14 },
+                        spacing = theme.spacing.snug,
+                        padding = { left = theme.spacing.md, right = theme.spacing.snug, top = theme.spacing.inset },
                         children = {
-                            icons.glyph(f.icon, 22),
+                            icons.glyph(f.icon, theme.icon.control),
                             column {
                                 width = "fill",
                                 align_v = "center",
                                 children = {
-                                    k.body(f.name, 18, { elide = "middle", width = "fill", elided = cut }),
-                                    k.body(recent.when(f.at, os.time()), 16, { foreground = k.INK_SOFT }),
+                                    k.body(f.name, theme.font.sm, { elide = "middle", width = "fill", elided = cut }),
+                                    k.body(recent.when(f.at, os.time()), theme.font.xs, { foreground = theme.INK_SOFT }),
                                 },
                             },
                         },
@@ -310,17 +311,17 @@ function M.heading(name)
     return row {
         width = "fill",
         height = M.ROW_H,
-        spacing = 10,
-        padding = { left = 4 },
+        spacing = theme.spacing.snug,
+        padding = { left = theme.spacing.xxs },
         children = {
-            k.hand(name, 26, { font_weight = 700, foreground = k.BLUE, align_v = "end" }),
+            k.hand(name, theme.font.heading, { font_weight = theme.BOLD, foreground = theme.BLUE, align_v = "end" }),
             -- A pencil rule out to the margin, as long as the heading leaves room for.
             rect {
                 width = "fill",
                 height = 3,
                 align_v = "center",
-                margin = { top = 10, right = 12 },
-                background = "#3A363170",
+                margin = { top = theme.spacing.snug, right = theme.spacing.md },
+                background = theme.PENCIL,
                 shape = { commands = {
                     { op = "M", points = { 0, "35%" } },
                     { op = "Q", points = { "50%", "5%", "100%", "40%" } },

@@ -1,6 +1,7 @@
 -- Start menu (ArcMenu's default layout) as an open notebook: apps and search on the left page,
 -- the user, places and power on the right, index tabs down the left edge. Returns a
 -- `components.modal` entry plus `surfaces` for its right-click note and tooltip.
+local theme = require("theme")
 local k = require("lib.paper")
 local controls = require("components.controls")
 local util = require("lib.util")
@@ -17,32 +18,32 @@ local right = require("modules.startmenu.right")
 local H = left.HEIGHT
 local BOOK_W = left.WIDTH + right.WIDTH
 -- Rules line up with the 40 px rows that start under the page title.
-local RULES = { top = 172, pitch = 40 }
+local RULES = { top = theme.startmenu.rule_top, pitch = theme.startmenu.rule_pitch }
 
 -- The gutter: the fold darkens toward the middle, a pencil-thin crease at its centre.
 local function spine()
     return rect {
-        width = 64,
-        height = H - 12,
-        translate = { x = left.WIDTH - 32, y = 6 },
+        width = theme.startmenu.spine_w,
+        height = H - theme.startmenu.spine_tall_extra,
+        translate = { x = left.WIDTH - theme.spacing.xxxl, y = theme.spacing.xs },
         background = { gradient = "linear", angle = 90, stops = {
-            { 0, "#00000000" }, { 0.42, "#2A20150F" }, { 0.5, "#2A201530" }, { 0.58, "#2A20150F" }, { 1, "#00000000" },
+            { 0, "#00000000" }, { 0.42, theme.PHOTO_WASH }, { 0.5, theme.PHOTO_EDGE }, { 0.58, theme.PHOTO_WASH }, { 1, "#00000000" },
         } },
         blend = "multiply",
         children = {
-            rect { width = 1, height = "fill", translate = { x = 31.5 }, background = "#3A363140" },
+            rect { width = 1, height = "fill", translate = { x = theme.startmenu.spine_seam_x }, background = theme.INK_FAINT },
         },
     }
 end
 
 local function book()
-    local left_rules = controls.ruled(left.WIDTH - 6, H, { top = RULES.top, pitch = RULES.pitch, margin = 54 })
-    local right_rules = controls.ruled(right.WIDTH - 10, H, { top = RULES.top, pitch = RULES.pitch, margin = false })
+    local left_rules = controls.ruled(left.WIDTH - theme.startmenu.rule_left_inset, H, { top = RULES.top, pitch = RULES.pitch, margin = theme.startmenu.rule_left_margin })
+    local right_rules = controls.ruled(right.WIDTH - theme.startmenu.rule_right_inset, H, { top = RULES.top, pitch = RULES.pitch, margin = false })
     return k.sheet {
         width = BOOK_W,
         height = H,
         seed = 41,
-        depth = 5,
+        depth = theme.paper.bar_tear,
         fx = { rim = 2.2 },
         child = rect {
             width = "fill",
@@ -62,7 +63,7 @@ local entry = modal {
     align_h = "start",
     align_v = "end",
     -- The host already ends at the taskbar; 20 px holds the sheet's shadow.
-    margin = { left = 12, bottom = 20 },
+    margin = { left = theme.spacing.md, bottom = theme.spacing.xl },
     reset_on_close = util.concat(model.reset, power.reset),
     card = rect {
         -- A click on bare paper cancels an armed power action.

@@ -1,6 +1,6 @@
 -- The recorder's two marker marks, which the doodle set has no word for: a red dot while recording,
 -- two deep-red bars while paused.
-local k = require("lib.paper")
+local theme = require("theme")
 
 local M = {}
 
@@ -9,7 +9,7 @@ function M.dot(size)
     return path {
         width = size,
         height = size,
-        fill = k.RED,
+        fill = theme.RED,
         commands = { { op = "A", points = { r, r, r - 0.5, 0, 360 } }, { op = "Z", points = {} } },
     }
 end
@@ -18,8 +18,8 @@ function M.bars(size)
     return path {
         width = size,
         height = size,
-        stroke = k.DEEP_RED,
-        stroke_width = 3.4,
+        stroke = theme.DEEP_RED,
+        stroke_width = theme.recorder.pause_stroke,
         stroke_cap = "round",
         commands = {
             { op = "M", points = { size * 0.3, 2 } }, { op = "L", points = { size * 0.28, size - 2 } },
@@ -30,7 +30,7 @@ end
 
 -- The mark for a `paused` signal, as a child list.
 function M.state(paused, size)
-    return paused:map(function(p) return { p and M.bars(size or 16) or M.dot(size or 16) } end)
+    return paused:map(function(p) return { p and M.bars(size or theme.recorder.state_mark) or M.dot(size or theme.recorder.state_mark) } end)
 end
 
 return M

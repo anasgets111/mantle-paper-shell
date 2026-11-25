@@ -1,11 +1,12 @@
 -- A sheet of every doodle and the pinned apps as stickers, for checking icons by screenshot.
 -- `mantle set icons.preview true` shows it centred on the active output; it takes no keyboard.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("components.icons")
 local apps = require("lib.apps")
 
-local W, H = 1560, 760
-local SIZES = { 16, 20, 24, 32 }
+local W, H = theme.icon_preview.width, theme.icon_preview.height
+local SIZES = { theme.icon.sm, theme.icon.md, theme.icon.lg, theme.icon.xl }
 
 local preview = state("icons.preview", false)
 
@@ -13,11 +14,11 @@ local function cell(name)
     local marks = {}
     for _, size in ipairs(SIZES) do marks[#marks + 1] = icons.doodle(name, size) end
     return column {
-        width = 160,
-        spacing = 4,
+        width = theme.icon_preview.label_w,
+        spacing = theme.spacing.xxs,
         children = {
-            row { spacing = 8, height = 34, children = marks },
-            k.body(name, 13, { foreground = k.INK_SOFT }),
+            row { spacing = theme.spacing.sm, height = theme.control.row, children = marks },
+            k.body(name, theme.font.mono_small, { foreground = theme.INK_SOFT }),
         },
     }
 end
@@ -37,7 +38,7 @@ local FILES = {
 local function sticker_row(names, size)
     local children = {}
     for _, n in ipairs(names) do children[#children + 1] = icons.sticker(n, size) end
-    return row { spacing = 18, children = children }
+    return row { spacing = theme.spacing.roomy, children = children }
 end
 
 local pinned_icons = computed({ apps.pinned, mantle.applications }, function(ids, applications)
@@ -53,29 +54,29 @@ end)
 -- grain off and a fixed turn, and small stickers.
 local live = state("icons.preview_name", "wifi-2")
 local probes = row {
-    spacing = 18,
+    spacing = theme.spacing.roomy,
     children = {
-        icons.doodle(live, 24),
-        icons.doodle_for("network-wireless-symbolic", 24),
-        icons.doodle_for("audio-volume-high-symbolic", 24),
-        icons.doodle_for("battery-good-charging-symbolic", 24),
-        icons.doodle_for("system-shutdown-symbolic", 24),
-        icons.doodle_for("battery-level-50-symbolic", 24),
-        icons.doodle_for("starred-symbolic", 24),
-        icons.sticker("kitty", 48, { comic = false }),
-        icons.sticker("kitty", 48),
-        icons.sticker("zen-browser", 48, { rotate = 0 }),
+        icons.doodle(live, theme.icon.lg),
+        icons.doodle_for("network-wireless-symbolic", theme.icon.lg),
+        icons.doodle_for("audio-volume-high-symbolic", theme.icon.lg),
+        icons.doodle_for("battery-good-charging-symbolic", theme.icon.lg),
+        icons.doodle_for("system-shutdown-symbolic", theme.icon.lg),
+        icons.doodle_for("battery-level-50-symbolic", theme.icon.lg),
+        icons.doodle_for("starred-symbolic", theme.icon.lg),
+        icons.sticker("kitty", theme.icon.xxl, { comic = false }),
+        icons.sticker("kitty", theme.icon.xxl),
+        icons.sticker("zen-browser", theme.icon.xxl, { rotate = 0 }),
     },
 }
 
 local stickers = column {
-    spacing = 14,
+    spacing = theme.spacing.inset,
     children = pinned_icons:map(function(names)
         return {
             probes,
-            row { spacing = 40, children = { sticker_row(names, 24), sticker_row(FILES, 24) } },
-            row { spacing = 40, children = { sticker_row(names, 32), sticker_row(FILES, 32) } },
-            row { spacing = 40, children = { sticker_row(names, 48), sticker_row(FILES, 48) } },
+            row { spacing = theme.spacing.section, children = { sticker_row(names, theme.icon.lg), sticker_row(FILES, theme.icon.lg) } },
+            row { spacing = theme.spacing.section, children = { sticker_row(names, theme.icon.xl), sticker_row(FILES, theme.icon.xl) } },
+            row { spacing = theme.spacing.section, children = { sticker_row(names, theme.icon.xxl), sticker_row(FILES, theme.icon.xxl) } },
         }
     end),
 }
@@ -90,17 +91,17 @@ return {
             exclusive_zone = "ignore",
             visible = preview,
             child = rect {
-                padding = 30,
+                padding = theme.spacing.page,
                 children = {
                     k.sheet {
                         width = W,
                         height = H,
                         child = column {
-                            padding = 28,
-                            spacing = 18,
+                            padding = theme.spacing.panel,
+                            spacing = theme.spacing.roomy,
                             children = {
-                                k.hand("Icons", 40, { font_weight = 700 }),
-                                row { width = "fill", wrap = true, spacing = 6, line_spacing = 12, children = glyphs },
+                                k.hand("Icons", theme.icon_preview.title, { font_weight = theme.BOLD }),
+                                row { width = "fill", wrap = true, spacing = theme.spacing.xs, line_spacing = theme.spacing.md, children = glyphs },
                                 stickers,
                             },
                         },

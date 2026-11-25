@@ -4,6 +4,7 @@
 --
 -- `mantle toggle lock.polkit_preview` shows the note without pkexec (its password line is a
 -- picture); `mantle set lock.polkit_preview_state '{...}'` feeds it a fake `mantle.polkit` payload.
+local theme = require("theme")
 local k = require("lib.paper")
 local util = require("lib.util")
 local controls = require("components.controls")
@@ -11,7 +12,7 @@ local password = require("modules.lock.password")
 local G = require("modules.lock.glyphs")
 local icons = require("components.icons")
 
-local W, PAD_L, PAD_R = 560, 30, 28
+local W, PAD_L, PAD_R = theme.lock.polkit_w, theme.lock.polkit_pad_left, theme.lock.polkit_pad_right
 local INNER = W - PAD_L - PAD_R
 local MS = 180
 
@@ -35,13 +36,13 @@ end
 -- Several accounts can answer (wheel members); the session user is preselected by the engine.
 local function who(source)
     return column {
-        spacing = 6,
+        spacing = theme.spacing.xs,
         children = source:map(function(p)
             local ids = p.identities or {}
             if #ids <= 1 then
                 local name = ids[1] and ids[1].name ~= "" and ids[1].name or os.getenv("USER") or ""
-                return { row { spacing = 6, children = {
-                    icons.doodle(G.user, 18, k.INK_SOFT), k.body("as " .. name, 19, { foreground = k.INK_SOFT }),
+                return { row { spacing = theme.spacing.xs, children = {
+                    icons.doodle(G.user, theme.icon.label, theme.INK_SOFT), k.body("as " .. name, theme.font.label, { foreground = theme.INK_SOFT }),
                 } } }
             end
             local options = {}
@@ -62,7 +63,7 @@ end
 local function note(source, is_preview)
     local function label(fn) return source:map(fn, "") end
     local busy = source:map(function(p) return p.authenticating == true end, false)
-    local ok = controls.button { id = "lock.polkit.ok", label = "Allow", kind = "primary", width = 120 }
+    local ok = controls.button { id = "lock.polkit.ok", label = "Allow", kind = "primary", width = theme.lock.polkit_button_w }
     -- While PAM checks, Allow dims and stops sending, as the lock's submit disc does.
     ok.submits_secure = busy:map(function(b) return not b and not is_preview end, not is_preview)
     ok.opacity = util.choose(busy, 0.5, 1)
@@ -73,19 +74,19 @@ local function note(source, is_preview)
         rotate = -1,
         child = column {
             width = "fill",
-            spacing = 10,
-            padding = { left = PAD_L, right = PAD_R, top = 26, bottom = 26 },
+            spacing = theme.spacing.snug,
+            padding = { left = PAD_L, right = PAD_R, top = theme.spacing.tab, bottom = theme.spacing.tab },
             children = {
                 row {
-                    spacing = 12,
+                    spacing = theme.spacing.md,
                     children = {
-                        icons.doodle_for(label(function(p) return p.icon_name ~= "" and p.icon_name or G.lock end), 30),
-                        k.hand("Password needed", 38, { font_weight = 700, align_v = "center" }),
+                        icons.doodle_for(label(function(p) return p.icon_name ~= "" and p.icon_name or G.lock end), theme.icon.task),
+                        k.hand("Password needed", theme.font.feature, { font_weight = theme.BOLD, align_v = "center" }),
                     },
                 },
-                k.body(label(function(p) return p.message end), 20, { width = "fill", wrap = "word", max_lines = 3 }),
+                k.body(label(function(p) return p.message end), theme.font.md, { width = "fill", wrap = "word", max_lines = 3 }),
                 -- What is being granted, so a vague message can still be judged.
-                k.body(label(function(p) return p.action_id end), 16, { foreground = k.INK_SOFT, width = "fill", elide = "end" }),
+                k.body(label(function(p) return p.action_id end), theme.font.xs, { foreground = theme.INK_SOFT, width = "fill", elide = "end" }),
                 who(source),
                 password {
                     id = "lock.polkit.password", capability = "polkit", source = source, preview = is_preview,
@@ -93,10 +94,10 @@ local function note(source, is_preview)
                 },
                 row {
                     align_h = "end",
-                    spacing = 18,
-                    padding = { top = 8 },
+                    spacing = theme.spacing.roomy,
+                    padding = { top = theme.spacing.sm },
                     children = {
-                        controls.button { id = "lock.polkit.cancel", label = "Cancel", width = 120, on_click = cancel },
+                        controls.button { id = "lock.polkit.cancel", label = "Cancel", width = theme.lock.polkit_button_w, on_click = cancel },
                         ok,
                     },
                 },
@@ -129,9 +130,9 @@ return panel {
                 align_h = "center",
                 align_v = "center",
                 opacity = util.choose(active, 1, 0),
-                translate = active:map(function(on) return { y = on and 0 or 12 } end),
+                translate = active:map(function(on) return { y = on and 0 or theme.spacing.md } end),
                 animate = { opacity = { duration = MS, easing = "out_cubic", from = 0 },
-                    translate = { duration = MS, easing = "out_cubic", from = { y = 12 } } },
+                    translate = { duration = MS, easing = "out_cubic", from = { y = theme.spacing.md } } },
                 children = util.lift(preview, function(on)
                     return { on and note(preview_state, true) or note(mantle.polkit, false) }
                 end),

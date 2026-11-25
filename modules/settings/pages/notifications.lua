@@ -2,6 +2,7 @@
 -- app that has sent something. Muted apps
 -- live in `lib/store.lua` (`muted_apps`, a list of desktop ids or app names) for the notification
 -- centre to read; the engine silences their sounds.
+local theme = require("theme")
 local c = require("components.controls")
 local util = require("lib.util")
 local rows = require("modules.settings.rows")
@@ -76,7 +77,7 @@ local function sound_rows()
             rows.dropdown {
                 id = "notifications.sound." .. tier[1],
                 label = tier[2] .. " urgency sound",
-                width = 220,
+                width = theme.settings.notification_sound_w,
                 options = SOUNDS,
                 empty = "silent",
                 value = sounds.notification_sounds:map(function(t) return t[tier[1]] end),
@@ -100,7 +101,7 @@ local function app_rows()
             local list = {}
             for _, app in ipairs(senders:get()) do
                 list[#list + 1] = rows.line({
-                    app.icon and icons.app(app.icon) or icons.glyph("notifications", 22),
+                    app.icon and icons.app(app.icon) or icons.glyph("notifications", theme.icon.control),
                     rows.label(app.name, { tip = "notifications.app." .. app.key }),
                 }, {
                     c.checkbox_row {

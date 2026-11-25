@@ -1,5 +1,6 @@
 -- The right page: who is signed in (initials on a punched disc, no ~/.face here), the XDG places,
 -- Settings and Terminal, and the power row at the foot of the page.
+local theme = require("theme")
 local k = require("lib.paper")
 local icons = require("modules.startmenu.icons")
 local controls = require("components.controls")
@@ -11,7 +12,7 @@ local tips = require("modules.startmenu.tips")
 
 local M = {}
 
-local W, H = 340, 660
+local W, H = theme.startmenu.right_w, theme.startmenu.height
 M.WIDTH = W
 
 local HOME = os.getenv("HOME") or ""
@@ -40,7 +41,7 @@ local function entry(id, label, glyph, on_click, width)
     local lit = computed({ hovered, focus }, function(h, f) return h or f end)
     return rect {
         width = width,
-        height = 40,
+        height = theme.control.md,
         hover = hovered,
         focus_visible = focus,
         focus_ring = false,
@@ -53,10 +54,10 @@ local function entry(id, label, glyph, on_click, width)
         children = {
             rect {
                 width = "fill",
-                height = 28,
+                height = theme.control.sm,
                 align_v = "center",
-                margin = { right = 6 },
-                background = k.HIGHLIGHT,
+                margin = { right = theme.spacing.xs },
+                background = theme.HIGHLIGHT,
                 blend = "multiply",
                 shape = k.tape_shape(nil, nil, #label),
                 opacity = lit:map(function(v) return v and 1 or 0 end),
@@ -64,33 +65,33 @@ local function entry(id, label, glyph, on_click, width)
             },
             row {
                 height = "fill",
-                spacing = 10,
-                padding = { left = 6 },
-                children = { icons.glyph(glyph, 20), k.body(label, 20, { align_v = "center" }) },
+                spacing = theme.spacing.snug,
+                padding = { left = theme.spacing.xs },
+                children = { icons.glyph(glyph, theme.icon.md), k.body(label, theme.font.md, { align_v = "center" }) },
             },
         },
     }
 end
 
 local function avatar()
-    local size = 96
+    local size = theme.startmenu.avatar_size
     return rect {
-        width = size + 8,
-        height = size + 8,
+        width = size + theme.startmenu.avatar_shadow_pad,
+        height = size + theme.startmenu.avatar_shadow_pad,
         rotate = -4,
         children = {
             k.sheet {
                 width = size,
                 height = size,
-                shape = k.torn_circle(size, 23, 2.4),
-                color = k.STOCK.primary[1],
+                shape = k.torn_circle(size, 23, theme.paper.avatar_tear),
+                color = theme.STOCK.primary[1],
                 fx = { rim = 1.6 },
-                child = k.hand(identity.initials, 44, {
-                    font_weight = 700, foreground = k.DEEP_BLUE, align_h = "center", align_v = "center",
-                    padding = { right = 7, top = 2 },
+                child = k.hand(identity.initials, theme.font.name, {
+                    font_weight = theme.BOLD, foreground = theme.DEEP_BLUE, align_h = "center", align_v = "center",
+                    padding = { right = theme.startmenu.avatar_initial_pad, top = theme.spacing.hairline },
                 }),
             },
-            k.tape { width = 58, height = 18, translate = { x = 22, y = -6 }, rotate = 28, seed = 11, align_h = "end" },
+            k.tape { width = theme.startmenu.avatar_tape_w, height = theme.startmenu.avatar_tape_h, translate = { x = theme.spacing.wide, y = -theme.spacing.xs }, rotate = 28, seed = 11, align_h = "end" },
         },
     }
 end
@@ -98,7 +99,7 @@ end
 -- Beside the avatar, the name takes the largest hand from 34 px down to 24 px that fits, worked out
 -- from its width at 34 px laid out unseen; a name too long even at 24 px elides and shows whole in
 -- the tooltip.
-local NAME_W, NAME_MAX, NAME_MIN = W - 170, 34, 24
+local NAME_W, NAME_MAX, NAME_MIN = W - theme.startmenu.account_inset, theme.startmenu.name_max, theme.startmenu.name_min
 
 local function name()
     local slot = "startmenu.name"
@@ -114,13 +115,13 @@ local function name()
                 height = 0,
                 opacity = 0,
                 hittable = false,
-                children = { k.hand(identity.full_name, NAME_MAX, { font_weight = 700, geometry = box }) },
+                children = { k.hand(identity.full_name, NAME_MAX, { font_weight = theme.BOLD, geometry = box }) },
             },
             rect {
                 children = size:map(function(px)
                     return {
                         k.hand(identity.full_name, px, {
-                            font_weight = 700, elide = "end", max_width = NAME_W, elided = cut,
+                            font_weight = theme.BOLD, elide = "end", max_width = NAME_W, elided = cut,
                         }),
                     }
                 end),
@@ -138,7 +139,7 @@ local function pairs_of(list)
 end
 
 function M.page()
-    local half = (W - 56) / 2
+    local half = (W - theme.startmenu.places_inset) / 2
     local places = {}
     for i, p in ipairs(PLACES) do
         places[i] = entry("place." .. i, p[1], p[3], function() model.open_uri(HOME .. p[2]) end, half)
@@ -146,11 +147,11 @@ function M.page()
     return column {
         width = W,
         height = H,
-        padding = { left = 30, right = 26, top = 28, bottom = 22 },
-        spacing = 12,
+        padding = { left = theme.spacing.page, right = theme.spacing.tab, top = theme.spacing.panel, bottom = theme.spacing.wide },
+        spacing = theme.spacing.md,
         children = {
             row {
-                spacing = 14,
+                spacing = theme.spacing.inset,
                 children = {
                     avatar(),
                     column {
@@ -158,16 +159,16 @@ function M.page()
                         spacing = 0,
                         children = {
                             name(),
-                            k.body(identity.account, 16, {
-                                foreground = k.INK_SOFT, elide = "end", max_width = NAME_W,
+                            k.body(identity.account, theme.font.xs, {
+                                foreground = theme.INK_SOFT, elide = "end", max_width = NAME_W,
                             }),
                         },
                     },
                 },
             },
-            k.hand("Places", 28, { font_weight = 700, foreground = k.BLUE, padding = { top = 8, right = 5 } }),
+            k.hand("Places", theme.font.title, { font_weight = theme.BOLD, foreground = theme.BLUE, padding = { top = theme.spacing.sm, right = theme.spacing.compact } }),
             pairs_of(places),
-            rect { padding = { top = 4, bottom = 4 }, children = { controls.divider(W - 60, false, 5) } },
+            rect { padding = { top = theme.spacing.xxs, bottom = theme.spacing.xxs }, children = { controls.divider(W - theme.startmenu.places_rule_inset, false, 5) } },
             row {
                 children = {
                     entry("settings", "Settings", "settings", function()

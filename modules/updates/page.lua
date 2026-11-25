@@ -1,5 +1,6 @@
 -- The settings notebook's "Updates" page body: rows on the notebook's 34 px rules, built with
 -- `modules/settings/rows.lua`. Every row is bound to a signal, so the page stays live while open.
+local theme = require("theme")
 local c = require("components.controls")
 local util = require("lib.util")
 local rows = require("modules.settings.rows")
@@ -38,7 +39,7 @@ local function tool_rows()
             for _, tool in ipairs(tools.LIST) do
                 if p[tool.requires] then
                     list[#list + 1] = rows.line({ rows.label(tool.name) }, {
-                        rows.caption(table.concat(tool.run[1], " "), { elide = "end", max_width = 300 }),
+                        rows.caption(table.concat(tool.run[1], " "), { elide = "end", max_width = theme.updates.tool_command_w }),
                         c.checkbox_row {
                             id = "updates.tool." .. tool.name,
                             label = "include",
@@ -55,7 +56,7 @@ local function tool_rows()
 end
 
 return function()
-    local strip, tab = rows.tabs("updates", { "Checking", "Developer tools" }, 190)
+    local strip, tab = rows.tabs("updates", { "Checking", "Developer tools" }, theme.updates.tab_w)
     return { strip, rows.pane(tab, 1, {
         rows.heading("Checking", {
             rows.button("updates.check", "Check now", "plain", S.check),
@@ -65,7 +66,7 @@ return function()
             rows.dropdown {
                 id = "updates.interval",
                 label = "Check for updates",
-                width = 180,
+                width = theme.updates.interval_w,
                 options = S.INTERVALS,
                 value = saved.interval,
                 on_select = S.set_interval,

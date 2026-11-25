@@ -1,6 +1,6 @@
 -- Every icon the start menu draws, by role: pencil doodles for glyphs and die-cut stickers for apps,
 -- both from components/icons.lua. `name` keeps theme names for components/menu.lua, which draws its own.
-local k = require("lib.paper")
+local theme = require("theme")
 local paper_icons = require("components.icons")
 
 local M = {}
@@ -60,8 +60,8 @@ end
 -- A pencil glyph in ink, centred in its slot.
 function M.glyph(role, size, color)
     local doodle = DOODLES[role]
-    local node = doodle and paper_icons.doodle(doodle, size, color or k.INK)
-        or paper_icons.doodle_for(THEME[role], size, color or k.INK)
+    local node = doodle and paper_icons.doodle(doodle, size, color or theme.INK)
+        or paper_icons.doodle_for(THEME[role], size, color or theme.INK)
     return rect { align_h = "center", align_v = "center", children = { node } }
 end
 

@@ -1,4 +1,5 @@
 -- The start button and the desk chips at the left end of the taskbar.
+local theme = require("theme")
 local k = require("lib.paper")
 local apps = require("lib.apps")
 local icons = require("modules.taskbar.icons")
@@ -33,9 +34,9 @@ end
 function M.button(output)
     local name = "taskbar.start." .. output
     local hovered = hover(name)
-    local W, H = 48, 40
+    local W, H = theme.bar.start_w, theme.bar.start_h
     return tips.wrap(rect {
-        width = W + 8,
+        width = W + theme.bar.start_pad,
         height = "fill",
         hover = hovered,
         accessible_name = "Start menu",
@@ -66,11 +67,11 @@ function M.button(output)
                                     width = W,
                                     height = H,
                                     seed = 808,
-                                    depth = 3,
-                                    color = k.STOCK.primary[1],
+                                    depth = theme.paper.control_tear,
+                                    color = theme.STOCK.primary[1],
                                     shadows = k.lift(hovered),
                                     animate = { shadows = { duration = 160, easing = "out_cubic" } },
-                                    fx = { rim = 0, hatch = open and 0.4 or 0, hatch_spacing = 3.5 },
+                                    fx = { rim = 0, hatch = open and 0.4 or 0, hatch_spacing = theme.paper.hatch },
                                 },
                             }
                         end),
@@ -79,7 +80,7 @@ function M.button(output)
                         align_h = "center",
                         align_v = "center",
                         rotate = 4,
-                        children = { app_grid(22, k.DEEP_BLUE) },
+                        children = { app_grid(theme.bar.start_icon, theme.DEEP_BLUE) },
                     },
                 },
             },
@@ -88,7 +89,7 @@ function M.button(output)
 end
 
 -- App stickers per desk chip; the tooltip names the rest.
-local ICON, MAX_ICONS, PAD, GAP = 16, 3, 5, 2
+local ICON, MAX_ICONS, PAD, GAP = theme.bar.desk_icon, 3, theme.bar.desk_pad, theme.bar.desk_gap
 
 -- Desks on `output` worth showing: those holding windows, plus the one on screen. Empty desks stay
 -- hidden, so a click or a wheel notch never lands somewhere that looks like every app vanished.
@@ -137,7 +138,7 @@ local function tab(output, slot, drop_key, label, on_click, children)
     end)
     return rect {
         geometry = geometry(slot),
-        height = 32,
+        height = theme.control.slider,
         align_v = "center",
         hover = hover(slot),
         accessible_name = label,
@@ -161,7 +162,7 @@ end
 local function chip(output, desk)
     local slot = chip_slot(output, desk.key)
     local n = #desk.icons
-    local width = math.max(32, n * icons.app_box(ICON) + math.max(n - 1, 0) * GAP + 2 * PAD)
+    local width = math.max(theme.bar.desk_min_w, n * icons.app_box(ICON) + math.max(n - 1, 0) * GAP + 2 * PAD)
     local stickers = {}
     for i, name in ipairs(desk.icons) do stickers[i] = icons.app(name, ICON) end
     local apps_text = table.concat(desk.names, ", ")
@@ -170,12 +171,12 @@ local function chip(output, desk)
     return tips.wrap(tab(output, slot, desk.key, label, function() mantle.workspaces:focus(desk.key) end, {
         k.sheet {
             width = width,
-            height = 30,
+            height = theme.control.chip,
             seed = 40 + #desk.key,
-            depth = 2,
-            color = desk.active and "#C9D8EA" or k.STOCK.plain[1],
-            shadows = { { blur = 4, offset = { x = 1, y = 2 }, color = "#00000045" } },
-            fx = { rim = 1.5, hatch = desk.active and 0.35 or 0, hatch_spacing = 3.5 },
+            depth = theme.paper.light_tear,
+            color = desk.active and theme.TAB_BLUE or theme.STOCK.plain[1],
+            shadows = theme.SHADOW.light_disc,
+            fx = { rim = 1.5, hatch = desk.active and 0.35 or 0, hatch_spacing = theme.paper.hatch },
         },
         row { spacing = GAP, padding = { left = PAD, right = PAD }, align_v = "center", children = stickers },
     }), slot, label)
@@ -225,14 +226,14 @@ local function plus(output)
         if id then mantle.workspaces:focus(id) end
     end, {
         rect {
-            width = 32,
-            height = 30,
+            width = theme.bar.desk_min_w,
+            height = theme.control.chip,
             align_v = "center",
             border_width = 1.5,
-            border_color = k.INK_SOFT,
-            border_dash = { 4, 3 },
-            radius = 6,
-            children = { k.hand("+", 24, { foreground = k.INK, align_h = "center", align_v = "center" }) },
+            border_color = theme.INK_SOFT,
+            border_dash = { theme.bar.dash_length, theme.bar.dash_gap },
+            radius = theme.radius.md,
+            children = { k.hand("+", theme.font.xl, { foreground = theme.INK, align_h = "center", align_v = "center" }) },
         },
     })
     node.visible = mantle.workspaces:map(function(w)
@@ -275,13 +276,13 @@ end
 
 function M.workspaces(output)
     return row {
-        spacing = 4,
+        spacing = theme.spacing.xxs,
         align_v = "center",
         on_wheel = function(_, steps) step_desk(output, steps) end,
         children = {
             list {
                 direction = "horizontal",
-                spacing = 4,
+                spacing = theme.spacing.xxs,
                 items = desks(output),
                 key = function(desk) return desk.key end,
                 each = function(desk) return chip(output, desk) end,

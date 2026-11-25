@@ -1,6 +1,7 @@
 -- Today's date over a hand-drawn month on a cream card: weeks ruled in pencil, today circled in red marker.
 -- Weeks start on Sunday (en_US `first_weekday`). ponytail: fixed; read the locale's
 -- `first_weekday` if another locale needs it.
+local theme = require("theme")
 local k = require("lib.paper")
 local controls = require("components.controls")
 local glyphs = require("modules.notifications.glyphs")
@@ -8,7 +9,7 @@ local tips = require("modules.notifications.tips").menu
 
 local M = {}
 
-local W, CELL, ROW = 300, 40, 34
+local W, CELL, ROW = theme.notifications.calendar_w, theme.notifications.calendar_cell, theme.notifications.calendar_row
 local WEEKDAYS = { "S", "M", "T", "W", "T", "F", "S" }
 
 -- Months away from today's; reset when the date menu opens.
@@ -38,10 +39,10 @@ end
 
 local function day_cell(day, is_today)
     local children = {}
-    if is_today then children[1] = controls.pencil_circle(CELL - 4, day, k.RED, 2.4) end
+    if is_today then children[1] = controls.pencil_circle(CELL - theme.notifications.today_inset, day, theme.RED, 2.4) end
     if day then
-        children[#children + 1] = k.body(tostring(day), 20, {
-            align_h = "center", align_v = "center", foreground = is_today and k.DEEP_RED or k.INK,
+        children[#children + 1] = k.body(tostring(day), theme.font.md, {
+            align_h = "center", align_v = "center", foreground = is_today and theme.DEEP_RED or theme.INK,
         })
     end
     return rect { width = CELL, height = ROW, children = children }
@@ -50,10 +51,10 @@ end
 -- A pencil rule under each week, wobbling a pixel.
 local function rule(seed)
     local r = k.rng(seed)
-    return k.stroke_path(W - 8, 4, {
+    return k.stroke_path(W - theme.notifications.calendar_rule_w, theme.notifications.calendar_rule_h, {
         { op = "M", points = { 2, 2 + r() } },
-        { op = "Q", points = { W / 2, 1 + r() * 2, W - 10, 2 + r() } },
-    }, "#3A363155", 1.2)
+        { op = "Q", points = { W / 2, 1 + r() * 2, W - theme.notifications.calendar_rule_inset, 2 + r() } },
+    }, theme.STAMP_INK, 1.2)
 end
 
 local function grid(now, offset)
@@ -62,7 +63,7 @@ local function grid(now, offset)
     local rows = {}
     local head = {}
     for i, d in ipairs(WEEKDAYS) do
-        head[i] = k.body(d, 16, { width = CELL, text_align = "center", foreground = k.INK_SOFT })
+        head[i] = k.body(d, theme.font.xs, { width = CELL, text_align = "center", foreground = theme.INK_SOFT })
     end
     rows[1] = row { children = head }
     for i, week in ipairs(weeks(year, month)) do
@@ -81,8 +82,8 @@ end
 -- longest month stays on the paper, and an elide catches a locale's longer names.
 local function date_line(t)
     local text = os.date("%B ", t) .. tonumber(os.date("%d", t)) .. os.date(" %Y", t)
-    local size = math.min(36, math.floor((W - 30) / (#text * 0.52)))
-    return k.hand(text, size, { font_weight = 700, width = "fill", elide = "end" })
+    local size = math.min(theme.notifications.date_font, math.floor((W - theme.notifications.date_chars) / (#text * 0.52)))
+    return k.hand(text, size, { font_weight = theme.BOLD, width = "fill", elide = "end" })
 end
 
 -- `now` is a signal of Unix time, stamped when the menu opens.
@@ -91,24 +92,24 @@ function M.card(now)
         local days, title, nweeks = grid(t, offset)
         local content = column {
             width = "fill",
-            spacing = 6,
-            padding = { top = 18, left = 22, right = 22, bottom = 14 },
+            spacing = theme.spacing.xs,
+            padding = { top = theme.spacing.roomy, left = theme.spacing.wide, right = theme.spacing.wide, bottom = theme.spacing.inset },
             children = {
                 column {
-                    spacing = -8,
-                    padding = { left = 6, bottom = 6 },
+                    spacing = -theme.spacing.sm,
+                    padding = { left = theme.spacing.xs, bottom = theme.spacing.xs },
                     children = {
-                        k.hand(os.date("%A", t), 28, { foreground = k.BLUE }),
+                        k.hand(os.date("%A", t), theme.font.title, { foreground = theme.BLUE }),
                         date_line(t),
                     },
                 },
-                controls.divider(W - 10, false, 5),
+                controls.divider(W - theme.notifications.calendar_divider_inset, false, 5),
                 row {
                     width = "fill",
                     align_v = "center",
                     children = {
                         tips.wrap(glyphs.disc {
-                            id = "notifications.cal.prev", icon = glyphs.prev_month, size = 30, seed = 61,
+                            id = "notifications.cal.prev", icon = glyphs.prev_month, size = theme.icon.task, seed = 61,
                             tooltip = "Previous month",
                             on_click = function() M.offset:set(M.offset:get() - 1) end,
                         }, "paper.disc.notifications.cal.prev", "Previous month"),
@@ -117,10 +118,10 @@ function M.card(now)
                             cursor = "pointer",
                             accessible_name = "This month",
                             on_click = function() M.offset:set(0) end,
-                            children = { k.hand(title, 26, { align_h = "center" }) },
+                            children = { k.hand(title, theme.font.heading, { align_h = "center" }) },
                         },
                         tips.wrap(glyphs.disc {
-                            id = "notifications.cal.next", icon = glyphs.next_month, size = 30, seed = 62,
+                            id = "notifications.cal.next", icon = glyphs.next_month, size = theme.icon.task, seed = 62,
                             tooltip = "Next month",
                             on_click = function() M.offset:set(M.offset:get() + 1) end,
                         }, "paper.disc.notifications.cal.next", "Next month"),
@@ -132,12 +133,12 @@ function M.card(now)
         -- The card fits the month: five weeks or six.
         return {
             k.card {
-                width = W + 28,
-                height = 190 + nweeks * (ROW + 4),
+                width = W + theme.notifications.calendar_grid_inset,
+                height = theme.notifications.calendar_base_h + nweeks * (ROW + theme.notifications.calendar_extra_h),
                 seed = 77,
-                color = k.CARD,
+                color = theme.CARD,
                 rotate = 0.9,
-                tapes = { { width = 72, height = 22, rotate = -3, seed = 8 } },
+                tapes = { { width = theme.notifications.calendar_tape_w, height = theme.control.check, rotate = -3, seed = 8 } },
                 child = content,
             },
         }
