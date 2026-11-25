@@ -111,7 +111,8 @@ function M.new(o)
                         shadows = { { blur = 6, offset = { x = 1, y = 3 }, color = "#00000050" } },
                         effect = k.paper_fx { rim = 0, grain = 0.16 },
                         children = {
-                            k.body(resolve(slot), 17),
+                            -- Long values (an app list, a window title) wrap rather than run off the screen.
+                            k.body(resolve(slot), 17, { max_width = 420, wrap = "word" }),
                         },
                     },
                     k.tape { width = 34, height = 12, translate = { y = -7 }, rotate = -4, seed = #slot },

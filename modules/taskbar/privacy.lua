@@ -47,8 +47,12 @@ local sharing = active:map(function(list)
     return false
 end)
 
+-- The first four apps by name, then a count of the rest.
 local function names(s)
-    return table.concat(users(mantle.privacy:get(), fake:get(), s), ", ")
+    local all, shown = users(mantle.privacy:get(), fake:get(), s), {}
+    for i = 1, math.min(#all, 4) do shown[i] = all[i] end
+    local text = table.concat(shown, ", ")
+    return #all > 4 and (text .. " +" .. (#all - 4) .. " more") or text
 end
 
 local function sticker(output, s)
