@@ -160,9 +160,9 @@ function R.pane(chosen, i, children)
     return column { width = "fill", visible = chosen:map(function(v) return v == i end), children = children }
 end
 
--- A collapsed section for rarely used rows: a link that shows or hides them, closed on each open
--- of the notebook (`settings.<id>.more`).
-function R.more(id, label, children)
+-- A collapsed section for rarely used rows: a link that shows or hides them (`settings.<id>.more`).
+-- `hide` labels the link while open, "Hide <label>" by default. Returns the column and the state.
+function R.more(id, label, children, hide)
     local open = state("settings." .. id .. ".more", false)
     return column {
         width = "fill",
@@ -170,7 +170,7 @@ function R.more(id, label, children)
             R.line({
                 rect {
                     children = open:map(function(on)
-                        return { R.action(id .. ".more", on and ("Hide " .. label) or (label .. "…"), function() open:set(not on) end) }
+                        return { R.action(id .. ".more", on and (hide or ("Hide " .. label)) or (label .. "…"), function() open:set(not on) end) }
                     end),
                 },
             }),

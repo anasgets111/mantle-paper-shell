@@ -5,6 +5,7 @@ local c = require("components.controls")
 local rows = require("modules.settings.rows")
 local tips = require("modules.settings.tips")
 local icons = require("modules.settings.icons")
+local ui_state = require("lib.ui_state")
 
 local net = mantle.network
 
@@ -149,8 +150,12 @@ local function network_row(ap, busy)
     return rows.line(left, right)
 end
 
--- Rebuilt only when the list's shape changes; strength follows each row's own map.
-local function network_list()
+-- The first networks shown; the rest, and the hidden-network line, fold under "Other networks".
+local SHOWN = 5
+
+-- Rebuilt only when the list's shape changes; strength follows each row's own map. `rest` lists
+-- the networks past the first SHOWN (the connected one always counts among those).
+local function network_list(rest)
     local shape = net:map(function(n)
         local dev = wifi_device(n)
         if not (n.wifi_enabled and dev) then return "off" end
@@ -162,13 +167,25 @@ local function network_list()
             local n = net:get()
             local dev = wifi_device(n)
             if key == "off" or key == "" or not dev then
+                if rest then return {} end
                 return { rows.note(key == "off" and "Wi-Fi is off." or "No networks in range.") }
             end
-            local list = {}
+            local named, first, others = {}, {}, {}
             for _, ap in ipairs(dev.available_networks) do
-                if ap.ssid ~= "" then list[#list + 1] = network_row(ap, n.connecting_ssid) end
+                if ap.ssid ~= "" then named[#named + 1] = ap end
             end
-            if #list == 0 then list[1] = rows.note("No networks in range.") end
+            for _, ap in ipairs(named) do
+                if ap.active then first[#first + 1] = ap end
+            end
+            for _, ap in ipairs(named) do
+                if not ap.active then
+                    local into = #first < SHOWN and first or others
+                    into[#into + 1] = ap
+                end
+            end
+            local list = {}
+            for _, ap in ipairs(rest and others or first) do list[#list + 1] = network_row(ap, n.connecting_ssid) end
+            if #list == 0 and not rest then list[1] = rows.note("No networks in range.") end
             return list
         end),
     }
@@ -290,8 +307,12 @@ return {
         list[#list + 1] = password_rows()
         list[#list + 1] = error_row()
         list[#list + 1] = rows.heading("Visible networks")
-        list[#list + 1] = network_list()
-        list[#list + 1] = hidden_row()
+        list[#list + 1] = network_list(false)
+        local more, more_open = rows.more("wifi", "Other networks", { network_list(true), hidden_row() }, "Fewer networks")
+        list[#list + 1] = more
+        ui_state.modal_showing("settings"):on_change(function(open)
+            if open then more_open:set(false) end
+        end)
         list[#list + 1] = rows.heading("VPN")
         list[#list + 1] = vpn_secret_rows()
         list[#list + 1] = vpn_error_row()
