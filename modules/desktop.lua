@@ -17,6 +17,9 @@ local function clock12(t)
 end
 
 local player = mantle.mpris:map(function(m) return m.players[1] end, nil)
+-- With nothing playing the music card says so: no stand-in track, an empty line, controls that do
+-- nothing. A player with no track (playerctld's proxy, a closed tab) counts as nothing.
+local has_player = player:map(function(p) return p ~= nil and p.title ~= "" end, false)
 
 -- Right-hand cards ------------------------------------------------------------------------------
 
@@ -143,12 +146,12 @@ end
 
 -- Position: the last read plus wall time since, while playing.
 local progress = computed({ player, mantle.clock }, function(p, _)
-    if not p or not p.length or p.length <= 0 then return { at = 0.3, pos = nil, len = nil } end
+    if not p or p.title == "" or not p.length or p.length <= 0 then return { at = 0 } end
     local pos = p.position or 0
     if p.play_state == "playing" then pos = pos + (mantle.clock:now() - p.position_updated_at / 1e6) * 1e6 end
     pos = math.min(pos, p.length)
     return { at = pos / p.length, pos = pos, len = p.length }
-end, { at = 0.3 })
+end, { at = 0 })
 
 local TRACK_W = 196
 
@@ -172,6 +175,7 @@ local music_card = card {
                         height = 92,
                         radius = 4,
                         shadows = { { blur = 6, offset = { x = 1, y = 3 }, color = "#00000060" } },
+                        opacity = has_player:map(function(v) return v and 1 or 0.45 end),
                         source = player:map(function(p)
                             return p and p.album_art_path ~= "" and p.album_art_path or DIR .. "/img/cover.png"
                         end, DIR .. "/img/cover.png"),
@@ -181,9 +185,11 @@ local music_card = card {
                         width = "fill",
                         padding = { top = 6 },
                         children = {
-                            hand(player:map(function(p) return p and p.title ~= "" and p.title or "Lo-fi Paper" end, "Lo-fi Paper"),
+                            hand(player:map(function(p)
+                                return p and p.title ~= "" and p.title or "Nothing playing"
+                            end, "Nothing playing"),
                                 34, { font_weight = 700, elide = "end", width = "fill" }),
-                            body(player:map(function(p) return p and p.artist or "Notebook Radio" end, "Notebook Radio"),
+                            body(player:map(function(p) return p and p.title ~= "" and p.artist or "" end, ""),
                                 20, { foreground = INK_SOFT, elide = "end", width = "fill" }),
                         },
                     },
@@ -193,7 +199,8 @@ local music_card = card {
                 spacing = 10,
                 width = "fill",
                 children = {
-                    body(progress:map(function(p) return fmt_us(p.pos) end), 17, { align_v = "center" }),
+                    body(progress:map(function(p) return p.len and fmt_us(p.pos) or "" end), 17,
+                        { align_v = "center", width = 44 }),
                     rect {
                         width = TRACK_W,
                         height = 14,
@@ -212,17 +219,20 @@ local music_card = card {
                                 radius = 5,
                                 align_v = "center",
                                 background = RED,
+                                visible = progress:map(function(p) return p.len ~= nil end),
                                 translate = progress:map(function(p) return { x = math.floor(p.at * TRACK_W) - 5 } end),
                             },
                         },
                     },
-                    body(progress:map(function(p) return fmt_us(p.len) end), 17, { align_v = "center" }),
+                    body(progress:map(function(p) return p.len and fmt_us(p.len) or "" end), 17, { align_v = "center" }),
                 },
             },
             row {
                 width = "fill",
                 spacing = 34,
                 padding = { left = 40 },
+                hittable = has_player,
+                opacity = has_player:map(function(v) return v and 1 or 0.35 end),
                 children = {
                     rect {
                         on_click = function() local p = player:get(); if p then mantle.mpris:control(p.id, "previous") end end,
