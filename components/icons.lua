@@ -415,6 +415,13 @@ local GLYPHS = {
     night = function()
         return { moon(10.5, 13.5, 0.85), line(18, 3.5, 18, 8.5), line(15.5, 6, 20.5, 6) }
     end,
+    -- Half the disc hatched: dark style.
+    ["dark-style"] = function()
+        return {
+            arc(12, 12, 8, 0, 365), line(12, 4, 12, 20),
+            line(12, 8.5, 15.5, 5.2), line(12, 13, 18.2, 7.2), line(12, 17.5, 19.6, 10.6), line(14.5, 19.6, 19.2, 15.2),
+        }
+    end,
 }
 for i = 0, 4 do
     GLYPHS["wifi-" .. i] = function() return wifi(i, false) end

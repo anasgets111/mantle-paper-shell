@@ -6,6 +6,7 @@ local controls = require("components.controls")
 local G = require("modules.quick.glyphs")
 local icons = require("components.icons")
 local idle = require("modules.lock.idle")
+local scheme = require("lib.scheme")
 
 local TW, TH = 218, 78
 
@@ -82,6 +83,7 @@ local airplane_on = mantle.radio:map(function(r)
     end
     return true
 end, false)
+local dark_on = scheme.current:map(function(v) return v == "dark" end)
 local profile = mantle.power:map(function(p) return p.active_profile or "" end, "")
 
 local PROFILE_NAMES = { ["power-saver"] = "Power saver", balanced = "Balanced", performance = "Performance" }
@@ -99,7 +101,7 @@ local function next_profile()
 end
 
 local count = computed({ network, mantle.bluetooth, mantle.power, mantle.radio }, function(n, b, p, r)
-    local c = 2 -- Do not disturb and Keep awake always show.
+    local c = 3 -- Do not disturb, Keep awake and Dark style always show.
     if n and n.wifi_present then c = c + 1 end
     if b and b.available then c = c + 1 end
     if p and p.profiles and #p.profiles > 1 then c = c + 1 end
@@ -173,6 +175,13 @@ return {
                 on = idle.manual,
                 status = idle.manual:map(function(v) return v and "Screen stays on" or "Off" end),
                 on_click = function() idle.set_manual(not idle.manual:get()) end,
+            },
+            tile {
+                id = "dark", label = "Dark style", seed = 67, tilt = 0.4,
+                icon = G.dark,
+                on = dark_on,
+                status = dark_on:map(function(v) return v and "Apps are dark" or "Off" end),
+                on_click = function() scheme.set(dark_on:get() and "light" or "dark") end,
             },
         }
         -- The network name can be cut short on the tile.
