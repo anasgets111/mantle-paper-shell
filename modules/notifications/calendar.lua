@@ -77,6 +77,14 @@ local function grid(now, offset)
     return column { spacing = 0, children = rows }, title, #rows - 1
 end
 
+-- "September 30 2026" in Caveat bold is about 0.52 em a character; the size steps down so the
+-- longest month stays on the paper, and an elide catches a locale's longer names.
+local function date_line(t)
+    local text = os.date("%B ", t) .. tonumber(os.date("%d", t)) .. os.date(" %Y", t)
+    local size = math.min(36, math.floor((W - 30) / (#text * 0.52)))
+    return k.hand(text, size, { font_weight = 700, width = "fill", elide = "end" })
+end
+
 -- `now` is a signal of Unix time, stamped when the menu opens.
 function M.card(now)
     local month = computed({ now, M.offset }, function(t, offset)
@@ -91,9 +99,7 @@ function M.card(now)
                     padding = { left = 6, bottom = 6 },
                     children = {
                         k.hand(os.date("%A", t), 28, { foreground = k.BLUE }),
-                        k.hand(os.date("%B ", t) .. tonumber(os.date("%d", t)) .. os.date(" %Y", t), 36, {
-                            font_weight = 700,
-                        }),
+                        date_line(t),
                     },
                 },
                 controls.divider(W - 10, false, 5),
