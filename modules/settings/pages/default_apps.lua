@@ -102,7 +102,8 @@ end
 local function set_terminal(id)
     terminal_list_path(function(path, text)
         local lines, placed = {}, false
-        for line in ((text or "") .. "\n"):gmatch("([^\n]*)\n") do
+        -- A missing or empty file has no lines, so the pick is not written under a blank one.
+        for line in (text and text ~= "" and text .. "\n" or ""):gmatch("([^\n]*)\n") do
             if line ~= id then
                 -- The pick goes above the first entry, under any leading comments.
                 if not placed and line ~= "" and not line:match("^#") then
