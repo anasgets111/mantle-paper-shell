@@ -10,10 +10,11 @@ local power = require("modules.startmenu.power")
 
 local M = {}
 
-M.WIDTH = 166
 -- Tabs reach this far under the left page.
 M.OVERLAP = 22
 local H, GAP, TOP = 44, 7, 22
+-- Room either side of a label; the right side clears the page's torn edge.
+local PAD_L, PAD_R = 16, 10
 -- How far a tab tucks further under the page: the open one least; all of them nearly away while a
 -- search is typed, since results ignore the tab.
 local TUCK = { open = 0, hover = 8, rest = 14, searching = 112, held = 5 }
@@ -27,6 +28,23 @@ local TABS = {
     { "all", "All" },
 }
 for _, name in ipairs(categories.NAMES) do TABS[#TABS + 1] = { name, name } end
+
+-- Every tab is as wide as the widest label at the open tab's size and weight, plus its padding, the
+-- resting tuck and the overlap, so no label runs under the page whatever the font sets.
+local measured = {}
+for i, t in ipairs(TABS) do measured[i] = geometry("startmenu.tab.label." .. t[1]) end
+M.width = computed(measured, function(...)
+    local widest = 0
+    for _, r in ipairs({ ... }) do widest = math.max(widest, r.width) end
+    return math.ceil(widest) + PAD_L + PAD_R + TUCK.rest + M.OVERLAP
+end)
+
+-- The labels laid out unseen, for `M.width`.
+local function measures()
+    local texts = {}
+    for i, t in ipairs(TABS) do texts[i] = k.hand(t[2], 26, { font_weight = 700, geometry = measured[i] }) end
+    return rect { width = 0, height = 0, opacity = 0, hittable = false, children = { column { children = texts } } }
+end
 
 local searching = model.query:map(function(q) return q:match("%S") ~= nil end)
 
@@ -46,13 +64,13 @@ local function tab(t, i)
     -- The slot stays put while the stock slides; input follows the stock, so a click where a
     -- tucked tab used to be is a click on the desk and closes the menu.
     return rect {
-        width = M.WIDTH,
+        width = M.width,
         height = H,
         cursor = "default",
         on_click = model.close,
         children = {
             rect {
-                width = M.WIDTH,
+                width = M.width,
                 height = H,
                 hover = hovered,
                 focus_visible = focus,
@@ -74,12 +92,12 @@ local function tab(t, i)
                     rect {
                         width = "fill",
                         height = "fill",
-                        children = open:map(function(on)
+                        children = computed({ open, M.width }, function(on, w)
                             return {
                                 rect {
                                     width = "fill",
                                     height = "fill",
-                                    shape = controls.tab_shape(M.WIDTH, H, 90 + i),
+                                    shape = controls.tab_shape(w, H, 90 + i),
                                     background = on and k.PAPER or tint,
                                     shadows = on and k.SHADOW.lift or k.lift(lit),
                                     animate = { shadows = { duration = 160, easing = "out_cubic" } },
@@ -89,7 +107,7 @@ local function tab(t, i)
                                     font_weight = on and 700 or 400,
                                     foreground = on and k.INK or k.INK_SOFT,
                                     align_v = "center",
-                                    padding = { left = 16, right = 6 },
+                                    padding = { left = PAD_L, right = PAD_R },
                                 }),
                             }
                         end),
@@ -97,9 +115,8 @@ local function tab(t, i)
                     -- The part that shows past the page, looped in pencil while it has keyboard focus.
                     rect {
                         translate = { x = 2, y = 2 },
-                        children = focus:map(function(f)
-                            return f and { controls.pencil_loop(M.WIDTH - M.OVERLAP - TUCK.hover - 4, H - 4, 60 + i) }
-                                or {}
+                        children = computed({ focus, M.width }, function(f, w)
+                            return f and { controls.pencil_loop(w - M.OVERLAP - TUCK.hover - 4, H - 4, 60 + i) } or {}
                         end),
                     },
                 },
@@ -111,7 +128,7 @@ end
 function M.column()
     local children = {}
     for i, t in ipairs(TABS) do children[i] = tab(t, i) end
-    return column { spacing = GAP, padding = { top = TOP }, children = children }
+    return rect { children = { column { spacing = GAP, padding = { top = TOP }, children = children }, measures() } }
 end
 
 -- Drawn above the page: a scrap of page paper over the torn edge beside the open tab, inset 3 px
@@ -121,7 +138,7 @@ function M.bridge()
     local children = {}
     for i, t in ipairs(TABS) do
         children[i] = rect {
-            width = M.WIDTH + 12,
+            width = M.width:map(function(w) return w + 12 end),
             height = H,
             children = is_open(t[1]):map(function(on)
                 if not on then return {} end
@@ -130,7 +147,7 @@ function M.bridge()
                         width = 17,
                         height = H - 6,
                         align_v = "center",
-                        translate = { x = M.WIDTH - M.OVERLAP - 12 },
+                        translate = M.width:map(function(w) return { x = w - M.OVERLAP - 12 } end),
                         background = k.PAPER,
                         effect = k.paper_fx { rim = 0 },
                     },
