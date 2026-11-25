@@ -56,12 +56,21 @@ local function load()
     end)
 end
 
--- Re-read when the configured count changes (a Hyprland config reload); lock keys change nothing.
-local loaded_count = -1
+-- Re-read when the list no longer matches what Hyprland reports: another count, or another name at
+-- the active index (a config reload that replaced or reordered layouts). Once per count and name,
+-- so a name the rules file spells differently can't loop.
+-- ponytail: a replaced layout that is not active shows its old name in the menu until it becomes
+-- active. Upgrade: re-read on a Hyprland config-reload event, if Mantle publishes one.
+local loaded_key
 local function refresh(s)
-    if s and s.layout_count ~= loaded_count then
-        loaded_count = s.layout_count
-        if s.layout_count >= 2 then load() end
+    if not s or s.layout_count < 2 then return end
+    local list = layouts:get()
+    local entry = list[s.active_layout_index + 1]
+    local stale = #list ~= s.layout_count or not entry or entry.name ~= s.active_layout
+    local key = s.layout_count .. "\0" .. s.active_layout
+    if stale and key ~= loaded_key then
+        loaded_key = key
+        load()
     end
 end
 kbd:on_change(refresh)
