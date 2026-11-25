@@ -6,6 +6,7 @@
 local k = require("lib.paper")
 local util = require("lib.util")
 local c = require("components.controls")
+local notebook_tab = require("components.notebook_tab")
 local rows = require("modules.settings.rows")
 local icons = require("modules.settings.icons")
 
@@ -13,7 +14,8 @@ local PAGE_W, PAGE_H = 800, 680
 local TOP = 22
 -- Every tab tucks 22 px under the page; the chosen one reaches across the margin to its card.
 local PAGE_X = 200
--- Eleven 48 px tabs 4 px apart end 16 px above the page's foot.
+-- Eleven 48 px tabs 4 px apart end 16 px above the page's foot. At the tuck, a 222 px tab keeps
+-- "Notifications", the longest title, 10 px clear of the page's torn edge.
 local TABS_W, TAB_H, TAB_GAP, TABS_Y = 222, 48, 4, TOP + 74
 local CARD_X, CARD_Y = 76, 96
 local CARD_PAD = 14
@@ -22,24 +24,8 @@ local CARD_MAX_H = PAGE_H - CARD_Y - 22
 -- top 10 px fade too, inside the blank pitch above the first heading, so a scrolled row never cuts hard.
 local FADE, FADE_TOP = 24, 10
 
--- Tab card stock: DESIGN.md's three tab tints.
-local TINTS = { "#E9DDBB", "#C9D8EA", "#EBCBC5" }
-
-local function tab_face(p, chosen)
-    return row {
-        spacing = chosen and 10 or 8,
-        align_v = "center",
-        padding = { left = chosen and 18 or 14 },
-        children = {
-            icons.glyph(p.key, 20, chosen and k.INK or k.INK_SOFT),
-            -- 22 px keeps "Notifications", the longest title, 10 px clear of the page's torn edge.
-            k.hand(p.title, chosen and 27 or 22, {
-                font_weight = chosen and 700 or 400,
-                foreground = chosen and k.INK or k.INK_SOFT,
-                align_v = "center",
-            }),
-        },
-    }
+local function icon_of(key)
+    return function(size, color) return icons.glyph(key, size, color) end
 end
 
 -- Up and Down on a focused tab open the page above or below and carry the focus with it.
@@ -71,22 +57,21 @@ local function tab(p, i, page, pages)
         end,
         children = {
             rect {
-                width = TABS_W,
-                height = TAB_H,
                 translate = hovered:map(function(over) return { x = over and 6 or 16 } end),
                 animate = { translate = { spring = { stiffness = 320, damping = 22 } } },
                 children = {
-                    rect {
-                        width = "fill",
-                        height = "fill",
-                        shape = c.tab_shape(TABS_W, TAB_H, 70 + i),
-                        background = TINTS[(i - 1) % #TINTS + 1],
+                    notebook_tab.tab {
+                        width = TABS_W,
+                        height = TAB_H,
+                        seed = 70 + i,
+                        background = notebook_tab.tint(i),
                         shadows = k.lift(hovered),
-                        animate = { shadows = { duration = 160, easing = "out_cubic" } },
-                        effect = k.paper_fx { rim = 0 },
+                        icon = icon_of(p.key),
+                        title = p.title,
+                        focus = keyed,
+                        loop_width = TABS_W - 40,
+                        loop_x = 4,
                     },
-                    tab_face(p, false),
-                    rect { visible = keyed, translate = { x = 4 }, children = { c.pencil_loop(TABS_W - 40, TAB_H, 80 + i) } },
                 },
             },
         },
@@ -109,25 +94,18 @@ local function chosen_tab(pages, page)
             local i, p = index(key)
             if not i then return {} end
             return {
-                rect {
+                notebook_tab.tab {
                     width = w,
                     height = TAB_H,
-                    children = {
-                        rect {
-                            width = "fill",
-                            height = "fill",
-                            shape = c.tab_shape(w, TAB_H, 70 + i),
-                            background = k.CARD,
-                            shadows = k.SHADOW.rest,
-                            effect = k.paper_fx { rim = 0 },
-                        },
-                        tab_face(p, true),
-                        rect {
-                            visible = focus_visible("settings.tab." .. p.key),
-                            translate = { x = 6 },
-                            children = { c.pencil_loop(TABS_W - 30, TAB_H, 80 + i) },
-                        },
-                    },
+                    seed = 70 + i,
+                    background = k.CARD,
+                    shadows = k.SHADOW.rest,
+                    icon = icon_of(p.key),
+                    title = p.title,
+                    chosen = true,
+                    focus = focus_visible("settings.tab." .. p.key),
+                    loop_width = TABS_W - 30,
+                    loop_x = 6,
                 },
             }
         end),

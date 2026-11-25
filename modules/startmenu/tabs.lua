@@ -1,10 +1,11 @@
--- Card-stock index tabs down the notebook's left edge: Favourites, Frequent, Recent files, All,
--- then one per category. The settings tabs' cut (`controls.tab_shape`), spaced apart, the inner
--- end tucked under the page. The open tab stands out furthest,
--- turns page paper, and `bridge` covers the page's torn edge beside it so tab and page read as one sheet.
+-- Index tabs down the notebook's left edge, drawn as the Settings notebook's (`components.notebook_tab`):
+-- Favourites, Frequent, Recent files, All, then one per category. The others tuck behind the page;
+-- the open one turns page paper, stands out furthest, and `bridge` covers the page's torn edge
+-- beside it so tab and page read as one sheet.
 local k = require("lib.paper")
-local controls = require("components.controls")
+local notebook_tab = require("components.notebook_tab")
 local categories = require("modules.startmenu.categories")
+local icons = require("modules.startmenu.icons")
 local model = require("modules.startmenu.model")
 local power = require("modules.startmenu.power")
 
@@ -12,16 +13,13 @@ local M = {}
 
 -- Tabs reach this far under the left page.
 M.OVERLAP = 22
-local H, GAP, TOP = 44, 7, 22
--- Room either side of a label; the right side clears the page's torn edge.
-local PAD_L, PAD_R = 16, 10
--- How far a tab tucks further under the page: the open one least; all of them nearly away while a
--- search is typed, since results ignore the tab.
-local TUCK = { open = 0, hover = 8, rest = 14, held = 5 }
+local H, GAP, TOP = 48, 4, 20
+-- Room past a face before the page's torn edge.
+local PAD_R = 10
+-- How far a tab tucks further under the page, as in Settings; a held one is pushed a little further.
+local TUCK = { open = 0, hover = 6, rest = 16, held = 5 }
 -- While a search is typed, every tab shows only this much past the page.
 local SEARCH_STUB = 32
--- DESIGN.md's three tab stocks: cream, blue, pink.
-local TINTS = { "#E9DDBB", "#C9D8EA", "#EBCBC5" }
 
 local TABS = {
     { "favourites", "Favourites" },
@@ -31,21 +29,35 @@ local TABS = {
 }
 for _, name in ipairs(categories.NAMES) do TABS[#TABS + 1] = { name, name } end
 
--- Every tab is as wide as the widest label at the open tab's size and weight, plus its padding, the
--- resting tuck and the overlap, so no label runs under the page whatever the font sets.
-local measured = {}
-for i, t in ipairs(TABS) do measured[i] = geometry("startmenu.tab.label." .. t[1]) end
-M.width = computed(measured, function(...)
-    local widest = 0
-    for _, r in ipairs({ ... }) do widest = math.max(widest, r.width) end
-    return math.ceil(widest) + PAD_L + PAD_R + TUCK.rest + M.OVERLAP
+local function icon_of(key)
+    return function(size, color) return icons.glyph(key, size, color) end
+end
+
+local function widest(...)
+    local w = 0
+    for _, r in ipairs({ ... }) do w = math.max(w, r.width) end
+    return w
+end
+
+-- Every tab is wide enough for the widest face, open (at no tuck) or not (at the resting tuck),
+-- plus the overlap and a margin, so no title runs under the page whatever the font sets.
+local open_faces, faces = {}, {}
+for i, t in ipairs(TABS) do
+    open_faces[i] = geometry("startmenu.tab.face.open." .. t[1])
+    faces[i] = geometry("startmenu.tab.face." .. t[1])
+end
+M.width = computed({ computed(open_faces, widest), computed(faces, widest) }, function(open, rest)
+    return math.ceil(math.max(open, rest + TUCK.rest)) + PAD_R + M.OVERLAP
 end)
 
--- The labels laid out unseen, for `M.width`.
+-- Both faces of every tab laid out unseen, for `M.width`.
 local function measures()
-    local texts = {}
-    for i, t in ipairs(TABS) do texts[i] = k.hand(t[2], 26, { font_weight = 700, geometry = measured[i] }) end
-    return rect { width = 0, height = 0, opacity = 0, hittable = false, children = { column { children = texts } } }
+    local list = {}
+    for i, t in ipairs(TABS) do
+        list[#list + 1] = notebook_tab.face(icon_of(t[1]), t[2], true, open_faces[i])
+        list[#list + 1] = notebook_tab.face(icon_of(t[1]), t[2], false, faces[i])
+    end
+    return rect { width = 0, height = 0, opacity = 0, hittable = false, children = { column { children = list } } }
 end
 
 local searching = model.query:map(function(q) return q:match("%S") ~= nil end)
@@ -58,11 +70,10 @@ local function tab(t, i)
     local key, label = t[1], t[2]
     local slot = "startmenu.tab." .. key
     local hovered, held = hover(slot), model.held(slot)
-    -- Keyboard focus slides the stock out the way the pointer does; the engine's square outline is off.
+    -- Keyboard focus slides the stock out the way the pointer does and shows the pencil loop.
     local focus = focus_visible(slot .. ".focus")
     local lit = computed({ hovered, focus }, function(h, f) return h or f end)
     local open = is_open(key)
-    local tint = TINTS[(i - 1) % #TINTS + 1]
     -- The slot stays put while the stock slides; input follows the stock, so a click where a
     -- tucked tab used to be is a click on the desk and closes the menu.
     return rect {
@@ -84,44 +95,28 @@ local function tab(t, i)
                     model.show(key)
                 end,
                 on_drag = model.track(slot),
-                -- Held, a tab is pushed a little further under the page.
                 translate = computed({ open, lit, searching, held, M.width }, function(on, over, s, h, w)
                     local x = s and w - M.OVERLAP - SEARCH_STUB or on and TUCK.open or over and TUCK.hover or TUCK.rest
                     return { x = x + (h and TUCK.held or 0) }
                 end),
                 animate = { translate = { spring = { stiffness = 320, damping = 22 } } },
-                children = {
-                    rect {
-                        width = "fill",
-                        height = "fill",
-                        children = computed({ open, M.width }, function(on, w)
-                            return {
-                                rect {
-                                    width = "fill",
-                                    height = "fill",
-                                    shape = controls.tab_shape(w, H, 90 + i),
-                                    background = on and k.PAPER or tint,
-                                    shadows = on and k.SHADOW.lift or k.lift(lit),
-                                    animate = { shadows = { duration = 160, easing = "out_cubic" } },
-                                    effect = k.paper_fx { rim = 0 },
-                                },
-                                k.hand(label, on and 26 or 24, {
-                                    font_weight = on and 700 or 400,
-                                    foreground = on and k.INK or k.INK_SOFT,
-                                    align_v = "center",
-                                    padding = { left = PAD_L, right = PAD_R },
-                                }),
-                            }
-                        end),
-                    },
-                    -- The part that shows past the page, looped in pencil while it has keyboard focus.
-                    rect {
-                        translate = { x = 2, y = 2 },
-                        children = computed({ focus, M.width }, function(f, w)
-                            return f and { controls.pencil_loop(w - M.OVERLAP - TUCK.hover - 4, H - 4, 60 + i) } or {}
-                        end),
-                    },
-                },
+                children = computed({ open, M.width }, function(on, w)
+                    return {
+                        notebook_tab.tab {
+                            width = w,
+                            height = H,
+                            seed = 70 + i,
+                            background = on and k.PAPER or notebook_tab.tint(i),
+                            shadows = on and k.SHADOW.rest or k.lift(lit),
+                            icon = icon_of(key),
+                            title = label,
+                            chosen = on,
+                            focus = focus,
+                            loop_width = w - (on and 30 or 40),
+                            loop_x = on and 6 or 4,
+                        },
+                    }
+                end),
             },
         },
     }

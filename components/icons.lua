@@ -419,6 +419,44 @@ local GLYPHS = {
     pause = function() return { line(9, 5.5, 9, 18.5), line(15, 5.5, 15, 18.5) } end,
     ["skip-forward"] = function() return { line(5, 6, 14, 12, 5, 18, 5, 6), line(18, 6, 18, 18) } end,
     ["skip-back"] = function() return { line(19, 6, 10, 12, 19, 18, 19, 6), line(6, 6, 6, 18) } end,
+    star = function()
+        local p = {}
+        for i = 0, 9 do
+            local a, r = math.rad(-90 + i * 36), i % 2 == 0 and 9.5 or 4
+            p[#p + 1] = 12 + r * math.cos(a)
+            p[#p + 1] = 12.8 + r * math.sin(a)
+        end
+        return { closed(table.unpack(p)) }
+    end,
+    clock = function() return { arc(12, 12, 8.6, -80, 290), line(12, 7, 12, 12, 15.6, 14.2) } end,
+    grid = function()
+        return {
+            closed(4, 4, 10.5, 4, 10.5, 10.5, 4, 10.5), closed(13.5, 4, 20, 4, 20, 10.5, 13.5, 10.5),
+            closed(4, 13.5, 10.5, 13.5, 10.5, 20, 4, 20), closed(13.5, 13.5, 20, 13.5, 20, 20, 13.5, 20),
+        }
+    end,
+    globe = function()
+        return {
+            arc(12, 12, 8.6, -80, 290), line(3.4, 12, 20.6, 12),
+            smooth(12, 3.4, 8.4, 7.5, 7.6, 12, 8.4, 16.5, 12, 20.6),
+            smooth(12, 3.4, 15.6, 7.5, 16.4, 12, 15.6, 16.5, 12, 20.6),
+        }
+    end,
+    code = function()
+        return { line(8.5, 7, 3.5, 12, 8.5, 17), line(15.5, 7, 20.5, 12, 15.5, 17), line(13.6, 5, 10.4, 19) }
+    end,
+    -- An open-ended spanner, jaw to the top right.
+    wrench = function()
+        return { arc(15.6, 8.4, 5, 15, 285), line(12.4, 11.9, 4.6, 19.7, 5.9, 21, 13.8, 13.2) }
+    end,
+    dots = function() return { dot(5.5, 12, 1.6), dot(12, 12, 1.6), dot(18.5, 12, 1.6) } end,
+    -- Four strokes and the fifth across them: a count kept in pencil.
+    tally = function()
+        return {
+            line(6, 5, 5.6, 19), line(10, 5, 9.6, 19), line(14, 5, 13.6, 19), line(18, 5, 17.6, 19),
+            line(3.2, 15.5, 20.8, 8),
+        }
+    end,
     -- Half the disc hatched: dark style.
     ["dark-style"] = function()
         return {
