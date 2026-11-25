@@ -1,73 +1,21 @@
--- Keyboard page: the configured layouts, by name, and the lock keys. Mantle lists only the active
--- layout's name (gap 20), so the layout codes come from `hyprctl -j devices` and their names from
--- the XKB rules list. Layouts are added in Hyprland's `input.kb_layout`.
+-- Keyboard page: the configured layouts, by name, and the lock keys. Names come from
+-- `mantle.keyboard`, which names only the active layout, so the taskbar's list fills in as each
+-- layout becomes active. Layouts are added in the compositor's input config.
 local k = require("lib.paper")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
+local layouts = require("lib.layouts")
 
 local kbd = mantle.keyboard
-
--- { { code, variant, name }, ... } of the main keyboard, in configured order.
-local layouts = state("settings.keyboard.layouts", {})
-local XKB_LIST = "/usr/share/X11/xkb/rules/evdev.lst"
-
-local function split(s)
-    local out = {}
-    for item in ((s or "") .. ","):gmatch("([^,]*),") do out[#out + 1] = item end
-    return out
-end
-
--- `! layout` lines are `  code  Name`; `! variant` lines are `  variant  code: Name`.
-local function parse_names(text)
-    local names, section = {}, nil
-    for line in text:gmatch("[^\n]+") do
-        local header = line:match("^! (%w+)")
-        if header then
-            section = header
-        elseif section == "layout" then
-            local code, name = line:match("^%s+(%S+)%s+(.+)$")
-            if code then names[code] = name end
-        elseif section == "variant" then
-            local variant, code, name = line:match("^%s+(%S+)%s+(%S+): (.+)$")
-            if variant then names[code .. "(" .. variant .. ")"] = name end
-        end
-    end
-    return names
-end
-
-local function load()
-    process.capture("hyprctl", { "-j", "devices" }, function(out)
-        local ok, devices = pcall(json.decode, out or "")
-        if not ok or type(devices) ~= "table" then return end
-        local main
-        for _, d in ipairs(devices.keyboards or {}) do
-            if d.main then main = d end
-        end
-        if not main then return end
-        file.read(XKB_LIST, function(text)
-            local names = text and parse_names(text) or {}
-            local variants = split(main.variant)
-            local list = {}
-            for i, code in ipairs(split(main.layout)) do
-                local variant = variants[i] or ""
-                local key = variant ~= "" and (code .. "(" .. variant .. ")") or code
-                list[i] = { code = code, variant = variant, name = names[key] or names[code] or code }
-            end
-            layouts:set(list)
-        end)
-    end)
-end
 
 local function layout_rows()
     return column {
         width = "fill",
-        children = layouts:map(function(list)
-            if #list == 0 then return { rows.note("Reading layouts from Hyprland…") } end
+        children = computed({ kbd, layouts.seen }, function()
+            local list = layouts.list()
+            if #list == 0 then return { rows.note("No keyboard layouts reported yet.") } end
             local options = {}
-            for i, l in ipairs(list) do
-                local code = l.variant ~= "" and (l.code .. " · " .. l.variant) or l.code
-                options[i] = { i - 1, l.name .. "  ·  " .. code }
-            end
+            for i, l in ipairs(list) do options[i] = { i - 1, l.name } end
             return {
                 rows.list(
                     c.radio_group {
@@ -120,14 +68,13 @@ end
 return {
     key = "keyboard",
     title = "Keyboard",
-    on_open = load,
     build = function()
         return {
             rows.heading("Input sources", {
                 rows.caption(kbd:map(function(s) return s.active_layout ~= "" and ("now: " .. s.active_layout) or "" end, "")),
             }),
             layout_rows(),
-            rows.note("Add or reorder layouts in Hyprland's input config (kb_layout).", 1),
+            rows.note("Add or reorder layouts in your compositor's input config.", 1),
             rows.heading("Lock keys"),
             rows.line({ lock_key("Caps Lock", "caps_lock"), lock_key("Num Lock", "num_lock"), lock_key("Scroll Lock", "scroll_lock") }),
             backlight_rows(),

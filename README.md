@@ -11,6 +11,10 @@ night light and a wallpaper picker.
 
 ## Run
 
+Needs Mantle built from `main`: the shell draws with path features (`taper_start`, `stroke_dash`,
+`fit = "tile"`, shape holes) newer than v0.15.0. It runs on Hyprland and niri; night light and the
+Displays page's config lines are Hyprland-only and hide elsewhere.
+
     ./run.sh check                    # mantle check with the bundled fonts
     ./run.sh                          # start detached on every output
     PAPER_OUTPUT=DP-1 ./run.sh        # one output only
@@ -23,7 +27,7 @@ login session (Hyprland `exec-once`), so `$XDG_SESSION_ID` is set and the polkit
 
 | Feature | Needs |
 | --- | --- |
-| Night light | `hyprsunset` |
+| Night light | `hyprsunset` (Hyprland only) |
 | Screen recording | `gpu-screen-recorder`, `slurp` for a region |
 | Default terminal | `xdg-terminal-exec` |
 | App icons | Papirus icon theme |

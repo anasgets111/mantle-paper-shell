@@ -10,6 +10,7 @@ local nightlight = require("modules.nightlight")
 local store = nightlight.store
 local STEP = 30 -- minutes per click or wheel notch
 local installed = nightlight.installed:map(function(v) return v ~= false end, true)
+local supported = nightlight.supported
 
 local function nudge_warmth(_, steps)
     nightlight.set_temperature((store.temperature:get() or 4000) - steps * 250)
@@ -47,14 +48,19 @@ return function()
             rows.heading("Night light", { rows.caption(nightlight.status) }),
             rect {
                 width = "fill",
-                visible = installed:map(function(v) return not v end),
+                visible = supported:map(function(v) return not v end),
+                children = { rows.note("Night light warms the screen with hyprsunset, which works only on Hyprland.", 2) },
+            },
+            rect {
+                width = "fill",
+                visible = computed({ supported, installed }, function(s, i) return s and not i end),
                 children = {
                     rows.note("Night light needs hyprsunset: sudo pacman -S hyprsunset. The switch shows up here within a minute of installing it.", 2),
                 },
             },
             column {
                 width = "fill",
-                visible = installed,
+                visible = computed({ supported, installed }, function(s, i) return s and i end),
                 children = {
                     rows.line({ rows.label("Warm the screen at night") }, {
                         c.toggle {

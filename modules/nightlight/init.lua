@@ -1,7 +1,8 @@
 -- Night light: warms the screen with hyprsunset. On is the user's switch; the schedule either keeps
 -- it warm whenever on ("manual") or only between two fixed times ("times", sunset to sunrise by
 -- default). hyprsunset runs as a session process, so a reload keeps the screen as it was; a new
--- warmth goes over its IPC socket. Without the binary, everything says "Install hyprsunset".
+-- warmth goes over its IPC socket. Without the binary, everything says "Install hyprsunset"; on
+-- another compositor, where hyprsunset cannot warm anything, the tile and controls are hidden.
 local nightlight = {}
 
 local MIN_K, MAX_K = 2500, 6000
@@ -13,6 +14,9 @@ local store = persistent_table {
     defaults = { enabled = false, temperature = 4000, schedule = "manual", from = 20 * 60, to = 7 * 60 },
 }
 nightlight.store = store
+
+--- Whether the compositor is Hyprland; `false` until `workspaces` answers.
+nightlight.supported = mantle.workspaces:map(function(w) return w.compositor == "hyprland" end, false)
 
 --- `nil` until checked, then whether `hyprsunset` is on PATH.
 nightlight.installed = state("nightlight.installed", nil)
@@ -26,7 +30,7 @@ nightlight.recheck()
 -- ponytail: polls PATH once a minute while hyprsunset is missing, so installing it needs no
 -- reload; a pacman hook or inotify on /usr/bin would replace the poll.
 interval(60000, function()
-    if nightlight.installed:get() == false then nightlight.recheck() end
+    if nightlight.supported:get() and nightlight.installed:get() == false then nightlight.recheck() end
 end)
 
 local sunset = session_process { name = "nightlight" }
@@ -54,8 +58,9 @@ nightlight.active = computed({ store.enabled, store.schedule, store.from, store.
     end)
 
 --- The quick-settings tile's line and the settings caption.
-nightlight.status = computed({ nightlight.installed, store.enabled, store.schedule, store.from, store.to,
-    store.temperature, nightlight.active, sunset.start_error }, function(installed, on, schedule, from, to, kelvin, active, err)
+nightlight.status = computed({ nightlight.supported, nightlight.installed, store.enabled, store.schedule, store.from, store.to,
+    store.temperature, nightlight.active, sunset.start_error }, function(supported, installed, on, schedule, from, to, kelvin, active, err)
+    if not supported then return "Needs Hyprland" end
     if installed == false then return "Install hyprsunset" end
     if err and err ~= "" then return "hyprsunset failed" end
     if not on then return "Off" end
@@ -68,7 +73,7 @@ end, "Off")
 local sent
 
 local function sync()
-    local want = nightlight.active:get() and nightlight.installed:get() == true
+    local want = nightlight.active:get() and nightlight.supported:get() and nightlight.installed:get() == true
     local kelvin = math.floor(store.temperature:get() or 4000)
     if not want then
         if sunset.running:get() then sunset:stop() end
@@ -86,6 +91,7 @@ end
 
 nightlight.active:on_change(sync)
 nightlight.installed:on_change(sync)
+nightlight.supported:on_change(sync)
 store.temperature:on_change(sync)
 -- A run that ends on its own (killed outside the shell, or a second gamma client refused) is not
 -- restarted, so a failing start cannot loop; the next switch or schedule edge starts it again.

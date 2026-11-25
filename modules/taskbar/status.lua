@@ -146,6 +146,7 @@ function M.icons(output)
             },
             row {
                 spacing = 4,
+                align_v = "center",
                 visible = battery:map(function(b) return b ~= false end),
                 children = {
                     icons.status_glyph(battery:map(M.battery_name)),

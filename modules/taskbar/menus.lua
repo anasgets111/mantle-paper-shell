@@ -133,12 +133,12 @@ function M.open_settings(rect_)
 end
 
 -- The keyboard layouts by name, the active one ticked, then the Keyboard settings page.
-function M.open_layouts(rect_, layouts, active)
+function M.open_layouts(rect_, layouts)
     local list = {}
     for i, l in ipairs(layouts) do
         list[i] = {
             label = l.name,
-            checked = i - 1 == active,
+            checked = l.active,
             on_click = function() mantle.keyboard:switch_layout(i - 1) end,
         }
     end

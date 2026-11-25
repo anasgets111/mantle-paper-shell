@@ -106,6 +106,8 @@ return {
             rows.note("Mantle can only read display settings. To change one, put its hl.monitor line "
                 .. "in Hyprland's config and reload Hyprland.", 2),
         })
+        -- The fold-out prints Hyprland config lines, so other compositors don't get it.
+        more.visible = mantle.workspaces:map(function(w) return w.compositor == "hyprland" end, false)
         ui_state.modal_showing("settings"):on_change(function(open)
             if open then more_open:set(false) end
         end)

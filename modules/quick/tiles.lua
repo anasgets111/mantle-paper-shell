@@ -104,8 +104,9 @@ local function next_profile()
     if list[1] then mantle.power:set_profile(list[1]) end
 end
 
-local count = computed({ network, mantle.bluetooth, mantle.power, mantle.radio }, function(n, b, p, r)
-    local c = 4 -- Do not disturb, Keep awake, Dark style and Night light always show.
+local count = computed({ network, mantle.bluetooth, mantle.power, mantle.radio, nightlight.supported }, function(n, b, p, r, night)
+    local c = 3 -- Do not disturb, Keep awake and Dark style always show.
+    if night then c = c + 1 end
     if n and n.wifi_present then c = c + 1 end
     if b and b.available then c = c + 1 end
     if p and p.profiles and #p.profiles > 1 then c = c + 1 end
@@ -192,6 +193,7 @@ return {
                 icon = G.night,
                 on = nightlight.store.enabled:map(function(v) return v == true end),
                 status = nightlight.status,
+                visible = nightlight.supported,
                 -- Without hyprsunset the status says so; a click looks again, in case it was just installed.
                 on_click = function()
                     if not nightlight.installed:get() then return nightlight.recheck() end
