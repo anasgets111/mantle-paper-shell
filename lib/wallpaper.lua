@@ -1,6 +1,9 @@
--- The desktop picture: a path and a fit kept in `lib/store.lua`, drawn by `modules/desktop.lua` and
--- picked on Settings > Appearance. An unset path, or a file that is missing or fails to decode,
--- shows the paper default. `FOLDER` is listed live through `mantle.folders`; nothing scans it.
+-- The desktop picture, per output: `store.wallpapers` holds a `default` entry for every display and
+-- an override per output name, each `{ path?, fit? }`. A field an output leaves out comes from the
+-- default, then from the single `wallpaper_path`/`wallpaper_fit` the shell kept before, then the
+-- paper default. Drawn by `modules/desktop.lua` and the lock cover, picked on Settings > Appearance.
+-- A missing file or a failed decode shows the paper default. `FOLDER` is listed live through
+-- `mantle.folders`; nothing scans it.
 local k = require("lib.paper")
 local util = require("lib.util")
 local store = require("lib.store")
@@ -17,31 +20,119 @@ mantle.folders:watch(W.FOLDER, { "jpg", "jpeg", "png", "webp", "gif", "bmp" })
 -- The listing: `nil` until the first push, then `{ entries, error?, ready }`.
 W.folder = mantle.folders:map(function(f) return f.watched and f.watched[W.FOLDER] end)
 
--- The wallpaper image's load; a failed decode marks its path broken until something else is picked.
-W.status = image_status("paper.wallpaper")
-local broken = state("paper.wallpaper.broken", "")
+-- Paths that failed to decode, as `{ [path] = true }`, until that path is picked again.
+local broken = state("paper.wallpaper.broken_paths", {})
 
-W.path = computed({ store.wallpaper_path, broken }, function(path, bad)
-    if path == "" or path == bad then return W.DEFAULT end
-    return path
-end, W.DEFAULT)
-
-W.status:map(function(s) return s.state end, "empty"):on_change(function(now)
-    local path = W.path:get()
-    if now == "failed" and path ~= W.DEFAULT then broken:set(path) end
-end)
-
-W.fit = store.wallpaper_fit:map(function(fit)
-    return util.find(W.FITS, function(f) return f[1] == fit end) and fit or "cover"
-end, "cover")
-
-function W.set(path)
-    broken:set("")
-    store:set("wallpaper_path", path == W.DEFAULT and "" or path)
+local function is_fit(fit)
+    return util.find(W.FITS, function(f) return f[1] == fit end) ~= nil
 end
 
-function W.set_fit(fit)
-    store:set("wallpaper_fit", fit)
+-- What an output shows: `output` nil (or unknown) reads the default entry. Pure, for the checks.
+function W.resolve(all, legacy_path, legacy_fit, output, bad)
+    all = all or {}
+    local own, default = (output and all[output]) or {}, all.default or {}
+    local path = own.path or default.path or legacy_path or ""
+    local fit = own.fit or default.fit or legacy_fit
+    if path == "" or (bad or {})[path] then path = W.DEFAULT end
+    return path, is_fit(fit) and fit or "cover"
+end
+
+local inputs = { store.wallpapers, store.wallpaper_path, store.wallpaper_fit, broken }
+local paths, fits = {}, {}
+
+-- The picture and fit `output` shows; nil for every display's default.
+function W.path_of(output)
+    local key = output or ""
+    paths[key] = paths[key] or computed(inputs, function(all, lp, lf, bad)
+        return (W.resolve(all, lp, lf, output, bad))
+    end, W.DEFAULT)
+    return paths[key]
+end
+
+function W.fit_of(output)
+    local key = output or ""
+    fits[key] = fits[key] or computed(inputs, function(all, lp, lf)
+        local _, fit = W.resolve(all, lp, lf, output, {})
+        return fit
+    end, "cover")
+    return fits[key]
+end
+
+-- What `target` (a signal of an output name, `""` for every display) shows, as "path\nfit": a
+-- string, so a map of it changes only when the answer does.
+function W.shown(target)
+    return computed({ target, store.wallpapers, store.wallpaper_path, store.wallpaper_fit, broken },
+        function(t, all, lp, lf, bad)
+            local path, fit = W.resolve(all, lp, lf, t ~= "" and t or nil, bad)
+            return path .. "\n" .. fit
+        end, W.DEFAULT .. "\ncover")
+end
+
+-- Each output's image load: a failed decode marks its path broken for every output showing it.
+local statuses = {}
+function W.status_of(output)
+    if statuses[output] then return statuses[output] end
+    local status = image_status("paper.wallpaper." .. output)
+    status:map(function(s) return s.state end, "empty"):on_change(function(now)
+        local path = W.path_of(output):get()
+        if now == "failed" and path ~= W.DEFAULT then broken:set(util.with(broken:get(), path, true)) end
+    end)
+    statuses[output] = status
+    return status
+end
+
+-- Output names with their own entry.
+W.overrides = store.wallpapers:map(function(all)
+    local list = {}
+    for name in pairs(all or {}) do
+        if name ~= "default" then list[#list + 1] = name end
+    end
+    table.sort(list)
+    return list
+end, {})
+
+-- The table reads its defaults until the file's first push: a write before then would replace the
+-- stored entries. Once loaded, the single pre-per-output choice moves into `default`.
+local function loaded()
+    local s = mantle.storage:get()
+    return s ~= nil and s.contents ~= nil and s.contents[mantle.config_dir .. "/state.json"] ~= nil
+end
+local function migrate()
+    if not loaded() or (store.wallpapers:get() or {}).default then return end
+    store:set("wallpapers", util.with(store.wallpapers:get() or {}, "default", {
+        path = store.wallpaper_path:get() or "",
+        fit = store.wallpaper_fit:get() or "cover",
+    }))
+end
+mantle.storage:on_change(migrate)
+migrate()
+
+-- Set `field` for `target` (an output name), or for every display (nil): the default changes and
+-- every output's own value of that field is dropped, so all displays agree.
+local function write(target, field, value)
+    local all = {}
+    for name, entry in pairs(store.wallpapers:get() or {}) do all[name] = entry end
+    if target then
+        all[target] = util.with(all[target] or {}, field, value)
+    else
+        all.default = util.with(all.default or {}, field, value)
+        for name, entry in pairs(all) do
+            if name ~= "default" then
+                local rest = util.with(entry, field, nil)
+                all[name] = next(rest) and rest or nil
+            end
+        end
+    end
+    store:set("wallpapers", all)
+end
+
+function W.set(path, target)
+    if (broken:get() or {})[path] then broken:set(util.with(broken:get(), path, nil)) end
+    write(target, "path", path == W.DEFAULT and "" or path)
+end
+
+function W.set_fit(fit, target)
+    if is_fit(fit) then write(target, "fit", fit) end
 end
 
 return W

@@ -197,8 +197,8 @@ return function(output, opts)
         height = "fill",
         background = "#1C1A24",
         children = {
-            -- The desktop's picture and fit; the dark ground shows in "contain"'s bars.
-            image { source = wallpaper.path, fit = wallpaper.fit, width = "fill", height = "fill", async = true },
+            -- This output's desktop picture and fit; the dark ground shows in "contain"'s bars.
+            image { source = wallpaper.path_of(output), fit = wallpaper.fit_of(output), width = "fill", height = "fill", async = true },
             cover,
         },
     }

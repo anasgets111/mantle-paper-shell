@@ -370,8 +370,7 @@ local function open_menu(x, y)
     }, { anchor = "bottom_right", gravity = "bottom_right" })
 end
 
--- ponytail: every output shows the same picture and fit. Per-output pictures need a store table
--- keyed by output name and the panel's per-output instance reading its own entry.
+-- One instance per output, each drawing that output's picture (`lib/wallpaper.lua`).
 M.wallpaper = panel {
     id = "paper-wallpaper",
     namespace = "paper-wallpaper",
@@ -382,29 +381,31 @@ M.wallpaper = panel {
     exclusive_zone = "ignore",
     -- The keyboard only while the menu is open, so Escape reaches it; the desktop never holds it.
     keyboard_interactivity = menu.is_open:map(function(open) return open and "exclusive" or "none" end),
-    child = rect {
-        width = "fill",
-        height = "fill",
-        -- Fit leaves bars on a screen of another shape: dark desk, opaque.
-        background = "#1E1B18",
-        on_click = function(r, button, p)
-            if button == "right" then open_menu(r.x + p.x, r.y + p.y) end
-        end,
-        children = {
-            -- 4K files decode off-thread; a change cross-fades from the held picture.
-            image {
-                id = "paper-wallpaper-image",
-                source = wallpaper.path,
-                fit = wallpaper.fit,
-                status = wallpaper.status,
-                async = true,
-                retain = true,
-                transition = { duration = 700, easing = "in_out_sine" },
-                width = "fill",
-                height = "fill",
+    child = function(output)
+        return rect {
+            width = "fill",
+            height = "fill",
+            -- Fit leaves bars on a screen of another shape: dark desk, opaque.
+            background = "#1E1B18",
+            on_click = function(r, button, p)
+                if button == "right" then open_menu(r.x + p.x, r.y + p.y) end
+            end,
+            children = {
+                -- 4K files decode off-thread; a change cross-fades from the held picture.
+                image {
+                    id = "paper-wallpaper-image",
+                    source = wallpaper.path_of(output),
+                    fit = wallpaper.fit_of(output),
+                    status = wallpaper.status_of(output),
+                    async = true,
+                    retain = true,
+                    transition = { duration = 700, easing = "in_out_sine" },
+                    width = "fill",
+                    height = "fill",
+                },
             },
-        },
-    },
+        }
+    end,
 }
 
 M.cards = panel {

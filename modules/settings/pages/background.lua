@@ -1,7 +1,8 @@
 -- Appearance > Background: the desktop picture as a wall of photo cuts, the paper default first and
 -- then every picture in `wallpaper.FOLDER`, plus its fit. A click or Enter applies a picture; the
 -- applied one has a hatched border and a tick, the keyboard's one a pencil loop. Arrows move
--- between photos. The choice lives in `lib/wallpaper.lua`.
+-- between photos. With more than one screen a Display dropdown picks whose picture the grid sets:
+-- one output, or all of them. The choices live in `lib/wallpaper.lua`.
 local k = require("lib.paper")
 local c = require("components.controls")
 local util = require("lib.util")
@@ -25,6 +26,21 @@ end)
 state("settings.appearance.tab", 1):on_change(function() GRID:scroll_to(0) end)
 
 local function slot(path) return "settings.wallpaper." .. path end
+
+-- The display the grid and fit act on: an output name, or "" for every display. A name that is not
+-- a connected screen, or a single screen, means every display, so nothing is set out of sight.
+local picked = state("settings.wallpaper.target", "")
+local target = computed({ picked, mantle.screens }, function(name, screens)
+    if #(screens or {}) < 2 then return "" end
+    return util.find(screens, function(s) return s.name == name end) and name or ""
+end, "")
+local function target_name()
+    local t = target:get()
+    return t ~= "" and t or nil
+end
+local shown = wallpaper.shown(target)
+local shown_path = shown:map(function(s) return s:match("^(.-)\n") end, wallpaper.DEFAULT)
+local shown_fit = shown:map(function(s) return s:match("\n(.*)$") end, "cover")
 
 -- The default first, then the folder's pictures, each with its place in the grid.
 local function entries(folder)
@@ -71,7 +87,7 @@ local function photo(entry)
     local name = slot(entry.path)
     local hovered = hover(name)
     local keyed = focus_visible(name)
-    local chosen = wallpaper.path:map(function(p) return p == entry.path end, false)
+    local chosen = shown_path:map(function(p) return p == entry.path end, false)
     local r = k.rng(#entry.name + i)
     local cut = elided(name .. ".label")
     local label = tips.wrap(k.body(entry.label, 16, {
@@ -94,7 +110,7 @@ local function photo(entry)
                 hover = hovered,
                 accessible_name = entry.label,
                 cursor = "pointer",
-                on_click = function() wallpaper.set(entry.path) end,
+                on_click = function() wallpaper.set(entry.path, target_name()) end,
                 focus_target = focus_target(name),
                 focus_visible = keyed,
                 focus_ring = false,
@@ -231,16 +247,54 @@ local function grid()
     }
 end
 
+-- The Display row, shown only with two or more screens: "All displays" or one output. Under "All
+-- displays", a hint names the outputs whose own picture or fit a pick will replace.
+local function display_row()
+    local options = mantle.screens:map(function(screens)
+        local list = { { "", "All displays" } }
+        for _, s in ipairs(screens or {}) do
+            local model = s.model ~= "" and s.model or nil
+            list[#list + 1] = { s.name, model and (s.name .. " · " .. model) or s.name }
+        end
+        return list
+    end, { { "", "All displays" } })
+    local hint = computed({ target, wallpaper.overrides }, function(t, names)
+        if t ~= "" or #names == 0 then return "" end
+        return "replaces " .. table.concat(names, ", ") .. "'s own"
+    end, "")
+    return column {
+        width = "fill",
+        visible = mantle.screens:map(function(screens) return #(screens or {}) > 1 end, false),
+        children = options:map(function(list)
+            return {
+                rows.line({
+                    rows.label("Display", { width = 70 }),
+                    rows.dropdown {
+                        id = "appearance.display",
+                        label = "Display",
+                        width = 260,
+                        options = list,
+                        value = target,
+                        on_select = function(name) picked:set(name) end,
+                    },
+                }, { rows.caption(hint) }),
+            }
+        end),
+    }
+end
+
 return function()
-    -- Under its own tab, so no heading: the scale row and the grid fill the card exactly.
+    -- Under its own tab, so no heading: the scale row and the grid fill the card exactly (one row
+    -- more with the Display row, which only two or more screens show).
     return {
+        display_row(),
         rows.line({
             rows.label("Scale", { width = 70 }),
             c.radio_group {
                 id = "settings.appearance.fit",
                 options = wallpaper.FITS,
-                value = wallpaper.fit,
-                on_select = wallpaper.set_fit,
+                value = shown_fit,
+                on_select = function(fit) wallpaper.set_fit(fit, target_name()) end,
             },
         }, {
             -- How many there are, since the grid shows twelve: the cue that it scrolls.
