@@ -1,7 +1,8 @@
 -- A card opened from a keybind, on a clear full-output layer that takes the keyboard. A grab popup
 -- needs a click to grab from, so a keybind-opened one never closed on an outside click and never got
 -- Escape; here a click off the card closes it, and Escape and Tab reach it.
--- o = { id, visible = signal, close = fn, card = fn() -> node, bottom? = px above the output's foot }
+-- o = { id, visible = signal, close = fn, card = fn() -> node, bottom? = px above the output's foot,
+--       reset_on_close? }
 -- ponytail: the card sits at the active output's bottom-right, not under its opener, and tooltips
 -- parented to the click path's popup don't show here. Upgrade: a popup `parent` that can change.
 return function(o)
@@ -18,6 +19,7 @@ return function(o)
         keyboard_interactivity = "exclusive",
         visible = o.visible,
         on_escape = o.close,
+        reset_on_close = o.reset_on_close,
         child = rect {
             width = "fill",
             height = "fill",

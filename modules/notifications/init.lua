@@ -15,7 +15,7 @@ local tips = require("modules.notifications.tips")
 local M = {}
 local card = require("modules.notifications.card")
 
-M.surfaces = { popups, tips.popups.surface, center.popup, tips.menu.surface }
+M.surfaces = { popups, tips.popups.surface, center.popup, center.keyboard_surface, tips.menu.surface }
 table.move(card.menu_surfaces, 1, #card.menu_surfaces, #M.surfaces + 1, M.surfaces)
 M.unread = history.unread
 M.unread_by_app = history.unread_by_app

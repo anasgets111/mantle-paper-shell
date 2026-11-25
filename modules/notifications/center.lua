@@ -8,6 +8,7 @@ local notepad = require("modules.notifications.notepad")
 local calendar = require("modules.notifications.calendar")
 local media = require("modules.notifications.media")
 local tips = require("modules.notifications.tips")
+local catcher = require("components.catcher")
 
 local M = {}
 
@@ -15,7 +16,8 @@ local MS = 180
 
 -- Unix time the menu opened: sections and ages read it, so they hold still while it is open.
 local opened_at = state("notifications.opened_at", 0)
--- A click opens it with a grab, so an outside click closes it; a keybind has no press to grab with.
+-- A click opens the grab popup, so an outside click closes it; a keybind has no press to grab with
+-- and opens the keyboard catcher instead.
 local grab = state("notifications.center_grab", true)
 -- The compositor closed it: hidden at once, since a popup still `visible` through the exit fade would
 -- reopen on the next press.
@@ -56,28 +58,31 @@ end)
 
 local showing = st.center_open
 
-local menu = column {
-    padding = { top = 18, left = 18, right = 26, bottom = 30 },
-    opacity = util.choose(showing, 1, 0),
-    translate = showing:map(function(open_now) return { y = open_now and 0 or 12 } end),
-    animate = {
-        opacity = { duration = MS, easing = "out_cubic", from = 0 },
-        translate = { duration = MS, easing = "out_cubic", from = { y = 12 } },
-    },
-    children = {
-        row {
-            spacing = 18,
-            children = {
-                notepad.page(opened_at),
-                column {
-                    spacing = 14,
-                    padding = { top = 4 },
-                    children = { calendar.card(opened_at), media.card() },
+-- Built per surface: a node belongs to one.
+local function menu()
+    return column {
+        padding = { top = 18, left = 18, right = 26, bottom = 30 },
+        opacity = util.choose(showing, 1, 0),
+        translate = showing:map(function(open_now) return { y = open_now and 0 or 12 } end),
+        animate = {
+            opacity = { duration = MS, easing = "out_cubic", from = 0 },
+            translate = { duration = MS, easing = "out_cubic", from = { y = 12 } },
+        },
+        children = {
+            row {
+                spacing = 18,
+                children = {
+                    notepad.page(opened_at),
+                    column {
+                        spacing = 14,
+                        padding = { top = 4 },
+                        children = { calendar.card(opened_at), media.card() },
+                    },
                 },
             },
         },
-    },
-}
+    }
+end
 
 M.popup = popup {
     id = tips.MENU_ID,
@@ -87,16 +92,27 @@ M.popup = popup {
     gravity = "top",
     offset = { y = 4 },
     constraint_adjustment = { "slide_x", "flip_y" },
-    grab = grab,
+    grab = true,
     reset_on_close = { notepad.scroll },
-    visible = computed({ util.linger(showing, MS), dismissed }, function(v, gone) return v and not gone end),
+    visible = computed({ util.linger(showing, MS), dismissed, grab }, function(v, gone, g)
+        return v and g and not gone
+    end),
     on_dismiss = function()
         dismissed_at = mantle.clock:now()
         dismissed:set(true)
         if ui_state.panel_is("datemenu") then ui_state.close_panel() end
     end,
     on_escape = function() ui_state.close_panel() end,
-    child = menu,
+    child = menu(),
+}
+
+-- The keybind path: no press to grab with, so the same menu on a keyboard catcher.
+M.keyboard_surface = catcher {
+    id = "paper-notifications-datemenu-keys",
+    visible = computed({ showing, grab }, function(v, g) return v and not g end),
+    close = function() ui_state.close_panel() end,
+    reset_on_close = { notepad.scroll },
+    card = menu,
 }
 
 return M
