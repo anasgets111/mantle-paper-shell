@@ -4,7 +4,6 @@
 -- default; `xdg-settings` sets the browser and `xdg-mime default` the rest. The terminal follows
 -- the proposed XDG Default Terminal spec (`xdg-terminal-exec`, `xdg-terminals.list`), the only
 -- standard there is; without `xdg-terminal-exec` the row says so.
-local c = require("components.controls")
 local util = require("lib.util")
 local rows = require("modules.settings.rows")
 local apps = require("lib.apps")
@@ -148,24 +147,22 @@ local function names(ids)
     return out
 end
 
--- A label row, then the candidates as a radio list, the current default scribbled in.
+-- One ruled row: the category on the left, a dropdown of its apps on the right.
 local function chooser(id, label, current, ids, on_pick, empty)
-    if #ids == 0 then
-        return { rows.line({ rows.label(label, { width = 170 }) }, { rows.caption(empty) }) }
-    end
+    if #ids == 0 then return rows.line({ rows.label(label) }, { rows.caption(empty) }) end
     local labels, options = names(ids), {}
     for i, app in ipairs(ids) do options[i] = { app, labels[i] } end
-    local list = { rows.line({ rows.label(label, { width = 170, font_weight = 700 }) }, {
-        rows.caption(current and "" or "no default set"),
-    }) }
-    list[#list + 1] = rows.list(c.radio_group {
-        id = "settings.default_apps." .. id,
-        vertical = true,
-        options = options,
-        value = current,
-        on_select = on_pick,
-    }, #options)
-    return list
+    return rows.line({ rows.label(label) }, {
+        rows.dropdown {
+            id = "default_apps." .. id,
+            label = label,
+            width = 320,
+            options = options,
+            value = current,
+            empty = "no default set",
+            on_select = on_pick,
+        },
+    })
 end
 
 local function category_rows(cat, data)
@@ -174,15 +171,13 @@ local function category_rows(cat, data)
     -- A default set by hand to an app that no longer registers the type still shows.
     if entry.default and not util.index_of(ids, entry.default) then ids[#ids + 1] = entry.default end
     return chooser(cat.key, cat.label, entry.default, ids, function(id) set_default(cat, id) end,
-        "no installed app opens " .. cat.types[1])
+        "no installed app opens these")
 end
 
 local function terminal_rows(data)
     local t = data.terminal or { ids = {} }
     if t.missing then
-        return { rows.line({ rows.label("Terminal", { width = 170 }) }, {
-            rows.caption("needs xdg-terminal-exec (the proposed XDG default terminal spec)"),
-        }) }
+        return rows.line({ rows.label("Terminal") }, { rows.caption("needs xdg-terminal-exec") })
     end
     -- NoDisplay helpers (kitty's "open with" entry) are not terminals to pick.
     local applications = mantle.applications:get()
@@ -201,10 +196,8 @@ local function body()
         children = known:map(function(data)
             if not data.loaded then return { rows.note("Asking which apps open what…", 1) } end
             local list = {}
-            for _, cat in ipairs(CATEGORIES) do
-                for _, node in ipairs(category_rows(cat, data)) do list[#list + 1] = node end
-            end
-            for _, node in ipairs(terminal_rows(data)) do list[#list + 1] = node end
+            for _, cat in ipairs(CATEGORIES) do list[#list + 1] = category_rows(cat, data) end
+            list[#list + 1] = terminal_rows(data)
             return list
         end),
     }
@@ -218,7 +211,7 @@ return {
         return {
             rows.heading("Opens with"),
             body(),
-            rows.note("Apps that list a type in their desktop entry are offered. A pick is saved in "
+            rows.note("Apps whose desktop entry lists the type are offered. A pick is saved in "
                 .. "~/.config/mimeapps.list; the terminal goes first in xdg-terminals.list.", 2),
         }
     end,

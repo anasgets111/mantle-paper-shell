@@ -5,8 +5,12 @@ local c = require("components.controls")
 local util = require("lib.util")
 local tips = require("modules.settings.tips")
 local icons = require("modules.settings.icons")
+local menu = require("components.menu")
 
 local R = {}
+
+-- Every page's dropdowns open this one note on the modal host; `init.lua` lists its surfaces.
+R.menu = menu.new { id = "settings-dropdown", parent = "paper-modal-host" }
 
 R.PITCH = 34
 -- Centred text floats 11 px over its rule; handwriting sits about 4 px over it.
@@ -112,6 +116,13 @@ function R.button(id, label, kind, on_click)
     return c.button {
         id = "settings." .. id, label = label, kind = kind, height = 32, size = 22, on_click = on_click,
     }
+end
+
+-- A dropdown sized for a ruled row; `o` as `controls.dropdown`, without `menu`.
+function R.dropdown(o)
+    o.id = "settings." .. o.id
+    o.menu = R.menu
+    return c.dropdown(o)
 end
 
 -- A row action as a deep-blue link: lighter than a button where a list has one per row.

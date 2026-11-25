@@ -7,6 +7,7 @@ local modal = require("components.modal")
 local ui_state = require("lib.ui_state")
 local notebook = require("modules.settings.notebook")
 local tips = require("modules.settings.tips")
+local rows = require("modules.settings.rows")
 
 local wifi = require("modules.settings.pages.wifi")
 local bluetooth = require("modules.settings.pages.bluetooth")
@@ -41,6 +42,7 @@ if showing:get() then refresh() end
 ui_state.on_modal_close("settings", function()
     -- A note left up by a hover when the notebook shut would reappear at a stale spot on reopen.
     tips.hide()
+    rows.menu.close()
     for _, p in ipairs(PAGES) do
         if p.on_close then p.on_close() end
     end
@@ -52,7 +54,9 @@ local entry = modal {
 }
 
 entry.page = page
-entry.surfaces = { tips.surface }
+entry.surfaces = { tips.surface, rows.menu.surfaces[1], rows.menu.surfaces[2] }
+-- A dropdown left open belongs to the page it was opened from.
+page:on_change(function() rows.menu.close() end)
 function entry.open(key)
     page:set(key)
     ui_state.active_modal:set("settings")

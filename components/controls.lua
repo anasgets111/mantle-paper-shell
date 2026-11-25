@@ -288,6 +288,86 @@ function M.radio_group(o)
     return row { spacing = 26, children = rows }
 end
 
+-- Dropdown: a card-stock strip showing the current choice and a chevron. A click, Enter or Space
+-- opens `o.menu` (a `components/menu.lua` menu on the same surface) under it, the current option
+-- ticked; the wheel steps through the options without opening it.
+-- o = { id, options = { {value, label}, ... }, value = signal|plain, on_select = fn(v), menu, width?,
+--       height?, label? (accessible name), empty? (text while no option matches) }
+function M.dropdown(o)
+    local W, H = o.width or 260, o.height or 28
+    local hovered = hover_of("dropdown", o.id)
+    local focus, mark = focus_mark("paper.dropdown." .. o.id, W, H, #o.id)
+    local function index(v)
+        for i, opt in ipairs(o.options) do
+            if opt[1] == v then return i end
+        end
+    end
+    local current = util.lift(o.value, function(v)
+        local i = index(v)
+        return i and o.options[i][2] or (o.empty or "")
+    end)
+    -- Touchpads send fractions of a notch: a step waits for a whole one.
+    local notches = 0
+    local function step(by)
+        local i = index(util.get(o.value))
+        local to = o.options[i and i + by or (by > 0 and 1 or #o.options)]
+        if to and o.on_select then o.on_select(to[1]) end
+    end
+    return rect {
+        width = W,
+        height = H,
+        hover = hovered,
+        focus_visible = focus,
+        focus_ring = false,
+        accessible_name = o.label or o.id,
+        cursor = "pointer",
+        on_click = function(r)
+            local now = util.get(o.value)
+            local items = {}
+            for i, opt in ipairs(o.options) do
+                items[i] = {
+                    label = opt[2],
+                    checked = opt[1] == now or nil,
+                    on_click = function() if o.on_select then o.on_select(opt[1]) end end,
+                }
+            end
+            o.menu.open(r, items, { anchor = "bottom_left", gravity = "bottom_right", width = math.max(W + 28, 250) })
+        end,
+        on_wheel = function(_, steps)
+            notches = notches + steps
+            while math.abs(notches) >= 1 do
+                -- Away from the user is up the list.
+                step(notches > 0 and -1 or 1)
+                notches = notches - (notches > 0 and 1 or -1)
+            end
+        end,
+        translate = hovered:map(function(v) return { y = v and -2 or 0 } end),
+        animate = { translate = { duration = 140, easing = "out_cubic" } },
+        children = {
+            k.sheet {
+                width = W,
+                height = H,
+                seed = W + #o.id,
+                depth = 2,
+                color = k.CARD_LIGHT,
+                shadows = k.lift(hovered),
+                animate = { shadows = { duration = 160, easing = "out_cubic" } },
+                child = row {
+                    width = "fill",
+                    height = "fill",
+                    spacing = 6,
+                    padding = { left = 12, right = 8 },
+                    children = {
+                        body(current, 19, { width = "fill", elide = "end", align_v = "center" }),
+                        util.with(icons.doodle("chevron-down", 18, INK_SOFT), "align_v", "center"),
+                    },
+                },
+            },
+            mark,
+        },
+    }
+end
+
 -- Checkbox with a label. o = { id?, label, value, on_toggle = fn(new) }
 function M.checkbox_row(o)
     local focus, mark = focus_mark("paper.check." .. (o.id or o.label), 22, 22, #o.label)

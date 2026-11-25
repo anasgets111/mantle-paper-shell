@@ -5,8 +5,10 @@
 --   surfaces: menu.surfaces (add both to the shell's list)
 --   open:     menu.open(rect, items, { anchor = "top", gravity = "top" })
 --   items:    { label, icon?, on_click?, checked? (true/false/nil), disabled?, separator?, children? }
+--   opts.width: the note's width, 250 by default.
 --
 -- An item's on_click runs and the menu closes; an item with `children` opens the submenu instead.
+-- Up and Down move the keyboard between rows; Down with no row focused starts at the ticked one.
 local k = require("lib.paper")
 local controls = require("components.controls")
 
@@ -16,11 +18,22 @@ local ROW_H, WIDTH = 34, 250
 -- Room for the sticky note's shadow (blur 10, offset y 6) inside the popup.
 local PAD = { top = 14, left = 14, right = 14, bottom = 22 }
 
-local function item_row(id, i, item, on_pick)
+local function row_target(id, i) return focus_target(id .. ".row." .. i) end
+
+-- The next row from `i` by `by` that takes focus, skipping separators and disabled rows.
+local function neighbour(items, i, by)
+    local j = i + by
+    while items[j] and (items[j].separator or items[j].disabled) do j = j + by end
+    return items[j] and j
+end
+
+local function item_row(id, i, item, on_pick, width, items)
     if item.separator then
-        return rect { height = 10, width = "fill", padding = { left = 14, right = 14 }, children = { controls.divider(WIDTH - 28) } }
+        return rect { height = 10, width = "fill", padding = { left = 14, right = 14 }, children = { controls.divider(width - 28) } }
     end
     local hovered = hover(id .. ".row." .. i)
+    local keyed = focus_visible(id .. ".row." .. i)
+    local lit = computed({ hovered, keyed }, function(h, f) return h or f end)
     local ink = item.disabled and k.INK_SOFT or k.INK
     local lead
     if item.checked ~= nil then
@@ -39,21 +52,30 @@ local function item_row(id, i, item, on_pick)
         width = "fill",
         height = ROW_H,
         hover = hovered,
+        focus_target = row_target(id, i),
+        focus_visible = keyed,
+        focus_ring = false,
+        on_key = function(key)
+            local by = ({ Up = -1, Down = 1 })[key.name]
+            local to = by and neighbour(items, i, by)
+            if to then row_target(id, to):request() end
+            return by ~= nil
+        end,
         accessible_name = item.label,
         cursor = item.disabled and "default" or "pointer",
         on_click = function(r)
             if not item.disabled then on_pick(item, r) end
         end,
         children = {
-            -- A highlighter swipe under the hovered row.
+            -- A highlighter swipe under the hovered or keyboard-focused row.
             rect {
                 width = "fill",
                 height = ROW_H - 8,
                 align_v = "center",
                 background = k.HIGHLIGHT,
                 blend = "multiply",
-                shape = k.tape_shape(WIDTH - 16, ROW_H - 8, i + 3),
-                opacity = hovered:map(function(v) return (v and not item.disabled) and 1 or 0 end),
+                shape = k.tape_shape(width - 16, ROW_H - 8, i + 3),
+                opacity = lit:map(function(v) return (v and not item.disabled) and 1 or 0 end),
                 animate = { opacity = { duration = 100 } },
             },
             row { width = "fill", height = "fill", spacing = 10, padding = { left = 14, right = 14 }, children = children },
@@ -61,22 +83,36 @@ local function item_row(id, i, item, on_pick)
     }
 end
 
-local function note(id, items, on_pick, title)
+local function note(id, items, on_pick, title, width)
+    width = width or WIDTH
     local rows = {}
     if title then
-        rows[1] = k.hand(title, 24, { font_weight = 700, padding = { left = 14, bottom = 2, right = 4 }, elide = "end", max_width = WIDTH - 20 })
+        rows[1] = k.hand(title, 24, { font_weight = 700, padding = { left = 14, bottom = 2, right = 4 }, elide = "end", max_width = width - 20 })
     end
-    for i, item in ipairs(items or {}) do rows[#rows + 1] = item_row(id, i, item, on_pick) end
+    for i, item in ipairs(items or {}) do rows[#rows + 1] = item_row(id, i, item, on_pick, width, items) end
     local h = 0
     for _, item in ipairs(items or {}) do h = h + (item.separator and 10 or ROW_H) end
     h = h + 26 + (title and 34 or 0)
     return controls.sticky {
-        width = WIDTH,
+        width = width,
         height = h,
         seed = #id + #(items or {}),
         rotate = -0.8,
         child = column { width = "fill", padding = { top = 14, bottom = 10 }, children = rows },
     }
+end
+
+-- The popup root hears keys no row took: Up or Down before any row has focus starts at the ticked
+-- row, else the first.
+local function enter(id, items, key)
+    if key.name ~= "Down" and key.name ~= "Up" then return false end
+    local start
+    for i, item in ipairs(items) do
+        if item.checked and not start then start = i end
+    end
+    start = start or neighbour(items, 0, 1)
+    if start then row_target(id, start):request() end
+    return true
 end
 
 -- o = { id, parent }
@@ -86,6 +122,7 @@ function M.new(o)
     local placement = state(o.id .. ".placement", { anchor = "top", gravity = "top" })
     local items = state(o.id .. ".items", {})
     local title = state(o.id .. ".title", false)
+    local width = state(o.id .. ".width", WIDTH)
     local sub_open = state(o.id .. ".sub.open", false)
     local sub_anchor = state(o.id .. ".sub.anchor", { x = 0, y = 0, width = 1, height = 1 })
     local sub_items = state(o.id .. ".sub.items", {})
@@ -120,6 +157,7 @@ function M.new(o)
         anchor:set({ x = rect_.x or 0, y = rect_.y or 0, width = math.max(1, rect_.width or 1), height = math.max(1, rect_.height or 1) })
         placement:set({ anchor = opts.anchor or "top", gravity = opts.gravity or "top" })
         title:set(opts.title or false)
+        width:set(opts.width or WIDTH)
         items:set(#list + math.random()) -- a fresh value so the note rebuilds for every open
         open:set(true)
     end
@@ -137,8 +175,12 @@ function M.new(o)
             constraint_adjustment = { "flip_y", "flip_x", "slide_x", "slide_y" },
             on_escape = menu.close,
             on_dismiss = menu.close,
-            child = computed({ items, title }, function(_, t)
-                return rect { padding = PAD, children = { note(o.id, live, pick, t or nil) } }
+            child = computed({ items, title, width }, function(_, t, w)
+                return rect {
+                    padding = PAD,
+                    on_key = function(key) return enter(o.id, live, key) end,
+                    children = { note(o.id, live, pick, t or nil, w) },
+                }
             end),
         },
         popup {
@@ -151,7 +193,11 @@ function M.new(o)
             constraint_adjustment = { "flip_x", "slide_y" },
             on_dismiss = function() sub_open:set(false) end,
             child = sub_items:map(function()
-                return rect { padding = PAD, children = { note(o.id .. "-sub", live_sub, pick) } }
+                return rect {
+                    padding = PAD,
+                    on_key = function(key) return enter(o.id .. "-sub", live_sub, key) end,
+                    children = { note(o.id .. "-sub", live_sub, pick) },
+                }
             end),
         },
     }
