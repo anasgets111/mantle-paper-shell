@@ -13,6 +13,7 @@ local tray = require("modules.taskbar.tray")
 local status = require("modules.taskbar.status")
 local start = require("modules.taskbar.start")
 local privacy = require("modules.taskbar.privacy")
+local awake = require("modules.taskbar.awake")
 local tips = require("modules.taskbar.tips")
 
 -- The updater widget lives in another module that may not exist yet; without it, nothing shows.
@@ -133,6 +134,7 @@ local function bar(output)
     local hidden = fullscreen_on(output)
     local right = {}
     if updates then right[#right + 1] = updates.widget(output) end
+    right[#right + 1] = awake.indicator(output)
     right[#right + 1] = privacy.indicators(output)
     right[#right + 1] = status.icons(output)
     right[#right + 1] = status.clock(output)
