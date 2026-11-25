@@ -91,7 +91,7 @@ The user judges polish by behaviour as much as looks. Walk this list for everyth
   except on hover popups (tooltips, previews).
 - **Wheel:** wheel over a value changes it: the volume icon (default sink ±5 %, `set_volume`),
   brightness, every slider, the mic icon. Wheel over the taskbar task icons cycles that app's windows;
-  over the workspace numbers it switches workspace. Lists scroll.
+  over the desk chips it steps through the desks that hold windows. Lists scroll.
 - **Middle / right click:** middle click on the volume icon toggles mute; on a task opens a new
   window. Right click opens a context menu wherever one makes sense (tasks, start-menu apps, tray,
   status icons → the matching settings page).

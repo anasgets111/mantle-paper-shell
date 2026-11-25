@@ -6,6 +6,7 @@ local apps = require("lib.apps")
 local tasks = require("modules.taskbar.tasks")
 local icons = require("modules.taskbar.icons")
 local press = require("modules.taskbar.press")
+local start = require("modules.taskbar.start")
 
 local M = {}
 
@@ -168,7 +169,7 @@ function M.new(item, ctx)
             wheel = 0
             if id then mantle.windows:focus(id) end
         end,
-        on_drag = function(_, p, phase)
+        on_drag = function(box, p, phase)
             held(nil, nil, phase)
             if phase == "start" then
                 grab, suppress_click = { x = p.x, y = p.y, moved = false }, false
@@ -180,21 +181,27 @@ function M.new(item, ctx)
                 grab.moved = true
                 ctx.hide_preview()
             end
-            if not grab.moved or not (item.pinned or item.id) then
+            if not grab.moved or not (item.pinned or item.id or #item.wins > 0) then
                 if phase == "end" then grab = nil end
                 return
             end
-            local to, crossed = target(item, dx)
+            -- Over a desk chip or "+", a running app's windows move there instead of reordering.
+            local desk = #item.wins > 0 and start.desk_at(ctx.output, box.x + p.x, box.y + p.y) or nil
+            local from = item.pinned and item.pin_index or item.slot
+            local to, crossed = from, false
+            if not desk and (item.pinned or item.id) then to, crossed = target(item, dx) end
             local d = {
                 key = item.key,
                 kind = item.pinned and "pinned" or "running",
-                from = item.pinned and item.pin_index or item.slot,
+                from = from,
                 to = to,
                 dx = dx,
                 crossed = crossed,
+                desk = desk,
             }
             if phase == "end" then
                 grab, suppress_click = nil, true
+                if desk then start.move_to(ctx.output, desk, item.wins) end
                 ctx.commit(item, d)
             else
                 ctx.drag:set(d)
