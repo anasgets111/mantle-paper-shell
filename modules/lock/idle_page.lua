@@ -190,9 +190,10 @@ local status = computed({ settings, idle.schedule, idle.reasons }, function(s, p
 end)
 
 -- Called like a function by the settings page; `surface` is the tooltip popup for the shell's list.
-local function build()
-    local children = {
-        controls.section("When idle", {
+-- `part` = "idle" or "awake" builds one section, for a page that shows them under separate tabs.
+local function build(part)
+    local function when_idle()
+        return controls.section("When idle", {
             switch_row("enabled", "Automatic actions", settings:map(function(s) return s.enabled end),
                 function(on) idle.write({ enabled = on }) end, status),
             rect {
@@ -210,14 +211,19 @@ local function build()
                 foreground = k.INK_SOFT,
             }),
             stages,
-        }),
-        controls.section("Keep awake", {
+        })
+    end
+    local function keep_awake()
+        return controls.section("Keep awake", {
             switch_row("manual", "Keep awake now", idle.manual, idle.set_manual),
             setting_toggle("capture", "While the camera, microphone or screen is being captured", "privacy_auto_inhibit"),
             setting_toggle("sleep", "While an app is blocking sleep", "sleep_holds_keep_awake"),
-        }),
-    }
-    if not idle.ENABLED then
+        })
+    end
+    local children = {}
+    if part ~= "awake" then children[#children + 1] = when_idle() end
+    if part ~= "idle" then children[#children + 1] = keep_awake() end
+    if not idle.ENABLED and part ~= "awake" then
         -- A sticky note so nobody wonders why the timers do nothing yet.
         table.insert(children, 1, controls.sticky {
             width = 520,
@@ -240,4 +246,4 @@ local function build()
     return column { width = "fill", spacing = 26, children = children }
 end
 
-return setmetatable({ surface = tips.surface }, { __call = function() return build() end })
+return setmetatable({ surface = tips.surface }, { __call = function(_, part) return build(part) end })

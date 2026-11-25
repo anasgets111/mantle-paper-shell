@@ -490,17 +490,30 @@ function M.field(o)
     }
 end
 
--- Index tabs, horizontal: the chosen tab stands taller. Pair with a card of `M.TINTS[i]` below.
--- o = { names, value = index signal, on_select = fn(i), width? }
+-- Index tabs, horizontal: the chosen tab stands taller. Pair with a card of `M.TINTS[i]` below, or
+-- stand them on a ruled line. Left and Right on a focused tab choose its neighbour.
+-- o = { id, names, value = index signal, on_select = fn(i), width? }
 M.TINTS = { "#E9DDBB", "#C9D8EA", "#EBCBC5", "#D6E3C4", "#E4D3E8", "#F0DDB8" }
 function M.tabs(o)
     local items = {}
     local w = o.width or 118
+    local function target(i) return focus_target("paper.tabs." .. o.id .. "." .. i) end
     for i, n in ipairs(o.names) do
+        local focus = focus_visible("paper.tabs." .. o.id .. "." .. i)
         items[i] = rect {
             accessible_name = n,
             cursor = "pointer",
             on_click = function() if o.on_select then o.on_select(i) end end,
+            focus_target = target(i),
+            focus_visible = focus,
+            focus_ring = false,
+            on_key = function(key)
+                local to = i + (({ Left = -1, Right = 1 })[key.name] or 0)
+                if to == i or not o.names[to] then return key.name == "Left" or key.name == "Right" end
+                if o.on_select then o.on_select(to) end
+                target(to):request()
+                return true
+            end,
             align_v = "end",
             z = util.lift(o.value, function(p) return p == i and #o.names + 1 or #o.names - i end),
             children = util.lift(o.value, function(p)
@@ -528,6 +541,11 @@ function M.tabs(o)
                                 padding = { top = 6, right = 4 },
                                 foreground = p == i and INK or INK_SOFT,
                             }),
+                            rect {
+                                translate = { x = 8, y = 4 },
+                                opacity = focus:map(function(v) return v and 1 or 0 end),
+                                children = { M.pencil_loop(w - 16, h - 14, 60 + i, 2) },
+                            },
                         },
                     },
                 }

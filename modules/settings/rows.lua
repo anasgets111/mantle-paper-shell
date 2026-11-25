@@ -125,6 +125,41 @@ function R.dropdown(o)
     return c.dropdown(o)
 end
 
+-- Index tabs standing on a ruled line at the top of a page, two pitches tall, for a page with
+-- distinct parts. Returns the strip and the chosen index (`settings.<page>.tab`); `R.pane` shows a
+-- part only under its tab. Choosing a tab scrolls the page back to its top.
+function R.tabs(page, names, width)
+    local chosen = state("settings." .. page .. ".tab", 1)
+    local strip = rect {
+        width = "fill",
+        height = R.PITCH * 2,
+        children = {
+            rect { width = "fill", align_v = "end", translate = { y = 3 }, children = { c.divider(R.WIDTH, false, #page) } },
+            rect {
+                align_v = "end",
+                translate = { y = -6 },
+                children = {
+                    c.tabs {
+                        id = "settings." .. page,
+                        names = names,
+                        value = chosen,
+                        width = width or 150,
+                        on_select = function(i)
+                            chosen:set(i)
+                            scroll("settings.scroll." .. page):scroll_to(0)
+                        end,
+                    },
+                },
+            },
+        },
+    }
+    return strip, chosen
+end
+
+function R.pane(chosen, i, children)
+    return column { width = "fill", visible = chosen:map(function(v) return v == i end), children = children }
+end
+
 -- A row action as a deep-blue link: lighter than a button where a list has one per row.
 function R.action(id, label, on_click)
     return c.link { id = "settings." .. id, label = label, size = 24, on_click = on_click }

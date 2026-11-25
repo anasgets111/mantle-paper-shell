@@ -1,5 +1,6 @@
--- Power page: power profile, screen brightness when there is a backlight, the battery and other
--- batteries UPower knows, then the idle settings the lock builder owns (`modules/lock/idle_page.lua`).
+-- Power page under three tabs: Power (profile, screen brightness when there is a backlight, the
+-- battery and other batteries UPower knows), then Idle and Keep awake, the two halves of the idle
+-- settings the lock builder owns (`modules/lock/idle_page.lua`).
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
 local icons = require("modules.settings.icons")
@@ -32,17 +33,17 @@ local function profile_rows()
             end
             local options = {}
             for name in list:gmatch("[^,]+") do options[#options + 1] = { name, PROFILE_NAMES[name] or name } end
-            return {
-                rows.list(
-                    c.radio_group {
-                        id = "settings.power.profile",
-                        vertical = true,
-                        options = options,
-                        value = mantle.power:map(function(p) return p.active_profile end),
-                        on_select = function(name) mantle.power:set_profile(name) end,
-                    }, #options
-                ),
+            -- Three profiles read best side by side; a daemon offering more gets a dropdown.
+            local pick = {
+                id = "power.profile",
+                label = "Power mode",
+                options = options,
+                value = mantle.power:map(function(p) return p.active_profile end),
+                on_select = function(name) mantle.power:set_profile(name) end,
             }
+            if #options > 3 then return { rows.line({ rows.label("Mode") }, { rows.dropdown(pick) }) } end
+            pick.id = "settings.power.profile"
+            return { rows.line({ c.radio_group(pick) }) }
         end),
     }
 end
@@ -114,11 +115,14 @@ return {
     key = "power",
     title = "Power",
     build = function()
-        local list = { rows.heading("Power mode"), profile_rows() }
-        list[#list + 1] = brightness_rows()
-        for _, node in ipairs(battery_rows()) do list[#list + 1] = node end
-        list[#list + 1] = rows.heading("Idle and screen lock")
-        list[#list + 1] = rect { width = "fill", padding = { top = 6 }, children = { idle_page() } }
-        return list
+        local strip, tab = rows.tabs("power", { "Power", "Idle", "Keep awake" })
+        local power = { rows.heading("Power mode"), profile_rows(), brightness_rows() }
+        for _, node in ipairs(battery_rows()) do power[#power + 1] = node end
+        return {
+            strip,
+            rows.pane(tab, 1, power),
+            rows.pane(tab, 2, { rect { width = "fill", padding = { top = 4 }, children = { idle_page("idle") } } }),
+            rows.pane(tab, 3, { rect { width = "fill", padding = { top = 16 }, children = { idle_page("awake") } } }),
+        }
     end,
 }
