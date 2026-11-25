@@ -18,5 +18,9 @@ return persistent_table {
         muted_apps = {},
         -- Notification history kept across restarts (newest first, at most 100).
         notification_history = {},
+        -- Desktop picture (`lib/wallpaper.lua`): a file path, `""` for the paper default, and its
+        -- `image.fit`.
+        wallpaper_path = "",
+        wallpaper_fit = "cover",
     },
 }

@@ -24,7 +24,7 @@ local settings = require("modules.settings")
 local updates = require("modules.updates")
 
 local surfaces = { desktop.wallpaper, desktop.cards, modal_host }
-for _, group in ipairs({ taskbar, notifications, osd, quick, lock, startmenu, settings, updates }) do
+for _, group in ipairs({ desktop, taskbar, notifications, osd, quick, lock, startmenu, settings, updates }) do
     table.move(group.surfaces, 1, #group.surfaces, #surfaces + 1, surfaces)
 end
 

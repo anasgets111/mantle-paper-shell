@@ -38,6 +38,8 @@ end)
 if showing:get() then refresh() end
 
 ui_state.on_modal_close("settings", function()
+    -- A note left up by a hover when the notebook shut would reappear at a stale spot on reopen.
+    tips.hide()
     for _, p in ipairs(PAGES) do
         if p.on_close then p.on_close() end
     end

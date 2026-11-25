@@ -1,6 +1,10 @@
 -- The desk: the wallpaper and the cards pinned to it (clock, quote, todo, music, photo). Cards drag
--- anywhere and remember where they were dropped; double-click puts one back.
+-- anywhere and remember where they were dropped; double-click puts one back. Right-click on the
+-- wallpaper offers "Change background…".
 local k = require("lib.paper")
+local menu_component = require("components.menu")
+local settings = require("modules.settings")
+local wallpaper = require("lib.wallpaper")
 local DIR, INK, INK_SOFT, RED = k.DIR, k.INK, k.INK_SOFT, k.RED
 local hand, body, glyph, card, tape = k.hand, k.body, k.glyph, k.card, k.tape
 local squiggle, sprig, star, heart, checkbox = k.squiggle, k.sprig, k.star, k.heart, k.checkbox
@@ -342,6 +346,22 @@ end
 
 local M = {}
 
+-- Right-click on the bare wallpaper (the cards panel above claims only its cards).
+local menu = menu_component.new { id = "paper-desktop-menu", parent = "paper-wallpaper" }
+M.surfaces = menu.surfaces
+
+local function open_menu(x, y)
+    menu.open({ x = x, y = y, width = 1, height = 1 }, {
+        {
+            label = "Change background…",
+            icon = "preferences-desktop-wallpaper-symbolic",
+            on_click = function() settings.open("appearance") end,
+        },
+    }, { anchor = "bottom_right", gravity = "bottom_right" })
+end
+
+-- ponytail: every output shows the same picture and fit. Per-output pictures need a store table
+-- keyed by output name and the panel's per-output instance reading its own entry.
 M.wallpaper = panel {
     id = "paper-wallpaper",
     namespace = "paper-wallpaper",
@@ -350,7 +370,27 @@ M.wallpaper = panel {
     width = "fill",
     height = "fill",
     exclusive_zone = "ignore",
-    child = image { source = DIR .. "/img/wallpaper.jpg", width = "fill", height = "fill", fit = "cover" },
+    child = rect {
+        width = "fill",
+        height = "fill",
+        on_click = function(r, button, p)
+            if button == "right" then open_menu(r.x + p.x, r.y + p.y) end
+        end,
+        children = {
+            -- 4K files decode off-thread; a change cross-fades from the held picture.
+            image {
+                id = "paper-wallpaper-image",
+                source = wallpaper.path,
+                fit = wallpaper.fit,
+                status = wallpaper.status,
+                async = true,
+                retain = true,
+                transition = { duration = 700, easing = "in_out_sine" },
+                width = "fill",
+                height = "fill",
+            },
+        },
+    },
 }
 
 M.cards = panel {

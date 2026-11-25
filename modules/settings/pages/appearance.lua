@@ -1,9 +1,11 @@
--- Appearance page: light or dark for apps. The choice lives in `lib/store.lua` (`colour_scheme`)
--- and reaches GTK and the portal through gsettings `color-scheme`. The paper shell stays light.
+-- Appearance page: light or dark for apps, and the desktop background (`pages/background.lua`).
+-- The scheme lives in `lib/store.lua` (`colour_scheme`) and reaches GTK and the portal through
+-- gsettings `color-scheme`. The paper shell stays light.
 local k = require("lib.paper")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
 local store = require("lib.store")
+local background = require("modules.settings.pages.background")
 
 local SCHEMES = {
     { "light", "Light", k.CARD, k.INK },
@@ -76,7 +78,7 @@ return {
     build = function()
         local options = {}
         for i, s in ipairs(SCHEMES) do options[i] = { s[1], s[2] } end
-        return {
+        local list = {
             rows.heading("Style for apps"),
             row { height = rows.PITCH * 5, spacing = 40, padding = { top = 10, left = 6 }, children = { swatch(SCHEMES[1], 1), swatch(SCHEMES[2], 2) } },
             rows.line({
@@ -90,5 +92,7 @@ return {
             rows.note("GTK and libadwaita apps follow this through the desktop portal. The paper shell keeps "
                 .. "its light desk for now.", 2),
         }
+        for _, node in ipairs(background()) do list[#list + 1] = node end
+        return list
     end,
 }
