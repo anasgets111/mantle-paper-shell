@@ -14,10 +14,15 @@ function M.exact(timestamp)
     return os.date("%a %I:%M %p", timestamp or 0)
 end
 
+-- At most this many characters in a tooltip: a mail body can run to pages.
+local TIP_CHARS = 600
+
 -- A text node that shows its full content in a tooltip only while `elide` cut it.
 function M.elided(tips, node, slot, full)
     local cut = elided(slot .. ".elided")
     node.elided = cut
+    local cap = utf8.offset(full, TIP_CHARS + 1)
+    if cap then full = full:sub(1, cap - 1) .. "\u{2026}" end
     return tips.wrap(node, slot, function() return cut:get() and full or "" end)
 end
 

@@ -60,9 +60,9 @@ local function item(record, now, slot)
         },
     }
     if (record.body or "") ~= "" then
-        lines[2] = k.body(record.body, 16, {
+        lines[2] = tips_mod.elided(tips, k.body(record.body, 16, {
             foreground = k.INK_SOFT, width = "fill", wrap = "word", max_lines = 2, elide = "end",
-        })
+        }), name .. ".body", record.body)
     end
     -- Hover swipes yellow highlighter across the note, as a link does.
     local hovered = hover(name)

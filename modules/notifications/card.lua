@@ -89,14 +89,14 @@ local function title_and_body(n, slot, ink)
         }), "notifications.pop." .. slot .. ".title", title),
     }
     if #runs > 0 then
-        children[#children + 1] = k.body(runs, 19, {
+        children[#children + 1] = tips_mod.elided(tips, k.body(runs, 19, {
             foreground = ink,
             width = "fill",
             wrap = "word",
             max_lines = 4,
             elide = "end",
             on_link = function(href) mantle.applications:open_url(href) end,
-        })
+        }), "notifications.pop." .. slot .. ".body", feed.record(n).body)
     end
     return column { width = "fill", spacing = 2, children = children }, images
 end
