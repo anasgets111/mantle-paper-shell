@@ -7,3 +7,4 @@ gaps/
 *.png
 !img/*.png
 .fc-cache/
+gaps.html
