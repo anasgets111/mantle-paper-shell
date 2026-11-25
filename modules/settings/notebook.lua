@@ -217,7 +217,8 @@ local function card(p, page)
                                     },
                                 },
                             },
-                            column { width = "fill", children = body },
+                            -- Right-aligned controls keep clear of the torn edge; the rules still run to it.
+                            column { width = "fill", padding = { right = 12 }, children = body },
                         },
                     },
                 },
