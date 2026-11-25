@@ -1,10 +1,10 @@
 -- Appearance page: light or dark for apps, and the desktop background (`pages/background.lua`).
--- The scheme lives in `lib/store.lua` (`colour_scheme`) and reaches GTK and the portal through
--- gsettings `color-scheme`. The paper shell stays light.
+-- `lib/scheme.lua` switches apps' light/dark pair (GTK, libadwaita, Qt, the portal). The paper shell
+-- stays light.
 local k = require("lib.paper")
 local c = require("components.controls")
 local rows = require("modules.settings.rows")
-local store = require("lib.store")
+local scheme = require("lib.scheme")
 local background = require("modules.settings.pages.background")
 
 local SCHEMES = {
@@ -12,15 +12,8 @@ local SCHEMES = {
     { "dark", "Dark", "#3B3732", "#E9E1CF" },
 }
 
--- What apps get now: the portal's answer, else the stored choice (the portal may say "default").
-local current = computed({ mantle.appearance, store.colour_scheme }, function(a, stored)
-    return (a and a.color_scheme ~= "default") and a.color_scheme or stored
-end, "light")
-
-local function choose(scheme)
-    store:set("colour_scheme", scheme)
-    process.detach("gsettings", { "set", "org.gnome.desktop.interface", "color-scheme", "prefer-" .. scheme })
-end
+local current = scheme.current
+local choose = scheme.set
 
 -- A small sheet showing a window in that scheme: a title bar and a few lines of text.
 local function swatch(s, i)
