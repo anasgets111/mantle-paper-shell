@@ -11,6 +11,7 @@ local DOODLES = {
     displays = "display",
     power = "power",
     appearance = "image",
+    default_apps = "check",
     keyboard = "keyboard",
     notifications = "bell",
     updates = "download",

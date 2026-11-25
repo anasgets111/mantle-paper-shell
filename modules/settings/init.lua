@@ -14,12 +14,13 @@ local sound = require("modules.settings.pages.sound")
 local displays = require("modules.settings.pages.displays")
 local power = require("modules.settings.pages.power")
 local appearance = require("modules.settings.pages.appearance")
+local default_apps = require("modules.settings.pages.default_apps")
 local keyboard = require("modules.settings.pages.keyboard")
 local notifications = require("modules.settings.pages.notifications")
 local about = require("modules.settings.pages.about")
 local updates = require("modules.settings.pages.updates")
 
-local PAGES = { wifi, bluetooth, sound, displays, power, appearance, keyboard, notifications, updates, about }
+local PAGES = { wifi, bluetooth, sound, displays, power, appearance, default_apps, keyboard, notifications, updates, about }
 
 local page = state("settings.page", "wifi")
 local showing = ui_state.modal_showing("settings")

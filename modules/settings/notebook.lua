@@ -13,7 +13,8 @@ local PAGE_W, PAGE_H = 800, 680
 local TOP = 22
 -- Every tab tucks 22 px under the page; the chosen one reaches across the margin to its card.
 local PAGE_X = 200
-local TABS_W, TAB_H, TAB_GAP, TABS_Y = 222, 50, 6, TOP + 74
+-- Eleven 48 px tabs 4 px apart end 16 px above the page's foot.
+local TABS_W, TAB_H, TAB_GAP, TABS_Y = 222, 48, 4, TOP + 74
 local CARD_X, CARD_Y = 76, 96
 local CARD_PAD = 14
 local CARD_MAX_H = PAGE_H - CARD_Y - 22
