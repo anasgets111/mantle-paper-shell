@@ -1,10 +1,13 @@
 -- Now playing, on the lock cover: a scrap of card stock under the name label with the cover art
 -- taped on, the title and artist, and previous / play-pause / next discs. Hidden with no player.
--- A click here leaves the password field armed (secure fields stay armed on non-field clicks).
+-- The discs are pointer-only: a press focuses any named control (docs/guide/input.md, keyboard
+-- controls), which would stop typing reaching the password field and turn Enter into play/pause.
+-- An empty `accessible_name` keeps them out of focus, at the cost of screen-reader access.
 -- No tooltips: a lock surface cannot parent a popup.
 local k = require("lib.paper")
 local icons = require("components.icons")
 local controls = require("components.controls")
+local util = require("lib.util")
 local G = require("modules.lock.glyphs")
 
 local W, H, ART = 460, 104, 66
@@ -38,7 +41,7 @@ local function art(p)
 end
 
 local function disc(p, name, icon, cmd, enabled, size)
-    return controls.disc_button {
+    return util.with(controls.disc_button {
         id = "lock.media." .. name,
         icon = icon,
         size = size,
@@ -46,7 +49,7 @@ local function disc(p, name, icon, cmd, enabled, size)
         tooltip = name,
         ink = enabled and k.INK or k.INK_SOFT,
         on_click = function() if enabled then mantle.mpris:control(p.id, cmd) end end,
-    }
+    }, "accessible_name", "")
 end
 
 local function scrap(p)
