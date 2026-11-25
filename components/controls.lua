@@ -321,7 +321,9 @@ function M.dropdown(o)
         focus_ring = false,
         accessible_name = o.label or o.id,
         cursor = "pointer",
-        on_click = function(r)
+        on_click = function(r, button)
+            -- Middle and right clicks mean nothing here; an empty list has nothing to show.
+            if button ~= "left" or #o.options == 0 then return end
             local now = util.get(o.value)
             local items = {}
             for i, opt in ipairs(o.options) do
@@ -503,7 +505,9 @@ function M.tabs(o)
         items[i] = rect {
             accessible_name = n,
             cursor = "pointer",
-            on_click = function() if o.on_select then o.on_select(i) end end,
+            on_click = function(_, button)
+                if button == "left" and o.on_select then o.on_select(i) end
+            end,
             focus_target = target(i),
             focus_visible = focus,
             focus_ring = false,
