@@ -2,6 +2,7 @@
 -- notification offering to play the file or show it in its folder. Ported from
 -- ~/.config/mantle/lib/screen_recording.lua: `session_process` holds the child across reloads and
 -- `mantle.processes` reports it, so there is no launch script, lock file or poll.
+local paths = require("lib.paths")
 local util = require("lib.util")
 
 local M = {}
@@ -15,7 +16,7 @@ local recorder = session_process { name = NAME, stop_signal = "INT" }
 
 -- The popup's choices, kept across restarts.
 M.settings = persistent_table {
-    path = mantle.config_dir .. "/state-recorder.json",
+    path = paths.state("state-recorder.json"),
     defaults = { target = "screen", audio = "desktop", quality = "high" },
 }
 

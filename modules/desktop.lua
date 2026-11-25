@@ -1,6 +1,7 @@
 -- The desk: the wallpaper and the cards pinned to it (clock, quote, to-do, sticky note, music). Cards drag
 -- anywhere and remember where they were dropped; double-click puts one back. Right-click on the
 -- wallpaper offers "Change background…".
+local paths = require("lib.paths")
 local theme = require("theme")
 local k = require("lib.paper")
 local menu_component = require("components.menu")
@@ -68,7 +69,7 @@ local clock_card = card {
 }
 
 -- What the desk remembers between restarts: the to-do list and the sticky note.
-local desk = persistent_table { path = DIR .. "/state-desk.json", defaults = { todo = {}, note = "" } }
+local desk = persistent_table { path = paths.state("state-desk.json"), defaults = { todo = {}, note = "" } }
 
 -- Typing on the desk: niri's focus-follows-mouse moves focus off a surface the pointer leaves, so
 -- while a desk field is focused the panel claims the whole output; a click on bare desk ends it.
@@ -430,7 +431,7 @@ local music_card = card {
 -- Dragging cards: each card keeps an offset from its slot in the column. The live offset is a
 -- state while the pointer holds the card; on release it is saved to positions.json, so a card
 -- stays where it was dropped across restarts. Double-click puts it back in its slot.
-local positions = persistent_table { path = DIR .. "/positions.json", defaults = {} }
+local positions = persistent_table { path = paths.state("positions.json"), defaults = {} }
 
 local function draggable(name, node)
     -- `live` holds the card's offset from press until the saved value catches up: the file write

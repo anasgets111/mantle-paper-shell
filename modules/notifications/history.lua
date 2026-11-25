@@ -2,10 +2,11 @@
 -- The server forgets its feed when the shell restarts (gap 23), so every notification history keeps
 -- is snapshotted here, display fields only. A record leaves when its live notification leaves the
 -- feed (dismissed, invoked, replied, closed by the app) or when the user dismisses it here.
+local paths = require("lib.paths")
 local feed = require("modules.notifications.feed")
 local util = require("lib.util")
 
-local PATH = mantle.config_dir .. "/state-notifications.json"
+local PATH = paths.state("state-notifications.json")
 local LIMIT = 100
 
 local store = persistent_table {

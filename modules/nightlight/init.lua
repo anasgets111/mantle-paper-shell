@@ -3,13 +3,14 @@
 -- default). hyprsunset runs as a session process, so a reload keeps the screen as it was; a new
 -- warmth goes over its IPC socket. Without the binary, everything says "Install hyprsunset"; on
 -- another compositor, where hyprsunset cannot warm anything, the tile and controls are hidden.
+local paths = require("lib.paths")
 local nightlight = {}
 
 local MIN_K, MAX_K = 2500, 6000
 nightlight.MIN_K, nightlight.MAX_K = MIN_K, MAX_K
 
 local store = persistent_table {
-    path = mantle.config_dir .. "/state-nightlight.json",
+    path = paths.state("state-nightlight.json"),
     -- `from`/`to`: minutes after midnight.
     defaults = { enabled = false, temperature = 4000, schedule = "manual", from = 20 * 60, to = 7 * 60 },
 }

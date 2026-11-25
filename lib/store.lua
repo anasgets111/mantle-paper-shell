@@ -1,7 +1,8 @@
--- Restart-persistent user choices in one file next to the config. Write with
+-- Restart-persistent user choices in one file under ~/.local/state/paper-shell. Write with
 -- `store:set(key, util.with(store[key]:get(), k, v))`, never by mutating a read table.
+local paths = require("lib.paths")
 return persistent_table {
-    path = mantle.config_dir .. "/state.json",
+    path = paths.state("state.json"),
     defaults = {
         -- Desktop ids pinned to the taskbar, in order. Shared with the start menu's "Pin to taskbar".
         pinned = { "kitty", "zen", "org.gnome.Nautilus", "dev.zed.Zed", "com.t3tools.T3Code" },

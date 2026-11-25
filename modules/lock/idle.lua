@@ -4,6 +4,7 @@
 --
 -- Stages arm one after another: each stage's seconds count from the one before it, and a stage
 -- arms only once its predecessor reports `done`. Profiles: `ac` and `battery`.
+local paths = require("lib.paths")
 local util = require("lib.util")
 local G = require("modules.lock.glyphs")
 
@@ -19,7 +20,7 @@ idle.ENABLED = IDLE_ENABLED
 idle.TICK = 1
 
 local store = persistent_table {
-    path = mantle.config_dir .. "/state-lock.json",
+    path = paths.state("state-lock.json"),
     defaults = { idle = {} },
 }
 

@@ -4,6 +4,7 @@
 -- paper default. Drawn by `modules/desktop.lua` and the lock cover, picked on Settings > Appearance.
 -- A missing file or a failed decode shows the paper default. `FOLDER` is listed live through
 -- `mantle.folders`; nothing scans it.
+local STORE = require("lib.paths").state("state.json")
 local k = require("lib.paper")
 local util = require("lib.util")
 local store = require("lib.store")
@@ -96,7 +97,7 @@ end, {})
 -- stored entries. Once loaded, the single pre-per-output choice moves into `default`.
 local function loaded()
     local s = mantle.storage:get()
-    return s ~= nil and s.contents ~= nil and s.contents[mantle.config_dir .. "/state.json"] ~= nil
+    return s ~= nil and s.contents ~= nil and s.contents[STORE] ~= nil
 end
 local function migrate()
     if not loaded() or (store.wallpapers:get() or {}).default then return end

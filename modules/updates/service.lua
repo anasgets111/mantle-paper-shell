@@ -1,13 +1,14 @@
 -- The update service around `mantle.updates`: saved settings, the run record and its effects
 -- (persist the last check, notify once, recheck after an install, the developer tools), and the
 -- signals the widget, popup and settings page draw. Logic from ~/.config/mantle/lib/updates.lua.
+local paths = require("lib.paths")
 local util = require("lib.util")
 local model = require("modules.updates.model")
 local tools = require("modules.updates.tools")
 
 local S = {}
 
-local FILE = mantle.config_dir .. "/state-updates.json"
+local FILE = paths.state("state-updates.json")
 local APP = "Updates"
 -- As many as the Supervisor's `install_log` tail.
 local LOG_LINES = 200

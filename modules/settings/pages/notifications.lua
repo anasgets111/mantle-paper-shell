@@ -2,6 +2,7 @@
 -- app that has sent something. Muted apps
 -- live in `lib/store.lua` (`muted_apps`, a list of desktop ids or app names) for the notification
 -- centre to read; the engine silences their sounds.
+local paths = require("lib.paths")
 local theme = require("theme")
 local c = require("components.controls")
 local util = require("lib.util")
@@ -60,7 +61,7 @@ local SOUND_DIR = "/usr/share/sounds/freedesktop/stereo/"
 local SOUNDS = { { "message", "Message" }, { "bell", "Bell" }, { "complete", "Chime" }, { "dialog-warning", "Alert" } }
 local TIERS = { { "low", "Low" }, { "normal", "Normal" }, { "critical", "Critical" } }
 local sounds = persistent_table {
-    path = mantle.config_dir .. "/state-settings.json",
+    path = paths.state("state-settings.json"),
     defaults = { notification_sounds = {} },
 }
 local function sound_path(name) return SOUND_DIR .. name .. ".oga" end
