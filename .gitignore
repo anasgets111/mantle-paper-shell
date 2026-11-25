@@ -8,3 +8,5 @@ gaps/
 !img/*.png
 .fc-cache/
 gaps.html
+# Editor setup: lua-language-server pointed at a local Mantle checkout's lua-meta stubs.
+.luarc.json

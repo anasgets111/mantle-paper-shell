@@ -658,6 +658,7 @@ theme.settings = {
     wallpaper_cell_w = s(152),
     wallpaper_fade = s(12),
     wallpaper_fit_w = s(260),
+    wallpaper_folder_w = s(420),
     wallpaper_gap = s(14),
     wallpaper_image_w = s(124), wallpaper_image_h = s(70),
     wallpaper_label_inset = s(12),

@@ -133,6 +133,8 @@ function M.new(o)
 
     local menu = {}
 
+    local dismissed
+
     function menu.close()
         sub_open:set(false)
         open:set(false)
@@ -152,6 +154,10 @@ function M.new(o)
 
     -- rect: the clicked node's rect in the parent surface; opts = { anchor, gravity, title }
     function menu.open(rect_, list, opts)
+        -- The press on the opener closed this menu before its click arrived: that click toggles it shut.
+        if dismissed and dismissed.x == rect_.x and dismissed.y == rect_.y and mantle.clock:now() - dismissed.at < 0.3 then
+            return
+        end
         opts = opts or {}
         live = list
         sub_open:set(false)
@@ -175,7 +181,11 @@ function M.new(o)
             gravity = placement:map(function(p) return p.gravity end),
             constraint_adjustment = { "flip_y", "flip_x", "slide_x", "slide_y" },
             on_escape = menu.close,
-            on_dismiss = menu.close,
+            on_dismiss = function()
+                local r = anchor:get()
+                dismissed = { at = mantle.clock:now(), x = r.x, y = r.y }
+                menu.close()
+            end,
             child = computed({ items, title, width }, function(_, t, w)
                 return rect {
                     padding = PAD,

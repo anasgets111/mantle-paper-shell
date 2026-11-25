@@ -2,8 +2,8 @@
 -- an override per output name, each `{ path?, fit? }`. A field an output leaves out comes from the
 -- default, then from the single `wallpaper_path`/`wallpaper_fit` the shell kept before, then the
 -- paper default. Drawn by `modules/desktop.lua` and the lock cover, picked on Settings > Appearance.
--- A missing file or a failed decode shows the paper default. `FOLDER` is listed live through
--- `mantle.folders`; nothing scans it.
+-- A missing file or a failed decode shows the paper default. The picker's folder (`W.folder_path`,
+-- set on that page) is listed live through `mantle.folders`; nothing scans it.
 local STORE = require("lib.paths").state("state.json")
 local k = require("lib.paper")
 local util = require("lib.util")
@@ -12,15 +12,40 @@ local store = require("lib.store")
 local W = {}
 
 W.DEFAULT = k.DIR .. "/img/wallpaper.jpg"
--- The picker's folder: `$PAPER_WALLPAPERS`, else ~/Pictures/Wallpapers.
-W.FOLDER = os.getenv("PAPER_WALLPAPERS") or ((os.getenv("HOME") or "") .. "/Pictures/Wallpapers")
+local HOME = os.getenv("HOME") or ""
+-- The picker's folder until one is chosen: `$PAPER_WALLPAPERS`, else ~/Pictures/Wallpapers.
+W.DEFAULT_FOLDER = os.getenv("PAPER_WALLPAPERS") or (HOME .. "/Pictures/Wallpapers")
 -- `image.fit` values with the picker's labels.
 W.FITS = { { "cover", "Fill" }, { "contain", "Fit" }, { "stretch", "Stretch" } }
 
-mantle.folders:watch(W.FOLDER, { "jpg", "jpeg", "png", "webp", "gif", "bmp" })
+W.folder_path = store.wallpaper_folder:map(function(f)
+    return (f and f ~= "") and f or W.DEFAULT_FOLDER
+end)
+
+local watching
+local function watch(path)
+    if path == watching then return end
+    if watching then mantle.folders:unwatch(watching) end
+    watching = path
+    mantle.folders:watch(path, { "jpg", "jpeg", "png", "webp", "gif", "bmp" })
+end
+W.folder_path:on_change(watch)
+watch(W.folder_path:get())
 
 -- The listing: `nil` until the first push, then `{ entries, error?, ready }`.
-W.folder = mantle.folders:map(function(f) return f.watched and f.watched[W.FOLDER] end)
+W.folder = computed({ mantle.folders, W.folder_path }, function(f, path)
+    return f and f.watched and f.watched[path]
+end)
+
+-- Choose the picker's folder: absolute or `~/...`; `""` goes back to the default. False when refused.
+function W.set_folder(path)
+    path = (path or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if path == "~" or path:sub(1, 2) == "~/" then path = HOME .. path:sub(2) end
+    if #path > 1 then path = path:gsub("/+$", "") end
+    if path ~= "" and path:sub(1, 1) ~= "/" then return false end
+    store:set("wallpaper_folder", path == W.DEFAULT_FOLDER and "" or path)
+    return true
+end
 
 -- Paths that failed to decode, as `{ [path] = true }`, until that path is picked again.
 local broken = state("paper.wallpaper.broken_paths", {})

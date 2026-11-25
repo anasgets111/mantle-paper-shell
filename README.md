@@ -33,7 +33,8 @@ login session (Hyprland `exec-once`), so `$XDG_SESSION_ID` is set and the polkit
 | App icons | Papirus icon theme |
 | Updates | `pacman`, optionally `yay` for the AUR |
 
-The wallpaper picker lists `~/Pictures/Wallpapers`, or the folder `$PAPER_WALLPAPERS` names.
+The wallpaper picker lists `~/Pictures/Wallpapers`, or the folder `$PAPER_WALLPAPERS` names, until you choose
+another one under Settings > Appearance > Background.
 
 ## Files
 

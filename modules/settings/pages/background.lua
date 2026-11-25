@@ -1,5 +1,5 @@
 -- Appearance > Background: the desktop picture as a wall of photo cuts, the paper default first and
--- then every picture in `wallpaper.FOLDER`, plus its fit. A click or Enter applies a picture; the
+-- then every picture in the chosen folder, plus its fit and that folder. A click or Enter applies a picture; the
 -- applied one has a hatched border and a tick, the keyboard's one a pencil loop. Arrows move
 -- between photos. With more than one screen a Display dropdown picks whose picture the grid sets:
 -- one output, or all of them. The choices live in `lib/wallpaper.lua`.
@@ -205,10 +205,10 @@ local fade = edges:map(function(e)
 end)
 
 local function grid()
-    local empty = wallpaper.folder:map(function(f)
-        if not (f and f.ready) then return "Reading " .. wallpaper.FOLDER .. "…" end
-        if f.error then return "Can't open " .. wallpaper.FOLDER .. ": " .. f.error end
-        if #f.entries == 0 then return "No pictures in " .. wallpaper.FOLDER .. " yet." end
+    local empty = computed({ wallpaper.folder, wallpaper.folder_path }, function(f, path)
+        if not (f and f.ready) then return "Reading " .. path .. "…" end
+        if f.error then return "Can't open " .. path .. ": " .. f.error end
+        if #f.entries == 0 then return "No pictures in " .. path .. " yet." end
         return ""
     end, "")
     return column {
@@ -284,11 +284,37 @@ local function display_row()
     }
 end
 
+-- The folder the grid lists: type a path (`~/` works) and press Enter; "Default" goes back.
+local folder_refused = state("settings.wallpaper.folder_refused", false)
+local function folder_row()
+    local custom = wallpaper.folder_path:map(function(p) return p ~= wallpaper.DEFAULT_FOLDER end)
+    return rows.line({
+        rows.label("Folder", { width = theme.settings.wallpaper_label_w }),
+        c.field {
+            id = "settings.wallpaper.folder",
+            width = theme.settings.wallpaper_folder_w,
+            size = theme.font.lg,
+            placeholder = wallpaper.folder_path,
+            on_change = function() folder_refused:set(false) end,
+            on_submit = function(path)
+                if path ~= "" then folder_refused:set(not wallpaper.set_folder(path)) end
+            end,
+        },
+    }, {
+        rows.caption(folder_refused:map(function(r) return r and "a full path, or ~/…" or "" end)),
+        rect {
+            visible = custom,
+            children = { rows.action("wallpaper.folder_default", "Default", function() wallpaper.set_folder("") end) },
+        },
+    })
+end
+
 return function()
-    -- Under its own tab, so no heading: the scale row and the grid fill the card exactly (one row
-    -- more with the Display row, which only two or more screens show).
+    -- Under its own tab, so no heading: the folder and scale rows, then the grid (one row more
+    -- with the Display row, which only two or more screens show).
     return {
         display_row(),
+        folder_row(),
         rows.line({
             rows.label("Scale", { width = theme.settings.wallpaper_label_w }),
             c.radio_group {

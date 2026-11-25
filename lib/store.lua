@@ -25,5 +25,7 @@ return persistent_table {
         -- The single picture and fit from before per-output pictures, read once into `wallpapers.default`.
         wallpaper_path = "",
         wallpaper_fit = "cover",
+        -- The Background picker's folder; `""` for `$PAPER_WALLPAPERS`, else ~/Pictures/Wallpapers.
+        wallpaper_folder = "",
     },
 }
