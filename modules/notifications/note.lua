@@ -1,6 +1,6 @@
 -- A sticky note whose height follows its content: torn top, folded bottom-right corner, tape on top.
--- `controls.sticky` bakes a fixed height into its outline; this one places the side and bottom
--- points with "NN%" and edge anchors, so the paper grows with the text.
+-- It places the side and bottom points with "NN%" and edge anchors, so the paper grows with the
+-- text. ponytail: `controls.sticky` without `height` now does the same; fold this into it.
 local k = require("lib.paper")
 
 local FOLD = 14

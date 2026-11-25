@@ -204,8 +204,9 @@ function R.bars(strength, tip)
     end)
 end
 
--- A sticky note that fits its content: deckled top, dog-eared corner, taped on. The shared
--- `controls.sticky` takes a fixed size; this one's outline is percents and edge anchors.
+-- A sticky note that fits its content: deckled top, dog-eared corner, taped on. Its outline is
+-- percents and edge anchors. ponytail: `controls.sticky` now also fits its content without
+-- `height`; fold this into it once the two look identical.
 function R.sticky(child, seed)
     local r = k.rng(seed)
     local c = { { op = "M", points = { 0, 0 } } }
