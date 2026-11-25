@@ -6,6 +6,7 @@ local c = require("components.controls")
 local icons = require("components.icons")
 local tooltip = require("components.tooltip")
 local util = require("lib.util")
+local rows = require("modules.settings.rows")
 local ui_state = require("lib.ui_state")
 local S = require("modules.updates.service")
 local model = require("modules.updates.model")
@@ -96,28 +97,14 @@ local margin = rect {
     width = 1.4, height = "fill", translate = { x = 22 }, background = "#D9534F60",
 }
 
--- A sticky note that fits its text, for warnings and the restart prompt.
+-- Text inside the page's red margin, as the package rows are.
+local INDENT = 34
+-- A sticky note's text width: the page's content less its margin and the note's own padding.
+local NOTE_W = INNER - INDENT - 48
+
+-- Warnings and prompts on a sticky note (dog-eared, taped), stuck inside the margin.
 local function note(child, seed)
-    return rect {
-        rotate = -1,
-        padding = { top = 8, bottom = 4 },
-        children = {
-            rect {
-                children = {
-                    rect {
-                        width = "fill",
-                        height = "fill",
-                        shape = sheet.torn_fit(seed, 1.5),
-                        background = k.STICKY,
-                        shadows = { { blur = 8, offset = { x = 2, y = 4 }, color = "#00000050" } },
-                        effect = k.paper_fx { rim = 0, grain = 0.18 },
-                    },
-                    rect { padding = { top = 12, left = 16, right = 18, bottom = 12 }, children = { child } },
-                },
-            },
-            k.tape { width = 54, height = 18, translate = { y = -6 }, rotate = 3, seed = seed },
-        },
-    }
+    return rect { padding = { left = INDENT - 4 }, children = { rows.sticky(child, seed) } }
 end
 
 local function warning_note()
@@ -128,7 +115,7 @@ local function warning_note()
         children = {
             note(row {
                 spacing = 10,
-                width = INNER - 40,
+                width = NOTE_W,
                 children = {
                     G.exclamation(20),
                     body(text, 17, { width = "fill", wrap = "word", align_v = "center" }),
@@ -150,6 +137,7 @@ end
 local header = row {
     width = "fill",
     spacing = 14,
+    padding = { left = INDENT },
     children = {
         rect {
             width = 36, height = 40,
@@ -196,7 +184,7 @@ local function package_row(p)
                 width = "fill",
                 height = 30,
                 spacing = 8,
-                padding = { left = 34, right = 4 },
+                padding = { left = INDENT, right = 4 },
                 children = cells,
             },
             rule(),
@@ -209,7 +197,7 @@ local function group_head(g)
         width = "fill",
         height = 40,
         spacing = 12,
-        padding = { left = 34, top = 6 },
+        padding = { left = INDENT, top = 6 },
         children = {
             hand(g.repo, 26, { font_weight = 700, foreground = BLUE, align_v = "end" }),
             caption(model.plural(#g.packages, "package") .. (g.size > 0 and (" · " .. util.bytes(g.size)) or ""), {
@@ -236,9 +224,28 @@ local tools_line = computed({ S.tools_runnable, has_packages }, function(names, 
         .. table.concat(names, ", ") .. "."
 end, "")
 
+-- Row heights as built below: a group head 40, a package row 30 plus its 1 px rule.
+local HEAD_H, ROW_H, LIST_MAX, FADE = 40, 31, 430, 24
+local OPAQUE = { gradient = "linear", stops = { { 0, "#000000FF" }, { 1, "#000000FF" } } }
+
+-- Rows cut by the viewport fade out, on an edge only while more of the list lies past it.
+local list_fade = computed({ items, LIST_SCROLL }, function(list, offset)
+    local content = 0
+    for _, item in ipairs(list) do content = content + (item.head and HEAD_H or ROW_H) end
+    local view = math.min(LIST_MAX, content)
+    offset = offset or 0
+    local top, bottom = offset > 0.5, offset < content - view - 0.5
+    if view <= 0 or not (top or bottom) then return OPAQUE end
+    local f = FADE / view
+    return { gradient = "linear", stops = {
+        { 0, top and "#00000000" or "#000000FF" }, { f, "#000000FF" },
+        { 1 - f, "#000000FF" }, { 1, bottom and "#00000000" or "#000000FF" },
+    } }
+end, OPAQUE)
+
 local package_list = list {
     width = "fill",
-    max_height = 430,
+    max_height = LIST_MAX,
     scroll = LIST_SCROLL,
     items = items,
     key = function(item) return item.key end,
@@ -277,16 +284,18 @@ local list_view = column {
     children = {
         warning_note(),
         caught_up,
-        rect { width = "fill", visible = has_packages, children = { package_list } },
+        rect { width = "fill", visible = has_packages, mask = list_fade, children = { package_list } },
         caption(tools_line, {
-            width = "fill", wrap = "word", padding = { left = 34 },
+            width = "fill", wrap = "word", padding = { left = INDENT },
             visible = tools_line:map(function(t) return t ~= "" end),
         }),
         row {
             width = "fill",
             spacing = 12,
             children = {
-                caption(checked_line, { width = "fill", wrap = "word", align_v = "center" }),
+                caption(checked_line, {
+                    width = "fill", wrap = "word", align_v = "center", padding = { left = INDENT },
+                }),
                 rect {
                     children = S.checking:map(function(on)
                         return { button("check", on and "Checking…" or "Check now", "plain", S.check) }
@@ -310,7 +319,7 @@ local list_view = column {
 -- pacman has reported no steps.
 local BAR_H = 22
 local function progress_bar()
-    local w = INNER - 34
+    local w = INNER - INDENT
     local line = {
         { op = "M", points = { 6, BAR_H / 2 } },
         { op = "Q", points = { w / 2, BAR_H / 2 - 1.5, w - 6, BAR_H / 2 + 1 } },
@@ -365,7 +374,7 @@ end)
 local log_card = rect {
     width = "fill",
     visible = log_open,
-    padding = { left = 30 },
+    padding = { left = INDENT },
     children = {
         rect {
             width = "fill",
@@ -409,7 +418,7 @@ local log_card = rect {
 
 local function log_toggle()
     return rect {
-        padding = { left = 30 },
+        padding = { left = INDENT },
         children = log_open:map(function(open)
             return { c.link {
                 id = "updates.log", label = open and "hide the log" or "show the log", size = 24,
@@ -427,10 +436,10 @@ local running_view = column {
     width = "fill",
     spacing = 16,
     children = {
-        rect { padding = { left = 34 }, children = { progress_bar() } },
+        rect { padding = { left = INDENT }, children = { progress_bar() } },
         row {
             width = "fill",
-            padding = { left = 34 },
+            padding = { left = INDENT },
             children = {
                 caption(S.progress:map(function(p)
                     if p.count == "" or p.total == 0 then return "preparing…" end
@@ -474,7 +483,7 @@ local restart_note = rect {
     children = {
         note(column {
             spacing = 8,
-            width = INNER - 40,
+            width = NOTE_W,
             children = {
                 row {
                     width = "fill",
@@ -521,7 +530,7 @@ local failure_note = rect {
     children = {
         note(row {
             spacing = 10,
-            width = INNER - 40,
+            width = NOTE_W,
             children = {
                 G.exclamation(20),
                 column {
@@ -548,7 +557,7 @@ local result_view = column {
         failure_note,
         column {
             width = "fill",
-            padding = { left = 34 },
+            padding = { left = INDENT },
             visible = failures:map(function(f) return #f > 0 end),
             children = failures:map(function(list)
                 local rows = {}
@@ -604,7 +613,8 @@ local VIEWS = { list = list_view, running = running_view, result = result_view }
 local page = sheet.sheet {
     width = W,
     seed = 517,
-    padding = { top = 26, left = 30, right = 34, bottom = 26 },
+    -- 34 on top clears the tape across the sheet's edge.
+    padding = { top = 34, left = 30, right = 34, bottom = 26 },
     child = rect {
         width = "fill",
         children = {
@@ -614,7 +624,7 @@ local page = sheet.sheet {
                 spacing = 16,
                 children = {
                     header,
-                    rect { padding = { left = 34 }, children = { c.divider(INNER - 34, false, 11) } },
+                    rect { padding = { left = INDENT }, children = { c.divider(INNER - INDENT, false, 11) } },
                     rect { width = "fill", children = S.view:map(function(v) return { VIEWS[v] } end) },
                 },
             },
@@ -647,7 +657,7 @@ M.surface = popup {
         },
         children = {
             page,
-            k.tape { width = 110, height = 26, translate = { y = 4 }, rotate = -2.5, seed = 41, color = "#B4CBE6C0" },
+            k.tape { width = 110, height = 26, translate = { y = 2 }, rotate = -2.5, seed = 41, color = "#B4CBE6C0" },
         },
     },
 }
