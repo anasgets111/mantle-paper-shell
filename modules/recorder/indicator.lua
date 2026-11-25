@@ -12,7 +12,7 @@ local marks = require("modules.recorder.marks")
 local M = {}
 
 local H = theme.recorder.indicator_h
-local shown = svc.recording:map(function(up) return up and { { key = "rec" } } or {} end, {})
+local shown = svc.recording:map(function(up) return up and { { key = "rec" } } or {} end)
 
 local function tip()
     local verb = svc.paused:get() and "Paused at " or "Recording "
@@ -31,7 +31,7 @@ end
 local function sticker(output)
     local slot = "recorder.sticker." .. output
     local hovered = hover(slot)
-    local width = svc.elapsed:map(function(t) return theme.recorder.clock_base_w + #t * theme.recorder.clock_char_w end, theme.recorder.clock_idle_w)
+    local width = svc.elapsed:map(function(t) return theme.recorder.clock_base_w + #t * theme.recorder.clock_char_w end)
     return tips.wrap(rect {
         height = "fill",
         padding = { left = theme.spacing.xxs, right = theme.spacing.xxs },

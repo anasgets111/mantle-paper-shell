@@ -75,9 +75,9 @@ S.shown = computed({ S.phase, S.look }, model.worth_showing, false)
 S.busy = computed({ S.updates, S.run }, function(u, r)
     return u == nil or u.checking or model.phase(u, r) == "running"
 end, true)
-S.checking = S.updates:map(function(u) return u ~= nil and u.checking end, false)
+S.checking = S.updates:map(function(u) return u ~= nil and u.checking end)
 S.progress = computed({ S.updates, S.run }, function(u, r) return model.progress(u, r) end, model.progress(nil, {}))
-S.reboot = S.updates:map(function(u) return u ~= nil and u.reboot_required end, false)
+S.reboot = S.updates:map(function(u) return u ~= nil and u.reboot_required end)
 
 -- Every install log line re-pushes `mantle.updates`, so the list rebuilds on a scalar the engine
 -- compares: the check's stamp, the count and both ends of the list.
@@ -85,12 +85,12 @@ local package_key = S.updates:map(function(u)
     local list = (u and u.packages) or {}
     return string.format("%s:%d:%s:%s", tostring(u and u.last_successful_check), #list,
         list[1] and list[1].name or "", list[#list] and list[#list].name or "")
-end, "")
+end)
 S.groups = package_key:map(function()
     local u = S.updates:get()
     return model.groups(u and u.packages)
 end)
-S.count = S.updates:map(function(u) return u and #u.packages or 0 end, 0)
+S.count = S.updates:map(function(u) return u and #u.packages or 0 end)
 
 -- Pacman's output unless the run was tools only, then the tools'. yay colours even without a tty.
 S.log_lines = computed({ S.updates, S.run, tool_log }, function(u, r, lines)

@@ -40,8 +40,8 @@ local function target_name()
     return t ~= "" and t or nil
 end
 local shown = wallpaper.shown(target)
-local shown_path = shown:map(function(s) return s:match("^(.-)\n") end, wallpaper.DEFAULT)
-local shown_fit = shown:map(function(s) return s:match("\n(.*)$") end, "cover")
+local shown_path = shown:map(function(s) return s:match("^(.-)\n") end)
+local shown_fit = shown:map(function(s) return s:match("\n(.*)$") end)
 
 -- The default first, then the folder's pictures, each with its place in the grid.
 local function entries(folder)
@@ -60,7 +60,7 @@ local function entries(folder)
     return list
 end
 
-local listed = wallpaper.folder:map(entries, entries(nil))
+local listed = wallpaper.folder:map(entries)
 
 -- Left and Right step one photo, Up and Down one row. A request only counts inside the key
 -- callback; the list keeps a viewport of rows built past each edge, so the neighbouring row
@@ -88,7 +88,7 @@ local function photo(entry)
     local name = slot(entry.path)
     local hovered = hover(name)
     local keyed = focus_visible(name)
-    local chosen = shown_path:map(function(p) return p == entry.path end, false)
+    local chosen = shown_path:map(function(p) return p == entry.path end)
     local r = k.rng(#entry.name + i)
     local cut = elided(name .. ".label")
     local label = tips.wrap(k.body(entry.label, theme.font.xs, {
@@ -258,14 +258,14 @@ local function display_row()
             list[#list + 1] = { s.name, model and (s.name .. " · " .. model) or s.name }
         end
         return list
-    end, { { "", "All displays" } })
+    end)
     local hint = computed({ target, wallpaper.overrides }, function(t, names)
         if t ~= "" or #names == 0 then return "" end
         return "replaces " .. table.concat(names, ", ") .. "'s own"
     end, "")
     return column {
         width = "fill",
-        visible = mantle.screens:map(function(screens) return #(screens or {}) > 1 end, false),
+        visible = mantle.screens:map(function(screens) return #(screens or {}) > 1 end),
         children = options:map(function(list)
             return {
                 rows.line({
@@ -327,7 +327,7 @@ return function()
             -- How many there are, since the grid shows twelve: the cue that it scrolls.
             rows.caption(listed:map(function(l)
                 return #l .. " pictures" .. (#l > COLUMNS * VISIBLE_ROWS and ", scroll for more" or "")
-            end, "")),
+            end)),
         }),
         grid(),
     }

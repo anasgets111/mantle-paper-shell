@@ -95,7 +95,8 @@ local PROFILE_NAMES = { ["power-saver"] = "Power saver", balanced = "Balanced", 
 
 local function next_profile()
     local p = mantle.power:get()
-    local list = p and p.profiles or {}
+    if not p then return end
+    local list = p.profiles or {}
     for i, name in ipairs(list) do
         if name == p.active_profile then
             mantle.power:set_profile(list[i % #list + 1])

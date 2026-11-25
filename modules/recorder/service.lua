@@ -53,7 +53,7 @@ local paused_total = state("recorder.paused_total", 0)
 local paused_at = state("recorder.paused_at", 0)
 local began_at = state("recorder.began_at", 0)
 
-M.recording = recorder.running:map(function(up) return up == true end, false)
+M.recording = recorder.running:map(function(up) return up == true end)
 M.paused = paused_at:map(function(at) return at > 0 end)
 
 -- The focused output: only it carries `focused_workspace`.

@@ -166,7 +166,7 @@ local function network_list(rest)
         children = shape:map(function(key)
             local n = net:get()
             local dev = wifi_device(n)
-            if key == "off" or key == "" or not dev then
+            if key == "off" or key == "" or not (n and dev) then
                 if rest then return {} end
                 return { rows.note(key == "off" and "Wi-Fi is off." or "No networks in range.") }
             end
@@ -254,8 +254,8 @@ local function vpn_secret_rows()
     return column {
         width = "fill",
         children = asked:map(function(key)
-            if key == "" then return {} end
             local s = net:get().vpn_secret
+            if key == "" or not s then return {} end
             local list = {
                 rows.line({
                     icons.glyph("password", theme.icon.md),

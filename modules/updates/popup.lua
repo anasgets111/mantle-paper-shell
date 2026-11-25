@@ -39,10 +39,6 @@ local restart_deadline = state("updates.restart_deadline", 0)
 local LOG_SCROLL = scroll("updates.log")
 local LIST_SCROLL = scroll("updates.list")
 
--- A click on the widget while open dismisses the grab first; if that same click then reaches
--- `open`, it must close rather than reopen.
-local dismissed_at = -1
-
 local function close() S.open:set(false) end
 
 -- A modal opening (start menu, settings) takes the screen.
@@ -51,7 +47,7 @@ ui_state.active_modal:on_change(function(kind)
 end)
 
 function M.open(r, with_grab)
-    if S.open:get() or mantle.clock:now() - dismissed_at < 0.3 then
+    if S.open:get() then
         close()
         return
     end
@@ -647,10 +643,7 @@ M.surface = popup {
     constraint_adjustment = { "slide_x", "flip_y" },
     grab = grab,
     on_escape = close,
-    on_dismiss = function()
-        dismissed_at = mantle.clock:now()
-        close()
-    end,
+    on_dismiss = close,
     child = rect {
         padding = { top = theme.spacing.roomy, left = theme.spacing.roomy, right = theme.spacing.tab, bottom = theme.spacing.panel },
         opacity = util.choose(S.open, 1, 0),

@@ -23,12 +23,7 @@ local grab = state("notifications.center_grab", true)
 -- The compositor closed it: hidden at once, since a popup still `visible` through the exit fade would
 -- reopen on the next press.
 local dismissed = state("notifications.center_dismissed", false)
--- A click on the clock while the menu is open first dismisses it (the press lands outside the grab),
--- then arrives as a click: that click must not reopen it.
-local dismissed_at = -1
-
 local function open(rect, with_grab)
-    if with_grab and mantle.clock:now() - dismissed_at < 0.5 then return end
     if ui_state.panel_is("datemenu") then
         ui_state.close_panel()
         return
@@ -99,7 +94,6 @@ M.popup = popup {
         return v and g and not gone
     end),
     on_dismiss = function()
-        dismissed_at = mantle.clock:now()
         dismissed:set(true)
         if ui_state.panel_is("datemenu") then ui_state.close_panel() end
     end,

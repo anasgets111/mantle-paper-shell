@@ -73,7 +73,7 @@ local capture = svc.has_slurp:map(function(has)
     local options = { { "screen", "Whole screen" } }
     if has then options[2] = { "region", "Region" } end
     return { choice("target", "Capture", options) }
-end, {})
+end)
 
 local function folder_link()
     return controls.link { id = "recorder.folder", label = "Recordings folder", size = theme.font.xl, on_click = function()

@@ -11,7 +11,7 @@ local settings = require("modules.settings")
 local wallpaper = require("lib.wallpaper")
 local ui_state = require("lib.ui_state")
 local DIR, INK, INK_SOFT, RED = k.DIR, theme.INK, theme.INK_SOFT, theme.RED
-local hand, body, glyph, card, tape = k.hand, k.body, k.glyph, k.card, k.tape
+local hand, body, glyph, card = k.hand, k.body, k.glyph, k.card
 local squiggle, sprig, star, heart, checkbox = k.squiggle, k.sprig, k.star, k.heart, k.checkbox
 
 local now = mantle.clock:map(function(s) return s.time end, os.time())
@@ -24,7 +24,7 @@ end
 local player = mantle.mpris:map(function(m) return m.players[1] end, nil)
 -- With nothing playing the music card says so: no stand-in track, an empty line, controls that do
 -- nothing. A player with no track (playerctld's proxy, a closed tab) counts as nothing.
-local has_player = player:map(function(p) return p ~= nil and p.title ~= "" end, false)
+local has_player = player:map(function(p) return p ~= nil and p.title ~= "" end)
 
 -- Right-hand cards ------------------------------------------------------------------------------
 
@@ -218,7 +218,7 @@ local function todo_card(output, max_height)
         local out = {}
         for i, item in ipairs(items or {}) do out[i] = todo_row(i, item) end
         return out
-    end, {})
+    end)
     -- Built once, outside the mapped rows, so it holds focus while the list grows.
     local add = controls.field {
         id = "desk.todo.add",
@@ -347,7 +347,7 @@ local music_card = card {
                         opacity = has_player:map(function(v) return v and 1 or 0.45 end),
                         source = player:map(function(p)
                             return p and p.album_art_path ~= "" and p.album_art_path or DIR .. "/img/cover.png"
-                        end, DIR .. "/img/cover.png"),
+                        end),
                     },
                     column {
                         spacing = theme.spacing.hairline,
@@ -356,9 +356,9 @@ local music_card = card {
                         children = {
                             hand(player:map(function(p)
                                 return p and p.title ~= "" and p.title or "Nothing playing"
-                            end, "Nothing playing"),
+                            end),
                                 theme.font.display, { font_weight = theme.BOLD, elide = "end", width = "fill" }),
-                            body(player:map(function(p) return p and p.title ~= "" and p.artist or "" end, ""),
+                            body(player:map(function(p) return p and p.title ~= "" and p.artist or "" end),
                                 theme.font.md, { foreground = INK_SOFT, elide = "end", width = "fill" }),
                         },
                     },
@@ -413,7 +413,7 @@ local music_card = card {
                             glyph(player:map(function(p)
                                 return p and p.play_state == "playing" and "media-playback-pause-symbolic"
                                     or "media-playback-start-symbolic"
-                            end, "media-playback-pause-symbolic"), theme.icon.badge),
+                            end), theme.icon.badge),
                         },
                     },
                     rect {
@@ -436,6 +436,7 @@ local positions = persistent_table { path = paths.state("positions.json"), defau
 local function draggable(name, node)
     -- `live` holds the card's offset from press until the saved value catches up: the file write
     -- is asynchronous, and dropping `live` on release would flash the old position for a frame.
+    ---@type StateSignal<{ x: number, y: number }|false>
     local live = state("paper.drag." .. name, false)
     local dragging = state("paper.dragging." .. name, false)
     local saved = positions[name]

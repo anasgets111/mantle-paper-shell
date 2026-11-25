@@ -10,7 +10,7 @@ local nightlight = require("modules.nightlight")
 
 local store = nightlight.store
 local STEP = 30 -- minutes per click or wheel notch
-local installed = nightlight.installed:map(function(v) return v ~= false end, true)
+local installed = nightlight.installed:map(function(v) return v ~= false end)
 local supported = nightlight.supported
 
 local function nudge_warmth(_, steps)
@@ -82,7 +82,7 @@ return function()
                             on_wheel = nudge_warmth,
                         },
                     }, {
-                        rows.caption(store.temperature:map(function(kelvin) return kelvin .. " K" end, "")),
+                        rows.caption(store.temperature:map(function(kelvin) return kelvin .. " K" end)),
                     }),
                     rows.list(c.radio_group {
                         id = "settings.nightlight.schedule",
@@ -93,7 +93,7 @@ return function()
                     }, 2),
                     rect {
                         width = "fill",
-                        visible = store.schedule:map(function(s) return s == "times" end, false),
+                        visible = store.schedule:map(function(s) return s == "times" end),
                         children = {
                             rows.line({
                                 rows.label("From", { width = theme.nightlight.minutes_w }),

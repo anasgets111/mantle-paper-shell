@@ -33,12 +33,8 @@ local section = state("quick.section", "")
 -- The device list open under its row: "sinks", "sources" or "" for none.
 local chooser = state("quick.chooser", "")
 
--- A click on the status icons while open dismisses the grab first; if that same click then reaches
--- `open`, it must close rather than reopen.
-local dismissed_at = -1
-
 function M.open(r, wanted, output)
-    if open:get() or mantle.clock:now() - dismissed_at < 0.3 then
+    if open:get() then
         open:set(false)
         return
     end
@@ -330,10 +326,7 @@ M.surfaces = {
         grab = true,
         on_escape = close,
         reset_on_close = { section, chooser, sheet_scroll },
-        on_dismiss = function()
-            dismissed_at = mantle.clock:now()
-            close()
-        end,
+        on_dismiss = close,
         child = rect {
             padding = POPUP_PAD,
             children = sheet:map(function(card) return { card } end),

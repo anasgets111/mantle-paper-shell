@@ -100,7 +100,7 @@ local statuses = {}
 function W.status_of(output)
     if statuses[output] then return statuses[output] end
     local status = image_status("paper.wallpaper." .. output)
-    status:map(function(s) return s.state end, "empty"):on_change(function(now)
+    status:map(function(s) return s.state end):on_change(function(now)
         local path = W.path_of(output):get()
         if now == "failed" and path ~= W.DEFAULT then broken:set(util.with(broken:get(), path, true)) end
     end)
@@ -116,7 +116,7 @@ W.overrides = store.wallpapers:map(function(all)
     end
     table.sort(list)
     return list
-end, {})
+end)
 
 -- The table reads its defaults until the file's first push: a write before then would replace the
 -- stored entries. Once loaded, the single pre-per-output choice moves into `default`.

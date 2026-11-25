@@ -121,19 +121,17 @@ function M.new(o)
     local open = state(o.id .. ".open", false)
     local anchor = state(o.id .. ".anchor", { x = 0, y = 0, width = 1, height = 1 })
     local placement = state(o.id .. ".placement", { anchor = "top", gravity = "top" })
-    local items = state(o.id .. ".items", {})
+    local items = state(o.id .. ".items", 0)
     local title = state(o.id .. ".title", false)
     local width = state(o.id .. ".width", WIDTH)
     local sub_open = state(o.id .. ".sub.open", false)
     local sub_anchor = state(o.id .. ".sub.anchor", { x = 0, y = 0, width = 1, height = 1 })
-    local sub_items = state(o.id .. ".sub.items", {})
+    local sub_items = state(o.id .. ".sub.items", 0)
 
     -- Callbacks don't survive a state round trip as data, so the live item tables are kept here.
     local live, live_sub = {}, {}
 
     local menu = {}
-
-    local dismissed
 
     function menu.close()
         sub_open:set(false)
@@ -154,10 +152,6 @@ function M.new(o)
 
     -- rect: the clicked node's rect in the parent surface; opts = { anchor, gravity, title }
     function menu.open(rect_, list, opts)
-        -- The press on the opener closed this menu before its click arrived: that click toggles it shut.
-        if dismissed and dismissed.x == rect_.x and dismissed.y == rect_.y and mantle.clock:now() - dismissed.at < 0.3 then
-            return
-        end
         opts = opts or {}
         live = list
         sub_open:set(false)
@@ -181,11 +175,7 @@ function M.new(o)
             gravity = placement:map(function(p) return p.gravity end),
             constraint_adjustment = { "flip_y", "flip_x", "slide_x", "slide_y" },
             on_escape = menu.close,
-            on_dismiss = function()
-                local r = anchor:get()
-                dismissed = { at = mantle.clock:now(), x = r.x, y = r.y }
-                menu.close()
-            end,
+            on_dismiss = menu.close,
             child = computed({ items, title, width }, function(_, t, w)
                 return rect {
                     padding = PAD,

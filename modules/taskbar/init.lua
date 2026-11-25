@@ -103,7 +103,7 @@ local function task_list(output)
             out[#out + 1] = item
         end
         return out
-    end, {})
+    end)
     return list {
         direction = "horizontal",
         height = "fill",

@@ -37,7 +37,8 @@ remember(kbd:get())
 --- The configured layouts as `{ name, active }`, in order; unseen ones read "Layout N".
 function L.list()
     local s, map, out = kbd:get(), seen:get(), {}
-    for i = 0, (s and s.layout_count or 0) - 1 do
+    if not s then return out end
+    for i = 0, s.layout_count - 1 do
         out[i + 1] = { name = map[tostring(i)] or ("Layout " .. (i + 1)), active = s.active_layout_index == i }
     end
     return out

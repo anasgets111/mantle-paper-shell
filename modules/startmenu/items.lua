@@ -83,13 +83,13 @@ function M.tile(item, i, items)
         accessible_name = app.name,
         cursor = moving:map(function(m) return m and "grabbing" or "pointer" end),
         z = moving:map(function(m) return m and 5 or 0 end),
-        on_click = function(r, button, p, mods)
+        on_click = function(r, button, p)
             -- A drag that comes to rest on its own cell still releases here; it is not a launch.
             if dragged then
                 dragged = false
                 return
             end
-            click(r, button, p, mods)
+            click(r, button, p)
         end,
         on_drag = function(_, p, phase)
             model.track(slot)(nil, nil, phase)

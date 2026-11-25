@@ -109,7 +109,7 @@ end
 --- 0 (coolest) to 1 (warmest), for a slider that warms to the right.
 nightlight.warmth = store.temperature:map(function(kelvin)
     return (MAX_K - (kelvin or 4000)) / (MAX_K - MIN_K)
-end, 0.5)
+end)
 
 function nightlight.set_warmth(v)
     nightlight.set_temperature(MAX_K - v * (MAX_K - MIN_K))

@@ -73,7 +73,7 @@ return function()
             },
         }),
         rows.line({ rows.label("Include AUR packages") }, {
-            rows.caption(S.updates:map(aur_caption, "")),
+            rows.caption(S.updates:map(aur_caption)),
             c.toggle { id = "updates.aur", value = saved.aur, on_toggle = S.set_aur },
         }),
         rows.line({ rows.label("Notify when updates arrive") }, {
