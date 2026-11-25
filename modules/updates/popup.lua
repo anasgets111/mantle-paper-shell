@@ -234,7 +234,10 @@ local list_fade = computed({ items, LIST_SCROLL }, function(list, offset)
     for _, item in ipairs(list) do content = content + (item.head and HEAD_H or ROW_H) end
     local view = math.min(LIST_MAX, content)
     offset = offset or 0
-    local top, bottom = offset > 0.5, offset < content - view - 0.5
+    -- ponytail: the engine exposes no content height, so `content` is summed from the row heights and
+    -- ran 2.4 px over the real one at 150 rows; half a row of slack holds to ~900 rows. Upgrade: read
+    -- the viewport's extent once the engine reports it.
+    local top, bottom = offset > 0.5, offset < content - view - ROW_H / 2
     if view <= 0 or not (top or bottom) then return OPAQUE end
     local f = FADE / view
     return { gradient = "linear", stops = {
