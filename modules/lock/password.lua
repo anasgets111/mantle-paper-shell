@@ -49,7 +49,7 @@ return function(opts)
     local failed = source:map(function(s)
         return s ~= nil and s.active and not s.authenticating and not s.unlocking and (s.error or "") ~= ""
     end, false)
-    local fails = failure_count(source, opts.preview and "preview" or opts.capability)
+    local fails = failure_count(source, (opts.preview and "preview." or "") .. opts.capability)
 
     -- PAM's own question when it is not the usual "Password:", e.g. a verification code.
     local placeholder = source:map(function(s)
@@ -70,7 +70,8 @@ return function(opts)
 
     local field = controls.field {
         id = opts.id,
-        width = W - 52,
+        -- Room for the submit disc beside it, when there is one.
+        width = opts.submit_disc == false and W or W - 52,
         size = 32,
         placeholder = placeholder,
         accessible_name = "Password",

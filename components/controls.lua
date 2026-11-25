@@ -99,14 +99,17 @@ function M.button(o)
     }
 end
 
--- Link: deep-blue Caveat with a squiggle, a yellow highlighter swipe on hover.
+-- Link: deep-blue Caveat with a squiggle, a yellow highlighter swipe on hover and the pencil loop on
+-- keyboard focus. The swipe fills the label's box; squiggle and loop take its laid-out size.
 function M.link(o)
-    local hovered = hover_of("link", o.id or o.label)
-    -- Keyboard focus lights the highlighter as hover does, in place of the engine's square outline.
-    local focus = focus_visible("paper.link." .. (o.id or o.label) .. ".focus")
-    local lit = computed({ hovered, focus }, function(h, f) return h or f end)
+    local id = o.id or o.label
+    local hovered = hover_of("link", id)
+    local focus = focus_visible("paper.link." .. id .. ".focus")
     local size = o.size or 24
-    local w = math.floor(#o.label * size * 0.4) + 4
+    local box = geometry("paper.link." .. id .. ".label")
+    -- Whole pixels, so a link that only moves (a scrolled list) does not redraw its strokes.
+    local w = box:map(function(r) return math.floor(r.width) end)
+    local h = box:map(function(r) return math.floor(r.height) end)
     return rect {
         align_v = "center",
         hover = hovered,
@@ -117,18 +120,29 @@ function M.link(o)
         on_click = o.on_click or function() end,
         children = {
             rect {
-                width = w,
+                width = "fill",
                 height = math.floor(size * 0.6),
                 align_v = "end",
                 translate = { y = -4 },
                 background = k.HIGHLIGHT,
                 blend = "multiply",
-                shape = k.tape_shape(w, math.floor(size * 0.6), #o.label),
-                opacity = lit:map(function(v) return v and 1 or 0 end),
+                shape = k.tape_shape(nil, nil, #o.label),
+                opacity = hovered:map(function(v) return v and 1 or 0 end),
                 animate = { opacity = { duration = 140 } },
             },
-            hand(o.label, size, { foreground = k.DEEP_BLUE }),
-            rect { align_v = "end", translate = { y = 5 }, children = { k.squiggle(w, BLUE) } },
+            hand(o.label, size, { foreground = k.DEEP_BLUE, geometry = box }),
+            rect {
+                align_v = "end",
+                translate = { y = 5 },
+                children = w:map(function(px) return px > 8 and { k.squiggle(px, BLUE) } or {} end),
+            },
+            rect {
+                opacity = focus:map(function(v) return v and 1 or 0 end),
+                animate = { opacity = { duration = 120 } },
+                children = computed({ w, h }, function(pw, ph)
+                    return pw > 8 and { M.pencil_loop(pw, ph, #o.label, 5) } or {}
+                end),
+            },
         },
     }
 end
@@ -574,34 +588,39 @@ function M.chip(label, color, seed)
     }
 end
 
--- Sticky note with a dog-eared corner, held by tape. o = { width, height, seed, child, rotate?, tape? }
+-- Sticky note with a dog-eared corner, held by tape. o = { width, height?, seed, child, rotate?, tape?,
+-- color? }; without `height` it fits its child.
 function M.sticky(o)
-    local w, h, f = o.width, o.height, 12
+    local w, f = o.width, 12
     local r = k.rng(o.seed or 1)
     local c = { { op = "M", points = { 0, 0 } } }
     for x = 12, w, 12 do c[#c + 1] = { op = "L", points = { math.min(x, w), r() * 2.5 } } end
-    c[#c + 1] = { op = "L", points = { w, h - f } }
-    c[#c + 1] = { op = "L", points = { w - f, h } }
-    c[#c + 1] = { op = "L", points = { 0, h } }
+    -- The bottom corners hang from the edges, so a note without `height` grows with its child.
+    c[#c + 1] = { op = "L", points = { w, { from = "bottom", px = -f } } }
+    c[#c + 1] = { op = "L", points = { w - f, "100%" } }
+    c[#c + 1] = { op = "L", points = { 0, "100%" } }
     c[#c + 1] = { op = "Z", points = {} }
     local children = {
         rect {
             width = w,
-            height = h,
-            shape = { commands = c },
-            background = o.color or k.STICKY,
-            shadows = { { blur = 10, offset = { x = 2, y = 6 }, color = "#00000055" } },
-            effect = k.paper_fx { rim = 0, grain = 0.18 },
+            height = o.height,
             children = {
+                rect {
+                    width = "fill",
+                    height = "fill",
+                    shape = { commands = c },
+                    background = o.color or k.STICKY,
+                    shadows = { { blur = 10, offset = { x = 2, y = 6 }, color = "#00000055" } },
+                    effect = k.paper_fx { rim = 0, grain = 0.18 },
+                },
                 o.child,
                 path {
-                    -- Spans the whole note above the child: without this it takes every hit.
                     hittable = false,
-                    width = w, height = h, fill = k.STICKY_FOLD,
+                    width = f, height = f, align_h = "end", align_v = "end", fill = k.STICKY_FOLD,
                     shadows = { { blur = 3, offset = { x = -1, y = -1 }, color = "#00000040" } },
                     commands = {
-                        { op = "M", points = { w - f, h } }, { op = "L", points = { w, h - f } },
-                        { op = "L", points = { w - f + 2, h - f + 2 } }, { op = "Z", points = {} },
+                        { op = "M", points = { 0, f } }, { op = "L", points = { f, 0 } },
+                        { op = "L", points = { 2, 2 } }, { op = "Z", points = {} },
                     },
                 },
             },
@@ -629,10 +648,10 @@ function M.tab_shape(w, h, seed)
 end
 
 -- Focus: a blue pencil loop drawn round a control in place of a solid ring.
--- `pad` draws the loop that many px outside the w x h box (the path keeps the box's size).
+-- `pad` draws the loop that many px outside the w x h box: the path is that much bigger on every
+-- side and shifted back, since a path clips its stroke to its own box.
 function M.pencil_loop(w, h, seed, pad)
     local p = pad or 0
-    local ow, oh = w, h
     w, h = w + 2 * p, h + 2 * p
     local r = k.rng(seed or 99)
     local c = {}
@@ -644,10 +663,9 @@ function M.pencil_loop(w, h, seed, pad)
         c[#c + 1] = { op = "C", points = { w + 1, h - 1 + j(), w * 0.12, h + 1, 3, h * 0.7 } }
         c[#c + 1] = { op = "C", points = { -1, h * 0.4, 0, 4, w * 0.25 + pass * 8, 1 + j() } }
     end
-    for _, cmd in ipairs(c) do
-        for i = 1, #cmd.points do cmd.points[i] = cmd.points[i] - p end
-    end
-    return k.stroke_path(ow, oh, c, BLUE, 1.8)
+    local loop = k.stroke_path(w, h, c, BLUE, 1.8)
+    if p > 0 then loop.translate = { x = -p, y = -p } end
+    return loop
 end
 
 -- A ruled-paper page: blue rules every `pitch` px from `top`, a red margin at `margin`.
