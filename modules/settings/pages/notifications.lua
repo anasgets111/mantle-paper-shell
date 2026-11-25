@@ -1,5 +1,5 @@
--- Notifications page: do not disturb, a sound per urgency, and a mute box per app that has sent
--- something. Muted apps
+-- Notifications page under two tabs: do not disturb and a sound per urgency, then a mute box per
+-- app that has sent something. Muted apps
 -- live in `lib/store.lua` (`muted_apps`, a list of desktop ids or app names) for the notification
 -- centre to read; the engine silences their sounds.
 local c = require("components.controls")
@@ -63,11 +63,13 @@ for tier, name in pairs(sounds.notification_sounds:get()) do notes:set_sound(tie
 local function sound_rows()
     local list = {}
     for _, tier in ipairs(TIERS) do
-        list[#list + 1] = rows.line({
-            rows.label(tier[2], { width = 110 }),
-            c.radio_group {
-                id = "settings.notifications.sound." .. tier[1],
+        list[#list + 1] = rows.line({ rows.label(tier[2] .. " urgency") }, {
+            rows.dropdown {
+                id = "notifications.sound." .. tier[1],
+                label = tier[2] .. " urgency sound",
+                width = 220,
                 options = SOUNDS,
+                empty = "silent",
                 value = sounds.notification_sounds:map(function(t) return t[tier[1]] end),
                 on_select = function(name)
                     sounds:set("notification_sounds", util.with(sounds.notification_sounds:get(), tier[1], name))
@@ -111,7 +113,8 @@ return {
     key = "notifications",
     title = "Notifications",
     build = function()
-        local list = {
+        local strip, tab = rows.tabs("notifications", { "General", "Per app" })
+        local general = {
             rows.heading("Interruptions"),
             rows.line({ rows.label("Do not disturb") }, {
                 rows.caption(notes:map(function(n) return n.dnd and "only critical ones make a sound" or "" end, "")),
@@ -123,9 +126,11 @@ return {
             }),
             rows.heading("Sounds"),
         }
-        for _, node in ipairs(sound_rows()) do list[#list + 1] = node end
-        list[#list + 1] = rows.heading("Apps")
-        list[#list + 1] = app_rows()
-        return list
+        for _, node in ipairs(sound_rows()) do general[#general + 1] = node end
+        return {
+            strip,
+            rows.pane(tab, 1, general),
+            rows.pane(tab, 2, { rows.heading("Apps that have sent something"), app_rows() }),
+        }
     end,
 }
