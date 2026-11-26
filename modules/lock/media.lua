@@ -25,7 +25,7 @@ end, nil)
 
 local function art(p)
     -- Only a local file: an `https` art URL would need fetching, and the lock should not reach out.
-    local path = p.album_art_path ~= "" and p.album_art_path or p.art_url:match("^file://(.+)")
+    local path = p.album_art_path ~= "" and p.album_art_path
     local picture = path and image { source = path, fit = "cover", width = ART, height = ART, async = true }
         or rect {
             width = ART, height = ART, background = theme.CARD,
