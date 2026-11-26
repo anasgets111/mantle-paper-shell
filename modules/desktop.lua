@@ -78,6 +78,9 @@ local editing = computed({ note_focus, focused("paper.field.desk.todo.add") }, f
 -- For one pass: both fields disabled (a disabled field drops focus) and the panel off the keyboard,
 -- so the compositor hands it back to a window.
 local release = state("desk.release", false)
+-- The cards with a field arm the panel's keyboard on hover: niri hands an `on_demand` layer the
+-- keyboard whenever it maps (shell start, a new output), so the panel maps with none.
+local field_cards = { note = hover("paper.card.note"), todo = hover("paper.card.todo") }
 local function release_keyboard()
     release:set(true)
     timer(50, function() release:set(false) end)
@@ -481,6 +484,7 @@ local function draggable(name, node)
                     local o = l or sv or {}
                     return { x = o.x or 0, y = o.y or 0 }
                 end, { x = 0, y = 0 }),
+                hover = field_cards[name],
                 scale = dragging:map(function(d) return d and 1.03 or 1 end),
                 animate = { scale = { duration = 120, easing = "out_cubic" } },
                 children = { node },
@@ -548,7 +552,9 @@ M.cards = panel {
     namespace = "paper-cards",
     layer = "bottom",
     -- On demand: a click in the to-do field or the sticky note takes the keyboard, nothing else does.
-    keyboard_interactivity = release:map(function(r) return r and "none" or "on_demand" end),
+    keyboard_interactivity = computed({ release, editing, field_cards.note, field_cards.todo }, function(r, e, a, b)
+        return not r and (e or a or b) and "on_demand" or "none"
+    end),
     -- The panel covers the output so a card can be dropped anywhere; only the cards take input.
     anchor = { top = true, bottom = true, left = true, right = true },
     width = "fill",
