@@ -1,5 +1,5 @@
 -- One app on the task list: a die-cut sticker of the app icon (on a hatched blue patch while
--- focused), ink ticks for its windows, an urgent dot and an unread badge. The slot never moves, so
+-- focused), ink ticks for its windows, an urgent dot, an unread badge and the app's progress. The slot never moves, so
 -- hover and drag stay steady; an inner node slides during a drag and a further one peels up on hover.
 local theme = require("theme")
 local k = require("lib.paper")
@@ -101,6 +101,21 @@ local function badge(count)
     }
 end
 
+-- The app's own progress (a download, a transfer): a blue pencil stroke along the sticker's foot.
+local function progress_line(fraction)
+    local w = BOX - 6
+    local function stroke(len, color, width)
+        return path {
+            width = w, height = 4, stroke = color, stroke_width = width, stroke_cap = "round",
+            commands = { { op = "M", points = { 1, 2 } }, { op = "L", points = { math.max(1, len - 1), 2 } } },
+        }
+    end
+    return rect {
+        align_h = "center", align_v = "end", translate = { y = 3 },
+        children = { stroke(w, theme.INK_SOFT, 1.5), stroke(w * fraction, theme.BLUE, 3) },
+    }
+end
+
 local function urgent_dot()
     return rect {
         width = theme.bar.urgent_dot,
@@ -140,6 +155,7 @@ function M.new(item, ctx)
     end
     face[#face + 1] = icons.app(item.icon, ICON, hovered)
     if item.urgent then face[#face + 1] = urgent_dot() end
+    if item.progress then face[#face + 1] = progress_line(item.progress) end
     if item.unread > 0 then face[#face + 1] = badge(item.unread) end
 
     local slot = rect {

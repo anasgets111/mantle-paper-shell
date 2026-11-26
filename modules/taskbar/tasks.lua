@@ -41,7 +41,8 @@ local function unread_for(unread, item)
 end
 
 -- Items: { key, id (desktop id or nil), app_id, name, icon, pinned, pin_index, wins (window ids),
--- focused (index into wins or false), urgent, unread, slot (position in the list), npinned }.
+-- focused (index into wins or false), urgent, unread, progress (fraction or false), slot (position
+-- in the list), npinned }.
 local function build(output, windows, applications, pinned, unread, workspaces, iso_ws, iso_out)
     local items, by_key, pin_of = {}, {}, {}
     for i, pin in ipairs(pinned or {}) do
@@ -94,7 +95,18 @@ local function build(output, windows, applications, pinned, unread, workspaces, 
         end
     end
     for i, item in ipairs(items) do
-        item.unread, item.slot, item.npinned = unread_for(unread, item), i, #(pinned or {})
+        -- An app that publishes a LauncherEntry badge owns its count (it clears it once read); the
+        -- rest fall back to their notifications since the date menu last opened.
+        local badge = item.id and applications and applications.badges[item.id]
+        if badge then
+            item.unread = badge.count_visible and badge.count or 0
+            item.urgent = item.urgent or badge.urgent
+            item.progress = badge.progress_visible and badge.progress
+        else
+            item.unread = unread_for(unread, item)
+        end
+        item.progress = item.progress or false
+        item.slot, item.npinned = i, #(pinned or {})
     end
     return items
 end
