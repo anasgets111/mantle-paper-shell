@@ -58,7 +58,7 @@ end, {})
 -- until one is set and keeps no record of it, so the choice lives here and is reapplied whenever the
 -- file pushes: at load (the table reads its empty defaults until then) and on every pick.
 local SOUND_DIR = "/usr/share/sounds/freedesktop/stereo/"
-local SOUNDS = { { "message", "Message" }, { "bell", "Bell" }, { "complete", "Chime" }, { "dialog-warning", "Alert" } }
+local SOUNDS = { { "message", "Message" }, { "bell", "Bell" }, { "complete", "Chime" }, { "dialog-warning", "Alert" }, { "none", "None" } }
 local TIERS = { { "low", "Low" }, { "normal", "Normal" }, { "critical", "Critical" } }
 local sounds = persistent_table {
     path = paths.state("state-settings.json"),
@@ -66,7 +66,7 @@ local sounds = persistent_table {
 }
 local function sound_path(name) return SOUND_DIR .. name .. ".oga" end
 local function apply_sounds(chosen)
-    for tier, name in pairs(chosen or {}) do notes:set_sound(tier, sound_path(name)) end
+    for tier, name in pairs(chosen or {}) do notes:set_sound(tier, name == "none" and "" or sound_path(name)) end
 end
 sounds.notification_sounds:on_change(apply_sounds)
 apply_sounds(sounds.notification_sounds:get())
@@ -88,8 +88,6 @@ local function sound_rows()
             },
         })
     end
-    -- ponytail: the engine has no call to clear a tier's sound, so there is no "None" choice; an
-    -- unset tier stays silent until one is picked. Upgrade: offer "None" once set_sound takes "".
     list[#list + 1] = rows.note("Unset tiers stay silent. A pick is saved and comes back after a restart.", 1)
     return list
 end

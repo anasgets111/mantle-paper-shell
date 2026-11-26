@@ -90,8 +90,8 @@ function M.close()
     ui_state.close_modal(M.KIND)
 end
 
-function M.launch(id)
-    apps.launch(id)
+function M.launch(id, action)
+    apps.launch(id, action)
     M.close()
 end
 

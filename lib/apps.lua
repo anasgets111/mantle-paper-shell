@@ -20,11 +20,22 @@ function M.by_id(applications, id)
     return M.entry(applications, id)
 end
 
-function M.launch(id)
-    mantle.applications:launch(id)
+-- `action`: a key from the entry's `actions`, launched instead of its main command.
+function M.launch(id, action)
+    if action then mantle.applications:launch_action(id, action) else mantle.applications:launch(id) end
     local usage = store.app_usage:get() or {}
     local was = usage[id] or { count = 0 }
     store:set("app_usage", util.with(usage, id, { count = was.count + 1, last = os.time() }))
+end
+
+-- The entry's own desktop actions ("New private window") as menu items; `launch` defaults to M.launch.
+function M.action_items(id, launch)
+    local entry, list = M.by_id(mantle.applications:get(), id), {}
+    if not entry then return list end
+    for _, a in ipairs(entry.actions) do
+        list[#list + 1] = { label = a.name, icon = a.icon, on_click = function() (launch or M.launch)(entry.id, a.key) end }
+    end
+    return list
 end
 
 M.pinned = store.pinned

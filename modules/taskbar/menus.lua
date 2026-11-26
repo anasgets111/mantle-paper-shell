@@ -11,19 +11,13 @@ local menu = menu_component.new { id = "paper-taskbar-menu", parent = "paper-tas
 M.surfaces = menu.surfaces
 M.is_open = menu.is_open
 
--- A second click on the opener closes the menu. The grab dismisses it on that press, and the same
--- click then reaches the opener, so a menu closed that way under 300 ms ago stays closed.
-local opened_for, closed_for, closed_at = nil, nil, -1
-menu.is_open:on_change(function(open)
-    if not open then closed_for, closed_at = opened_for, mantle.clock:now() end
-end)
+local opened_for = nil
 
 local function toggle(key, rect_, list, opts)
     if menu.is_open:get() and opened_for == key then
         menu.close()
         return
     end
-    if closed_for == key and mantle.clock:now() - closed_at < 0.3 then return end
     opened_for = key
     menu.open(rect_, list, opts)
 end
@@ -44,6 +38,7 @@ function M.app_items(item)
             icon = "list-add-symbolic",
             on_click = function() apps.launch(item.id) end,
         }
+        for _, a in ipairs(apps.action_items(item.id)) do list[#list + 1] = a end
         local pinned = apps.is_pinned(item.pinned and item.key or item.id)
         list[#list + 1] = {
             label = pinned and "Unpin from taskbar" or "Pin to taskbar",
